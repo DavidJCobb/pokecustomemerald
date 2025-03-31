@@ -2853,7 +2853,7 @@
       </struct>
       <struct tag="SaveBlock2" c-alignment="4" c-sizeof="3884">
          <stats>
-            <bitcounts total-unpacked="31072" total-packed="27012" />
+            <bitcounts total-unpacked="31072" total-packed="27013" />
             <counts total="1">
                <in-sector index="0" count="1" />
                <in-top-level-value name="gSaveBlock2Ptr" count="1" />
@@ -2879,7 +2879,8 @@
             <integer name="optionsSound" type="u16" c-bitfield-offset="168" c-bitfield-width="1" />
             <integer name="optionsBattleStyle" type="u16" c-bitfield-offset="169" c-bitfield-width="1" />
             <integer name="optionsBattleSceneOff" type="u16" c-bitfield-offset="170" c-bitfield-width="1" />
-            <integer name="regionMapZoom" type="u16" c-bitfield-offset="171" c-bitfield-width="1" />
+            <integer name="optionsRunningToggle" type="u8" c-bitfield-offset="171" c-bitfield-width="1" />
+            <integer name="regionMapZoom" type="u16" c-bitfield-offset="172" c-bitfield-width="1" />
             <struct name="pokedex" type="Pokedex" />
             <omitted name="filler_90" type="u8[8]">
                <array-rank extent="8" />
@@ -2927,6 +2928,7 @@
             <integer value="optionsSound" type="u16" bitcount="1" />
             <integer value="optionsBattleStyle" type="u16" bitcount="1" />
             <integer value="optionsBattleSceneOff" type="u16" bitcount="1" />
+            <integer value="optionsRunningToggle" type="u8" bitcount="1" />
             <integer value="regionMapZoom" type="u16" bitcount="1" />
             <struct value="pokedex" type="Pokedex" />
             <struct value="localTimeOffset" type="Time" />
@@ -4013,7 +4015,7 @@
    <sectors>
       <sector>
          <stats>
-            <bitcounts total-packed="27012" />
+            <bitcounts total-packed="27013" />
          </stats>
          <instructions>
             <struct value="(*gSaveBlock2Ptr)" type="SaveBlock2" />

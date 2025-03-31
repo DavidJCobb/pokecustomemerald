@@ -10,7 +10,7 @@ This project uses an automatically-generated savedata format wherein savedata is
 
 | Sector | Unpacked bytes | Unpacked % | Packed bytes | Packed bits | Packed % |
 | -: | -: | -: | -: | -: | -: |
-|0|3884|97.88%|3377|27012|85.09%|
+|0|3884|97.88%|3377|27013|85.10%|
 |1|3968|100.00%|3968|31743|100.00%|
 |2|3968|100.00%|3968|31740|99.99%|
 |3|3968|100.00%|3943|31544|99.37%|
@@ -24,7 +24,7 @@ This project uses an automatically-generated savedata format wherein savedata is
 |11|3968|100.00%|3936|31482|99.17%|
 |12|3968|100.00%|3187|25494|80.31%|
 |13|2000|50.40%|0|0|0.00%|
-|**Used**|53380|96.09%|48030|384235|86.46%|
+|**Used**|53380|96.09%|48030|384236|86.46%|
 |**Lost**|||255|2035|0.46%|
 |**Free**|2172|3.91%|7268|396132|13.08%|
 
@@ -171,7 +171,7 @@ The **% used** column indicates how much of the total save file space is consume
 <tr><th style='text-align:left'>RentalMon</th><td>12</td><td>59</td><td>38.54%</td><td>6</td><td>72</td><td>354</td><td>0.08%</td></tr>
 <tr><th style='text-align:left'>Roamer</th><td>28</td><td>147</td><td>34.38%</td><td>1</td><td>28</td><td>147</td><td>0.03%</td></tr>
 <tr><th style='text-align:left'>SaveBlock1</th><td>15752</td><td>111351</td><td>11.64%</td><td>1</td><td>15752</td><td>111351</td><td>25.06%</td></tr>
-<tr><th style='text-align:left'>SaveBlock2</th><td>3884</td><td>27012</td><td>13.07%</td><td>1</td><td>3884</td><td>27012</td><td>6.08%</td></tr>
+<tr><th style='text-align:left'>SaveBlock2</th><td>3884</td><td>27013</td><td>13.06%</td><td>1</td><td>3884</td><td>27013</td><td>6.08%</td></tr>
 <tr><th style='text-align:left'>SecretBase</th><td>160</td><td>1056</td><td>17.50%</td><td>20</td><td>3200</td><td>21120</td><td>4.75%</td></tr>
 <tr><th style='text-align:left'>SecretBaseParty</th><td>108</td><td>660</td><td>23.61%</td><td>20</td><td>2160</td><td>13200</td><td>2.97%</td></tr>
 <tr><th style='text-align:left'>SerializedBoxPokemonSubstructs</th><td>52</td><td>351</td><td>15.62%</td><td>428</td><td>22256</td><td>150228</td><td>33.80%</td></tr>
