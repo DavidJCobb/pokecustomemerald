@@ -22,6 +22,7 @@
 #include "constants/game_stat.h"
 
 #include "lu/bitpack_transformed_type_BoxPokemon.h"
+#include "lu/custom_game_options.h"
 
 // Generate the code for bitpacked savedata.
 #include "./lu/save-codegen.h"

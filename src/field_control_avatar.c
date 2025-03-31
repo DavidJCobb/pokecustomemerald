@@ -35,6 +35,7 @@
 #include "constants/songs.h"
 #include "constants/trainer_hill.h"
 
+#include "lu/custom_game_options.h"
 #include "lu/running_prefs.h"
 
 static EWRAM_DATA u8 sWildEncounterImmunitySteps = 0;
@@ -657,7 +658,15 @@ static bool8 UpdatePoisonStepCounter(void)
     {
         ptr = GetVarPointer(VAR_POISON_STEP_COUNTER);
         (*ptr)++;
-        (*ptr) %= 4;
+        {
+           u8 interval = gCustomGameOptions.overworld_poison.interval; // vanilla: 4
+           if (interval == 0) {
+              (*ptr) = 1;
+              return FALSE;
+           } else {
+              (*ptr) %= interval;
+           }
+        }
         if (*ptr == 0)
         {
             switch (DoPoisonFieldEffect())

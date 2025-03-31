@@ -73,6 +73,9 @@
 #include "constants/rgb.h"
 #include "constants/songs.h"
 
+#include "lu/custom_game_option_handlers/battle.h"
+#include "lu/utils_item.h"
+
 enum {
     MENU_SUMMARY,
     MENU_SWITCH,
@@ -481,6 +484,11 @@ static bool8 SetUpFieldMove_Fly(void);
 static bool8 SetUpFieldMove_Waterfall(void);
 static bool8 SetUpFieldMove_Dive(void);
 
+static bool8 IsBattleItemUseDisallowingBackfield(void); // CGO
+static void DisplayPartyPokemonDataGivenCustomGameBattleItemUsageLimits(u8 slot); // CGO
+static bool8 IsBackfieldSlot(u8 slot); // CGO
+static bool8 ItemUseWouldBeIllegalRevive(s8 slot); // CGO
+
 // static const data
 #include "data/pokemon/tutor_learnsets.h"
 #include "data/party_menu.h"
@@ -854,8 +862,9 @@ static void RenderPartyMenuBox(u8 slot)
                 DisplayPartyPokemonDataForWirelessMinigame(slot);
             else if (gPartyMenu.menuType == PARTY_MENU_TYPE_STORE_PYRAMID_HELD_ITEMS)
                 DisplayPartyPokemonDataForBattlePyramidHeldItem(slot);
-            else if (!DisplayPartyPokemonDataForMoveTutorOrEvolutionItem(slot))
-                DisplayPartyPokemonData(slot);
+            else if (!DisplayPartyPokemonDataForMoveTutorOrEvolutionItem(slot)) {
+                DisplayPartyPokemonDataGivenCustomGameBattleItemUsageLimits(slot);
+            }
 
             if (gPartyMenu.menuType == PARTY_MENU_TYPE_MULTI_SHOWCASE)
                 AnimatePartySlot(slot, 0);
@@ -1039,6 +1048,18 @@ static void DisplayPartyPokemonDataForMultiBattle(u8 slot)
         DisplayPartyPokemonMaxHP(gMultiPartnerParty[actualSlot].maxhp, menuBox);
         DisplayPartyPokemonHPBar(gMultiPartnerParty[actualSlot].hp, gMultiPartnerParty[actualSlot].maxhp, menuBox);
     }
+}
+
+static void DisplayPartyPokemonDataGivenCustomGameBattleItemUsageLimits(u8 slot) {
+   if (IsBattleItemUseDisallowingBackfield() && IsBackfieldSlot(slot)) {
+      DisplayPartyPokemonDescriptionData(slot, PARTYBOX_DESC_NOT_ABLE);
+      return;
+   }
+   if (!CustomGamesAllowRevivesInBattle() && ItemUseWouldBeIllegalRevive(slot)) {
+      DisplayPartyPokemonDescriptionData(slot, PARTYBOX_DESC_NOT_ABLE);
+      return;
+   }
+   DisplayPartyPokemonData(slot);
 }
 
 static bool8 RenderPartyMenuBoxes(void)
@@ -1291,6 +1312,20 @@ static s8 *GetCurrentPartySlotPtr(void)
 
 static void HandleChooseMonSelection(u8 taskId, s8 *slotPtr)
 {
+    //
+    // This function BASICALLY handles what happens when you press A on 
+    // a party member: do you get a menu with choices in it, or is some 
+    // action (the one the party screen was opened for) performed on the 
+    // selected Pokemon immediately?
+    //
+    // Of course, if a Pokemon isn't eligible for a given action, then 
+    // you'd either want to...
+    //
+    //  - Do nothing, if no actions menu is meant to appear.
+    //
+    //  - Modify the function that determines what actions menu appears.
+    //
+    
     if (*slotPtr == PARTY_SIZE)
     {
         gPartyMenu.task(taskId);
@@ -1307,6 +1342,13 @@ static void HandleChooseMonSelection(u8 taskId, s8 *slotPtr)
             }
             break;
         case PARTY_ACTION_USE_ITEM:
+            if (IsBattleItemUseDisallowingBackfield()) {
+               if (IsBackfieldSlot(*slotPtr))
+                  break;
+            }
+            if (ItemUseWouldBeIllegalRevive(*slotPtr)) {
+               break;
+            }
             if (IsSelectedMonNotEgg((u8 *)slotPtr))
             {
                 if (gPartyMenu.menuType == PARTY_MENU_TYPE_IN_BATTLE)
@@ -6427,4 +6469,51 @@ void IsLastMonThatKnowsSurf(void)
         if (AnyStorageMonWithMove(move) != TRUE)
             gSpecialVar_Result = TRUE;
     }
+}
+
+static bool8 IsBattleItemUseDisallowingBackfield(void) {
+   if (gPartyMenu.menuType != PARTY_MENU_TYPE_IN_BATTLE)
+      return FALSE;
+   if (gPartyMenu.action != PARTY_ACTION_USE_ITEM)
+      return FALSE;
+   
+   if (Lu_ItemIsARevive(gPartyMenu.bagItem)) {
+      return !CustomGamesAllowRevivesInBattle();
+   }
+   
+   return !CustomGamesAllowBattleBackfieldHealing();
+}
+
+static bool8 IsBackfieldSlot(u8 slot) {
+   if (slot > 1) {
+      return TRUE;
+   }
+   if (slot == 1) {
+      if (IsDoubleBattle() == FALSE || IsMultiBattle() == TRUE)
+         return TRUE;
+   }
+   {
+      //
+      // In a Double Battle, ordinarily, slots 0 and 1 wouldn't be backfield 
+      // slots. However, if the player has 5/6 Pokemon fainted, then either 
+      // slot could be.
+      //
+      struct Pokemon* mon = &gPlayerParty[slot];
+      if (GetMonAilment(mon) == AILMENT_FNT)
+         return TRUE;
+   }
+   return FALSE;
+}
+static bool8 ItemUseWouldBeIllegalRevive(s8 slot) {
+   if (CustomGamesAllowRevivesInBattle()) {
+      return FALSE;
+   }
+   if (Lu_ItemIsARevive(gPartyMenu.bagItem)) {
+      if (slot >= 0 && slot < PARTY_SIZE) {
+         struct Pokemon* mon = &gPlayerParty[slot];
+         if (GetMonAilment(mon) == AILMENT_FNT)
+            return TRUE;
+      }
+   }
+   return FALSE;
 }

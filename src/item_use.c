@@ -42,6 +42,10 @@
 #include "constants/items.h"
 #include "constants/songs.h"
 
+#include "lu/custom_game_option_handlers/battle.h"
+#include "lu/utils_item.h"
+#include "lu/strings.h"
+
 static void SetUpItemUseCallback(u8);
 static void FieldCB_UseItemOnField(void);
 static void Task_CallItemUseOnFieldCallback(u8);
@@ -1025,6 +1029,13 @@ static void ItemUseInBattle_ShowPartyMenu(u8 taskId)
 
 void ItemUseInBattle_Medicine(u8 taskId)
 {
+    if (!CustomGamesAllowRevivesInBattle() && Lu_ItemIsOnlyARevive(gSpecialVar_ItemId)) {
+       if (!InBattlePyramid())
+          DisplayItemMessage(taskId, FONT_NORMAL, gText_lu_CGRevivesNotAllowedInBattle, CloseItemMessage);
+       else
+          DisplayItemMessageInBattlePyramid(taskId, gText_lu_CGRevivesNotAllowedInBattle, Task_CloseBattlePyramidBagMessage);
+       return;
+    }
     gItemUseCB = ItemUseCB_Medicine;
     ItemUseInBattle_ShowPartyMenu(taskId);
 }

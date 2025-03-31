@@ -10,6 +10,8 @@
 #include "constants/map_types.h"
 #include "constants/songs.h"
 
+#include "lu/custom_game_options.h"
+
 // this file's functions
 static void MovePlayerOnMachBike(u8, u16, u16);
 static u8 GetMachBikeTransition(u8 *);
@@ -1053,10 +1055,20 @@ void Bike_HandleBumpySlopeJump(void)
     }
 }
 
-bool32 IsRunningDisallowed(u8 metatile)
-{
-    if (!gMapHeader.allowRunning || IsRunningDisallowedByMetatile(metatile) == TRUE)
-        return TRUE;
-    else
-        return FALSE;
+bool32 IsRunningDisallowed(u8 metatile) {
+   if (!gMapHeader.allowRunning) {
+      if (gMapHeader.mapType != MAP_TYPE_INDOOR)
+         return TRUE;
+      if (gCustomGameOptions.can_run_indoors == FALSE)
+         return TRUE;
+      //
+      // Else, fall through to other checks.
+      //
+      // To make a similar change for biking indoors, edit Overworld_IsBikingAllowed in overworld.c.
+      //
+   }
+   if (IsRunningDisallowedByMetatile(metatile) == TRUE)
+      return TRUE;
+   
+   return FALSE;
 }

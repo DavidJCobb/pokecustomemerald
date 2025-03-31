@@ -7,7 +7,7 @@ void WriteSavegameSector(void* buffer, int sectorId);
 #pragma lu_bitpack generate_functions( \
    read_name = ReadSavegameSector,  \
    save_name = WriteSavegameSector, \
-   data      = *gSaveBlock2Ptr | *gSaveBlock1Ptr | *gPokemonStoragePtr \
+   data      = *gSaveBlock2Ptr gCustomGameOptions | *gSaveBlock1Ptr gCustomGameSavestate | *gPokemonStoragePtr \
    , enable_debug_output = true \
 )
 

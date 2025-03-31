@@ -223,6 +223,7 @@
          <typedef name="s16" bitcount="16" />
       </integral>
       <integral name="short unsigned int" alignment="2" is-signed="false" size="2">
+         <typedef name="CustomGameScalePct" bitcount="13" min="0" max="5000" />
          <typedef name="EasyChatWordID" bitcount="16">
             <category name="easy-chat-word" />
          </typedef>
@@ -247,6 +248,7 @@
          <typedef name="BattleFrontierLvlModeOptional" bitcount="2" min="0" max="2" />
          <typedef name="bool8" />
          <typedef name="ContestCategory" bitcount="3" min="0" max="4" />
+         <typedef name="CustomGameItemUseInBattlesMode" bitcount="3" min="0" max="4" />
          <typedef name="LanguageID" bitcount="4" min="0" max="7">
             <category name="language" />
          </typedef>
@@ -1093,6 +1095,86 @@
             <integer value="x" type="s16" bitcount="16" />
             <integer value="y" type="s16" bitcount="16" />
          </instructions>
+      </struct>
+      <struct tag="CustomGameOptions" c-alignment="4" c-sizeof="40">
+         <stats>
+            <bitcounts total-unpacked="320" total-packed="175" />
+            <counts total="1">
+               <in-sector index="0" count="1" />
+               <in-top-level-value name="gCustomGameOptions" count="1" />
+            </counts>
+         </stats>
+         <members>
+            <boolean name="start_with_running_shoes" type="bool8" />
+            <boolean name="can_run_indoors" type="bool8" />
+            <boolean name="can_bike_indoors" type="bool8" />
+            <integer name="scale_wild_encounter_rate" type="CustomGameScalePct" />
+            <boolean name="enable_catch_exp" type="bool8" />
+            <integer name="catch_rate_scale" type="CustomGameScalePct" />
+            <integer name="catch_rate_increase_base" type="u8" bitcount="7" min="0" max="100" />
+            <integer name="battle_item_usage" type="CustomGameItemUseInBattlesMode" />
+            <struct name="scale_battle_damage">
+               <members>
+                  <integer name="by_player" type="CustomGameScalePct" />
+                  <integer name="by_enemy" type="CustomGameScalePct" />
+                  <integer name="by_ally" type="CustomGameScalePct" />
+               </members>
+            </struct>
+            <struct name="scale_battle_accuracy">
+               <members>
+                  <integer name="player" type="CustomGameScalePct" />
+                  <integer name="enemy" type="CustomGameScalePct" />
+                  <integer name="ally" type="CustomGameScalePct" />
+               </members>
+            </struct>
+            <struct name="scale_exp_gains">
+               <members>
+                  <integer name="normal" type="CustomGameScalePct" />
+                  <integer name="traded" type="CustomGameScalePct" />
+               </members>
+            </struct>
+            <integer name="scale_player_money_gain_on_victory" type="CustomGameScalePct" />
+            <boolean name="modern_calc_player_money_loss_on_defeat" type="bool8" />
+            <struct name="overworld_poison">
+               <members>
+                  <integer name="interval" type="u8" bitcount="6" min="0" max="60" />
+                  <integer name="damage" type="u16" bitcount="11" min="1" max="2000" />
+               </members>
+            </struct>
+         </members>
+         <instructions>
+            <boolean value="start_with_running_shoes" type="bool8" />
+            <boolean value="can_run_indoors" type="bool8" />
+            <boolean value="can_bike_indoors" type="bool8" />
+            <integer value="scale_wild_encounter_rate" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <boolean value="enable_catch_exp" type="bool8" />
+            <integer value="catch_rate_scale" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <integer value="catch_rate_increase_base" type="u8" bitcount="7" min="0" max="100" />
+            <integer value="battle_item_usage" type="CustomGameItemUseInBattlesMode" bitcount="3" min="0" max="4" />
+            <integer value="scale_battle_damage.by_player" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <integer value="scale_battle_damage.by_enemy" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <integer value="scale_battle_damage.by_ally" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <integer value="scale_battle_accuracy.player" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <integer value="scale_battle_accuracy.enemy" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <integer value="scale_battle_accuracy.ally" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <integer value="scale_exp_gains.normal" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <integer value="scale_exp_gains.traded" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <integer value="scale_player_money_gain_on_victory" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <boolean value="modern_calc_player_money_loss_on_defeat" type="bool8" />
+            <integer value="overworld_poison.interval" type="u8" bitcount="6" min="0" max="60" />
+            <integer value="overworld_poison.damage" type="u16" bitcount="11" min="1" max="2000" />
+         </instructions>
+      </struct>
+      <struct tag="CustomGameSavestate" c-alignment="4">
+         <stats>
+            <bitcounts total-unpacked="0" total-packed="0" />
+            <counts total="1">
+               <in-sector index="4" count="1" />
+               <in-top-level-value name="gCustomGameSavestate" count="1" />
+            </counts>
+         </stats>
+         <members />
+         <instructions />
       </struct>
       <struct tag="DayCare" c-alignment="4" c-sizeof="288">
          <stats>
@@ -4009,16 +4091,19 @@
    </c-types>
    <top-level-values>
       <struct name="gSaveBlock2Ptr" dereference-count="1" type="SaveBlock2*" serialized-type="SaveBlock2" />
+      <struct name="gCustomGameOptions" type="CustomGameOptions" serialized-type="CustomGameOptions" />
       <struct name="gSaveBlock1Ptr" dereference-count="1" force-to-next-sector="true" type="SaveBlock1*" serialized-type="SaveBlock1" />
+      <struct name="gCustomGameSavestate" type="CustomGameSavestate" serialized-type="CustomGameSavestate" />
       <struct name="gPokemonStoragePtr" dereference-count="1" force-to-next-sector="true" type="PokemonStorage*" serialized-type="PokemonStorage" />
    </top-level-values>
    <sectors>
       <sector>
          <stats>
-            <bitcounts total-packed="27013" />
+            <bitcounts total-packed="27188" />
          </stats>
          <instructions>
             <struct value="(*gSaveBlock2Ptr)" type="SaveBlock2" />
+            <struct value="gCustomGameOptions" type="CustomGameOptions" />
          </instructions>
       </sector>
       <sector>
@@ -4336,6 +4421,7 @@
             </loop>
             <struct value="(*gSaveBlock1Ptr).trainerHill" type="TrainerHillSave" />
             <struct value="(*gSaveBlock1Ptr).waldaPhrase" type="WaldaPhrase" />
+            <struct value="gCustomGameSavestate" type="CustomGameSavestate" />
          </instructions>
       </sector>
       <sector>

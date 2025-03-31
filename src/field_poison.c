@@ -17,6 +17,8 @@
 #include "constants/field_poison.h"
 #include "constants/party_menu.h"
 
+#include "lu/custom_game_options.h"
+
 static bool32 IsMonValidSpecies(struct Pokemon *pokemon)
 {
     u16 species = GetMonData(pokemon, MON_DATA_SPECIES_OR_EGG);
@@ -131,8 +133,17 @@ s32 DoPoisonFieldEffect(void)
         {
             // Apply poison damage
             hp = GetMonData(pokemon, MON_DATA_HP);
-            if (hp == 0 || --hp == 0)
-                numFainted++;
+            if (hp == 0) {
+               numFainted++;
+            } else {
+               u16 damage = gCustomGameOptions.overworld_poison.damage; // vanilla: 1
+               if (hp <= damage) {
+                  hp = 0;
+                  numFainted++;
+               } else {
+                  hp -= damage;
+               }
+            }
 
             SetMonData(pokemon, MON_DATA_HP, &hp);
             numPoisoned++;

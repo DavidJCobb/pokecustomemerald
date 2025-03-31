@@ -52,6 +52,10 @@
 #include "constants/songs.h"
 #include "constants/trainers.h"
 
+#include "lu/custom_game_option_handlers/battle.h"
+#include "lu/custom_game_option_script_helpers.h"
+#include "lu/custom_game_options.h"
+
 extern const u8 *const gBattleScriptsForMoveEffects[];
 
 #define DEFENDER_IS_PROTECTED ((gProtectStructs[gBattlerTarget].protected) && (gBattleMoves[gCurrentMove].flags & FLAG_PROTECT_AFFECTED))
@@ -325,6 +329,7 @@ static void Cmd_removeattackerstatus1(void);
 static void Cmd_finishaction(void);
 static void Cmd_finishturn(void);
 static void Cmd_trainerslideout(void);
+static void Cmd_lu_extensions(void);
 
 void (* const gBattleScriptingCommandsTable[])(void) =
 {
@@ -576,7 +581,8 @@ void (* const gBattleScriptingCommandsTable[])(void) =
     Cmd_removeattackerstatus1,                   //0xF5
     Cmd_finishaction,                            //0xF6
     Cmd_finishturn,                              //0xF7
-    Cmd_trainerslideout                          //0xF8
+    Cmd_trainerslideout,                         //0xF8
+    Cmd_lu_extensions                            //0xF9 // EXTENSION
 };
 
 struct StatFractions
@@ -1171,6 +1177,8 @@ static void Cmd_accuracycheck(void)
 
         if (holdEffect == HOLD_EFFECT_EVASION_UP)
             calc = (calc * (100 - param)) / 100;
+        
+        calc = ApplyCustomGameBattleAccuracyScaling(calc);
 
         // final calculation
         if ((Random() % 100 + 1) > calc)
@@ -1660,6 +1668,7 @@ static void Cmd_adjustnormaldamage(void)
     u8 holdEffect, param;
 
     ApplyRandomDmgMultiplier();
+    ApplyCustomGameBattleDamageScaling();
 
     if (gBattleMons[gBattlerTarget].item == ITEM_ENIGMA_BERRY)
     {
@@ -1703,6 +1712,7 @@ static void Cmd_adjustnormaldamage2(void)
     u8 holdEffect, param;
 
     ApplyRandomDmgMultiplier();
+    ApplyCustomGameBattleDamageScaling();
 
     if (gBattleMons[gBattlerTarget].item == ITEM_ENIGMA_BERRY)
     {
@@ -3357,11 +3367,24 @@ static void Cmd_getexp(void)
             else
             {
                 // music change in wild battle after fainting a poke
-                if (!(gBattleTypeFlags & BATTLE_TYPE_TRAINER) && gBattleMons[0].hp != 0 && !gBattleStruct->wildVictorySong)
-                {
-                    BattleStopLowHpSound();
-                    PlayBGM(MUS_VICTORY_WILD);
-                    gBattleStruct->wildVictorySong++;
+                if (!(gBattleTypeFlags & BATTLE_TYPE_TRAINER) && gBattleMons[0].hp != 0 && !gBattleStruct->wildVictorySong) {
+                   //
+                   // Only change the music if:
+                   //
+                   //  - The Pokemon we're awarding experience to is a foe.
+                   //  - All foes are down.
+                   //  - This foe was not captured (the capture theme will play instead).
+                   //
+                   // TODO: Handle "All foes are down" in Double Battles.
+                   //
+                   if (GetBattlerSide(gBattlerFainted) == B_SIDE_OPPONENT) {
+                       u16 ball = GetMonData(&gEnemyParty[gBattlerPartyIndexes[gBattlerFainted]], MON_DATA_POKEBALL);
+                       if (ball == ITEM_NONE) {
+                           BattleStopLowHpSound();
+                           PlayBGM(MUS_VICTORY_WILD);
+                           gBattleStruct->wildVictorySong++;
+                       }
+                   }
                 }
 
                 if (GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_HP))
@@ -3383,11 +3406,12 @@ static void Cmd_getexp(void)
                         // check if the Pokémon doesn't belong to the player
                         if (gBattleTypeFlags & BATTLE_TYPE_INGAME_PARTNER && gBattleStruct->expGetterMonId >= 3)
                         {
+                            gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.scale_exp_gains.normal);
                             i = STRINGID_EMPTYSTRING4;
                         }
                         else
                         {
-                            gBattleMoveDamage = (gBattleMoveDamage * 150) / 100;
+                            gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.scale_exp_gains.traded); // default: 150
                             i = STRINGID_ABOOSTED;
                         }
                     }
@@ -5638,6 +5662,8 @@ static void Cmd_getmoneyreward(void)
     if (gBattleTypeFlags & BATTLE_TYPE_TWO_OPPONENTS)
         moneyReward += GetTrainerMoneyToGive(gTrainerBattleOpponent_B);
 
+    moneyReward = ApplyCustomGameBattleMoneyVictoryScaling(moneyReward);
+
     AddMoney(&gSaveBlock1Ptr->money, moneyReward);
     PREPARE_WORD_NUMBER_BUFFER(gBattleTextBuff1, 5, moneyReward);
 
@@ -5861,6 +5887,8 @@ static void Cmd_cancelallactions(void)
 static void Cmd_adjustsetdamage(void)
 {
     u8 holdEffect, param;
+    
+    ApplyCustomGameBattleDamageScaling();
 
     if (gBattleMons[gBattlerTarget].item == ITEM_ENIGMA_BERRY)
     {
@@ -10028,6 +10056,13 @@ static void Cmd_handleballthrow(void)
                     gBattleResults.catchAttempts[gLastUsedItem - ITEM_ULTRA_BALL]++;
             }
         }
+        
+        odds = ApplyCustomGameScale_u32(odds, gCustomGameOptions.catch_rate_scale);
+        //
+        if (gCustomGameOptions.catch_rate_increase_base > 0) {
+            u8 increase = (u16)25400 / gCustomGameOptions.catch_rate_increase_base;
+            odds += increase;
+        }
 
         if (odds > 254) // mon caught
         {
@@ -10135,6 +10170,19 @@ static void Cmd_displaydexinfo(void)
         if (!gPaletteFade.active)
         {
             FreeAllWindowBuffers();
+                        
+            // drawlvlupbox shifts Background Layer 2 X, which can break display of 
+            // the Pokedex. In general, the Pokedex screen used here seems to expect 
+            // all background layers to be at (0, 0), so let's do that.
+            gBattle_BG0_X = 0;
+            gBattle_BG0_Y = 0;
+            gBattle_BG1_X = 0;
+            gBattle_BG1_Y = 0;
+            gBattle_BG2_X = 0;
+            gBattle_BG2_Y = 0;
+            gBattle_BG3_X = 0;
+            gBattle_BG3_Y = 0;
+            
             gBattleCommunication[TASK_ID] = DisplayCaughtMonDexPage(SpeciesToNationalPokedexNum(species),
                                                                         gBattleMons[gBattlerTarget].otId,
                                                                         gBattleMons[gBattlerTarget].personality);
@@ -10346,4 +10394,44 @@ static void Cmd_trainerslideout(void)
     MarkBattlerForControllerExec(gActiveBattler);
 
     gBattlescriptCurrInstr += 2;
+}
+
+enum {
+   Lu_Subinstruction_NoOp = 0x00,
+   Lu_Subinstruction_JumpIfEq_CustomGameOptionBool = 0x01, // option ID, comparand, jump destination
+};
+static void Cmd_lu_extensions(void) {
+   //
+   // I plan on implementing any battle script commands I need to add as multi-byte 
+   // instructions, since vanilla opcodes already use everything up through 0xF8.
+   //
+   // Macros are defined in `asm/macros/battle_script.inc`, and I plan on having 
+   // separate macros for each custom command.
+   //
+   u8 sub_instruction;
+   
+   sub_instruction = gBattlescriptCurrInstr[1];
+   gBattlescriptCurrInstr += 2; // move past instruction and subinstruction byte
+   
+   switch (sub_instruction) {
+      default:
+         return;
+      case Lu_Subinstruction_JumpIfEq_CustomGameOptionBool:
+         {
+            u8 option_id;
+            u8 comparand;
+            const u8* destination;
+            
+            option_id   = gBattlescriptCurrInstr[0];
+            comparand   = gBattlescriptCurrInstr[1];
+            destination = T1_READ_PTR(gBattlescriptCurrInstr + 2);
+            //
+            if (GetCustomGameOptionBool(option_id) == comparand) {
+               gBattlescriptCurrInstr = destination;
+            } else {
+               gBattlescriptCurrInstr += 6;
+            }
+         }
+         return;
+   }
 }

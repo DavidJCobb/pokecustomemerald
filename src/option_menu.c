@@ -37,6 +37,8 @@
 
 #define MENU_ITEM_HALFWAY_ROW (MAX_MENU_ITEMS_VISIBLE_AT_ONCE / 2)
 
+#include "lu/custom_game_options_menu.h"
+
 enum {
    WIN_HEADER,
    WIN_OPTIONS
@@ -79,12 +81,9 @@ static const u8 sEqualSignGfx[] = INCBIN_U8("graphics/interface/option_menu_equa
 #define MENUITEM_COUNT 8
 #define MENUITEM_CANCEL (MENUITEM_COUNT - 1)
 
-#if 0
-   #include "lu/custom_game_options_menu.h"
-   #undef  MENUITEM_COUNT
-   #define MENUITEM_COUNT 9
-   #define MENUITEM_CUSTOM_GAME_OPTIONS (MENUITEM_COUNT - 2)
-#endif
+         #undef  MENUITEM_COUNT
+         #define MENUITEM_COUNT 9
+         #define MENUITEM_CUSTOM_GAME_OPTIONS (MENUITEM_COUNT - 2)
 
 #define MENU_IS_SCROLLABLE 0
 #if MENUITEM_COUNT > MAX_MENU_ITEMS_VISIBLE_AT_ONCE

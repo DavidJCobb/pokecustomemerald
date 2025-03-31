@@ -67,6 +67,9 @@
 #include "constants/trainer_hill.h"
 #include "constants/weather.h"
 
+#include "lu/custom_game_options.h"
+#include "constants/flags.h" // NUM_BADGES
+
 struct CableClubPlayer
 {
     u8 playerId;
@@ -354,11 +357,45 @@ static void (*const sMovementStatusHandler[])(struct LinkPlayerObjectEvent *, st
     MovementStatusHandler_TryAdvanceScript,
 };
 
+// from FR/LG; used if Custom Game Options so dictate
+static const u8 sWhiteOutMoneyLossMultipliers[NUM_BADGES + 1] = {
+     2,
+     4,
+     6,
+     9,
+    12,
+    16,
+    20,
+    25,
+    30
+};
+
 // code
 void DoWhiteOut(void)
 {
     RunScriptImmediately(EventScript_WhiteOut);
-    SetMoney(&gSaveBlock1Ptr->money, GetMoney(&gSaveBlock1Ptr->money) / 2);
+    if (gCustomGameOptions.modern_calc_player_money_loss_on_defeat) {
+        u8  badges = 0;
+        u8  level;
+        u32 penalty;
+        u32 money;
+        {
+           u8 i;
+           for(i = 0; i < NUM_BADGES; ++i)
+              if (FlagGet(FLAG_BADGE01_GET + i))
+                 ++badges;
+        }
+        level = GetPlayerPartyHighestLevel();
+        
+        penalty = level * 4 * sWhiteOutMoneyLossMultipliers[badges];
+        money   = GetMoney(&gSaveBlock1Ptr->money);
+        if (penalty > money)
+           penalty = money;
+        
+        SetMoney(&gSaveBlock1Ptr->money, money - penalty);
+    } else {
+        SetMoney(&gSaveBlock1Ptr->money, GetMoney(&gSaveBlock1Ptr->money) / 2);
+    }
     HealPlayerParty();
     Overworld_ResetStateAfterWhiteOut();
     SetWarpDestinationToLastHealLocation();
@@ -958,9 +995,11 @@ static u16 GetCenterScreenMetatileBehavior(void)
 
 bool32 Overworld_IsBikingAllowed(void)
 {
-    if (!gMapHeader.allowCycling)
+    if (!gMapHeader.allowCycling) {
+        if (gCustomGameOptions.can_bike_indoors && gMapHeader.mapType == MAP_TYPE_INDOOR)
+            return TRUE;
         return FALSE;
-    else
+    } else
         return TRUE;
 }
 
