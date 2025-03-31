@@ -1644,6 +1644,10 @@ static void UpdatePartySelectionDoubleLayout(s8 *slotPtr, s8 movementDir)
         else if (*slotPtr == PARTY_SIZE)
         {
             *slotPtr = gPlayerPartyCount - 1;
+            #ifdef BUGFIX // prevent eventual underflow on (actually or apparently) empty party, contributing to "glitzer popping"
+                if (gPlayerPartyCount == 0)
+                    *slotPtr = 0;
+            #endif
             break;
         }
         else if (*slotPtr == PARTY_SIZE + 1)
@@ -1654,6 +1658,10 @@ static void UpdatePartySelectionDoubleLayout(s8 *slotPtr, s8 movementDir)
                 break;
             }
             (*slotPtr)--;
+            #ifdef BUGFIX // prevent eventual underflow on (actually or apparently) empty party, contributing to "glitzer popping"
+                if (gPlayerPartyCount == 0)
+                    *slotPtr = 0;
+            #endif
         }
         newSlot = GetNewSlotDoubleLayout(*slotPtr, newSlot);
         if (newSlot != -1)
