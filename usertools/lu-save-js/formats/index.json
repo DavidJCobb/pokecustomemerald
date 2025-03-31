@@ -1,0 +1,27 @@
+{
+   "formats": [
+      null,
+      {
+         "files": [
+            "flags-0.dat",
+            "flags-1.dat",
+            "flags-2.dat",
+            "flags-3.dat",
+            "flags-4.dat",
+            "flags-5.dat",
+            "flags-6.dat",
+            "flags-7.dat",
+            "game-stats.dat",
+            "items.dat",
+            "maps.dat",
+            "misc.dat",
+            "moves.dat",
+            "natures.dat",
+            "species.dat",
+            "trainers.dat",
+            "vars.dat"
+         ]
+      }
+   ],
+   "index_version": 1
+}
