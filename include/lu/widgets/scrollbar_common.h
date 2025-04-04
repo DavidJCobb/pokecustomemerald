@@ -11,18 +11,21 @@ struct LuScrollbarColors { // palette indices
    u8 background : 4; // background on either side of the scrollbar, and shown if no scrollbar
 };
 
+struct LuScrollbarGraphicsParams {
+   u8  bg_layer    : 2;
+   u8  palette_id  : 4;
+   u8  color_track : 4;
+   u8  color_thumb : 4;
+   u8  color_blank : 4; // background around the scrollbar
+   u8  pos_x       : 5; // in tiles
+   u8  pos_y       : 5; // in tiles
+   u8  length      : 5; // in tiles
+   u16 first_tile_id;
+};
+
 struct LuScrollbar {
    struct {
-      u8 bg_layer   : 2;
-      u8 palette_id : 4;
-      struct LuScrollbarColors colors;
-      struct {
-         u8 x; // in tiles
-         u8 y; // in tiles
-      } pos;
-      u8  length; // in tiles
-      u16 first_tile_id;
-      
+      struct LuScrollbarGraphicsParams info;
       void* tile_buffer; // heap-allocated
    } graphics;
    u16 scroll_pos;

@@ -26,6 +26,7 @@
 #include "constants/characters.h"
 #include "string_util.h"
 #include "lu/widgets/keybind_strip.h"
+#include "lu/widgets/scrollbar_v.h"
 #include "lu/string_wrap.h"
 #include "lu/strings.h"
 #include "lu/ui_helpers.h"
@@ -135,6 +136,7 @@ struct MenuState {
    u8    sprite_id_value_arrow_r;
    struct {
       struct LuKeybindStrip keybind_strip;
+      struct LuScrollbar    scrollbar;
    } widgets;
 };
 
@@ -277,11 +279,11 @@ static const u8 sTextColor_HelpBodyText[] = {1, 2, 3};
 //
 #define WIN_OPTIONS_X_TILES             2
 #define WIN_OPTIONS_Y_TILES             WIN_HEADER_TILE_HEIGHT + 1
-#define OPTIONS_INSET_RIGHT_TILES       2
+#define OPTIONS_INSET_RIGHT_TILES       1
 #define OPTIONS_LIST_INSET_RIGHT        (OPTIONS_INSET_RIGHT_TILES * TILE_WIDTH)
 #define OPTIONS_LIST_ROW_HEIGHT         7
 //
-#define WIN_OPTIONS_TILE_WIDTH    (DISPLAY_TILE_WIDTH - WIN_OPTIONS_X_TILES)
+#define WIN_OPTIONS_TILE_WIDTH    (DISPLAY_TILE_WIDTH - WIN_OPTIONS_X_TILES - 1)
 #define WIN_OPTIONS_TILE_HEIGHT   (OPTIONS_LIST_ROW_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)
 //
 #define WIN_HELP_TILE_WIDTH    DISPLAY_TILE_WIDTH
@@ -307,6 +309,7 @@ typedef struct {
    VRAMTile blank_tile;
    VRAMTile selection_cursor_tiles[4];
    VRAMTile user_window_frame[9];
+   VRAMTile scrollbar_tiles[SCROLLBAR_TILE_COUNT];
    
    VRAMTilemap tilemaps[4];
    
@@ -319,6 +322,9 @@ typedef struct {
    VRAMTile VRAM_BG_AT_CHAR_BASE_INDEX(BG_LAYER_HELP_TILESET_INDEX) blank_tile_for_help;
    VRAMTile win_tiles_for_help[WIN_HELP_TILE_WIDTH * WIN_HELP_TILE_HEIGHT];
 } VRAMTileLayout;
+//
+// ensure we fit within 64KB VRAM limit.
+STATIC_ASSERT(sizeof(VRAMTileLayout) <= BG_VRAM_SIZE, sStaticAssertion01_VramUsage);
 
 static const struct LuKeybindStripEntry sKeybindStripEntries[] = {
    {
@@ -352,8 +358,17 @@ static const struct LuKeybindStripInitParams sKeybindStripInit = {
    .palette_id    = BACKGROUND_PALETTE_ID_CONTROLS
 };
 
-// ensure we fit within 64KB VRAM limit.
-STATIC_ASSERT(sizeof(VRAMTileLayout) <= BG_VRAM_SIZE, sStaticAssertion01_VramUsage);
+static const struct LuScrollbarGraphicsParams sScrollbarInit = {
+   .bg_layer      = BACKGROUND_LAYER_OPTIONS,
+   .palette_id    = BACKGROUND_PALETTE_ID_TEXT,
+   .color_track   = SCROLLBAR_PALETTE_INDEX_TRACK,
+   .color_thumb   = SCROLLBAR_PALETTE_INDEX_THUMB,
+   .color_blank   = SCROLLBAR_PALETTE_INDEX_BLANK,
+   .pos_x         = WIN_OPTIONS_X_TILES + WIN_OPTIONS_TILE_WIDTH,
+   .pos_y         = WIN_OPTIONS_Y_TILES,
+   .length        = WIN_OPTIONS_TILE_HEIGHT,
+   .first_tile_id = VRAM_BG_TileID(VRAMTileLayout, scrollbar_tiles)
+};
 
 static const struct BgTemplate sOptionMenuBgTemplates[] = {
    {
@@ -628,6 +643,11 @@ void CB2_InitCustomGameOptionMenu(void) {
                   sMenuState->widgets.keybind_strip.entries     = sKeybindStripEntries;
                   sMenuState->widgets.keybind_strip.entry_count = ARRAY_COUNT(sKeybindStripEntries);
                }
+               {
+                  struct LuScrollbar* scrollbar = &sMenuState->widgets.scrollbar;
+                  InitScrollbarV(&sMenuState->widgets.scrollbar, &sScrollbarInit);
+                  scrollbar->max_visible_items = MAX_MENU_ITEMS_VISIBLE_AT_ONCE;
+               }
             }
             sTempOptions = gCustomGameOptions;
             UpdateDisplayedMenuName();
@@ -829,6 +849,7 @@ static void Task_CGOptionMenuFadeOut(u8 taskId) {
    if (!gPaletteFade.active) {
       DestroyTask(taskId);
       DestroyKeybindStrip(&sMenuState->widgets.keybind_strip);
+      DestroyScrollbarV(&sMenuState->widgets.scrollbar);
       FreeAllWindowBuffers();
       Free(sMenuState);
       sMenuState = NULL;
@@ -1109,19 +1130,11 @@ static void RepaintScrollbar(void) {
    u8 scroll;
    GetScrollInformation(&scroll, &count);
    
-   LuUI_DrawBGScrollbarVert(
-      WIN_OPTIONS,
-      SCROLLBAR_PALETTE_INDEX_TRACK,
-      SCROLLBAR_PALETTE_INDEX_THUMB,
-      SCROLLBAR_PALETTE_INDEX_BLANK,
-      SCROLLBAR_X - (WIN_OPTIONS_X_TILES * TILE_WIDTH),
-      SCROLLBAR_WIDTH,
-      0,
-      0,
-      scroll,
-      count,
-      MAX_MENU_ITEMS_VISIBLE_AT_ONCE
-   );
+   struct LuScrollbar* scrollbar = &sMenuState->widgets.scrollbar;
+   scrollbar->scroll_pos = scroll;
+   scrollbar->item_count = count;
+   
+   RepaintScrollbarV(scrollbar);
 }
 static void UpdateDisplayedControls(void) {
    u8 enabled_entries = 0;

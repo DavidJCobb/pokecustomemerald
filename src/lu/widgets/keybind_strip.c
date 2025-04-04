@@ -1,5 +1,6 @@
 #include "lu/widgets/keybind_strip.h"
 #include "constants/characters.h"
+#include "gba/isagbprint.h"
 #include "menu.h" // AddTextPrinterParameterized3
 #include "palette.h" // LoadPalette
 #include "text.h" // DrawKeypadIcon, GetKeypadIconWidth, GetStringWidth
@@ -27,6 +28,7 @@ extern void InitKeybindStrip(
       .baseBlock   = params->first_tile_id
    };
    u8 window_id = AddWindow(&tmpl);
+   AGB_ASSERT(window_id != WINDOW_NONE); // Assert that window creation was successful.
    widget->_window_id = window_id;
    PutWindowTilemap(window_id);
    
@@ -56,6 +58,11 @@ extern void SetKeybindStripEntryEnabled(struct LuKeybindStrip* widget, u8 index,
 static const u8 sString_Space[] = _(" ");
 
 extern void RepaintKeybindStrip(const struct LuKeybindStrip* widget) {
+   
+   // We don't support more than 8 entries, as we use an 8-bit mask 
+   // (enabled_entries) to track which entries should be visible.
+   AGB_ASSERT(widget->entry_count <= 8);
+   
    const u8 color[3] = { TEXT_DYNAMIC_COLOR_6, TEXT_COLOR_WHITE, TEXT_COLOR_DARK_GRAY };
    const u8 win      = widget->_window_id;
    

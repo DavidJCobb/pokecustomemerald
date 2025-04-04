@@ -4,10 +4,7 @@
 #include "lu/widgets/scrollbar_common.h"
 
 // Allocates initial memory and initializes some VRAM-related state.
-//
-// Please zero-initialize your scrollbar before calling this (i.e. 
-// `myScrollbar = { 0 };`).
-extern void InitScrollbarV(struct LuScrollbar*);
+extern void InitScrollbarV(struct LuScrollbar*, const struct LuScrollbarGraphicsParams*);
 
 extern void RepaintScrollbarV(struct LuScrollbar*);
 

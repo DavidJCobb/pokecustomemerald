@@ -15,29 +15,30 @@ static void FillTiles(u8* tile_data, u8 tile_count, u8 pal_index) {
    memset(tile_data, pal_index, 0x20 * tile_count);
 }
 
-extern void InitScrollbarV(struct LuScrollbar* widget) {
+extern void InitScrollbarV(struct LuScrollbar* widget, const struct LuScrollbarGraphicsParams* params) {
+   memcpy(&widget->graphics.info, params, sizeof(*params));
    if (!widget->graphics.tile_buffer) {
       widget->graphics.tile_buffer = AllocZeroed((u16)32 * SCROLLBAR_TILE_COUNT);
    }
-   FillTiles(widget->graphics.tile_buffer, widget->graphics.colors.background, SCROLLBAR_TILE_COUNT);
+   FillTiles(widget->graphics.tile_buffer, SCROLLBAR_TILE_COUNT, widget->graphics.info.color_blank);
    
    // Load drawn tiles to VRAM:
    LoadBgTiles(
-      widget->graphics.bg_layer,
+      widget->graphics.info.bg_layer,
       widget->graphics.tile_buffer,
       0x20 * 1 * SCROLLBAR_TILE_COUNT, // size of tile graphic * width * height
-      widget->graphics.first_tile_id
+      widget->graphics.info.first_tile_id
    );
    
    // Update tilemap for where our scrollbar has been placed, to use our new tiles.
    FillBgTilemapBufferRect(
-      widget->graphics.bg_layer,
-      widget->graphics.first_tile_id,
-      widget->graphics.pos.x,
-      widget->graphics.pos.y,
+      widget->graphics.info.bg_layer,
+      widget->graphics.info.first_tile_id,
+      widget->graphics.info.pos_x,
+      widget->graphics.info.pos_y,
       1,
-      widget->graphics.length,
-      widget->graphics.palette_id
+      widget->graphics.info.length,
+      widget->graphics.info.palette_id
    );
 }
 
@@ -75,7 +76,7 @@ static void PaintEdgeTile(
          u8* dst_byte = &tile_data[(y * 4) + (x / 2)];
          
          u8 pal_index = pal_index_a;
-         if (y > color_switches_at) {
+         if (y >= color_switches_at) {
             pal_index = pal_index_b;
          }
          
@@ -104,9 +105,9 @@ static void PaintDoubleEdgeTile(
          u8* dst_byte = &tile_data[(y * 4) + (x / 2)];
          
          u8 pal_index = pal_index_a;
-         if (y > switch_ab) {
+         if (y >= switch_ab) {
             pal_index = pal_index_b;
-            if (y > switch_bc) {
+            if (y >= switch_bc) {
                pal_index = pal_index_c;
             }
          }
@@ -127,19 +128,30 @@ static void PlaceNthTile(struct LuScrollbar* widget, u8 n, u8 at, u8 count) {
       return;
    }
    FillBgTilemapBufferRect(
-      widget->graphics.bg_layer,
-      widget->graphics.first_tile_id + n,
-      widget->graphics.pos.x + at,
-      widget->graphics.pos.y,
+      widget->graphics.info.bg_layer,
+      widget->graphics.info.first_tile_id + n,
+      widget->graphics.info.pos_x,
+      widget->graphics.info.pos_y + at,
       1,
       count,
-      widget->graphics.palette_id
+      widget->graphics.info.palette_id
    );
 }
 
 extern void RepaintScrollbarV(struct LuScrollbar* widget) {
-   u8 track_height = widget->graphics.length * TILE_HEIGHT;
-   u8 thumb_pos    = track_height * widget->scroll_pos / widget->item_count;
+   if (widget->item_count == 0) {
+      FillTiles(widget->graphics.tile_buffer, SCROLLBAR_TILE_COUNT, widget->graphics.info.color_blank);
+      LoadBgTiles(
+         widget->graphics.info.bg_layer,
+         widget->graphics.tile_buffer,
+         0x20 * 1 * SCROLLBAR_TILE_COUNT, // size of tile graphic * width * height
+         widget->graphics.info.first_tile_id
+      );
+      return;
+   }
+   
+   u8 track_height = widget->graphics.info.length * TILE_HEIGHT;
+   u8 thumb_pos    = track_height * widget->scroll_pos / (widget->item_count - 1);
    u8 thumb_size   = track_height * widget->max_visible_items / widget->item_count;
    if (thumb_size == 0) {
       thumb_size = 1;
@@ -154,10 +166,10 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
       // No scrolling is possible. Force all tiles to the background 
       // color.
       //
-      FillTiles(widget->graphics.tile_buffer, widget->graphics.colors.background, SCROLLBAR_TILE_COUNT);
+      FillTiles(widget->graphics.tile_buffer, SCROLLBAR_TILE_COUNT, widget->graphics.info.color_blank);
    } else {
-      const u8 color_thumb = widget->graphics.colors.thumb;
-      const u8 color_track = widget->graphics.colors.track;
+      const u8 color_thumb = widget->graphics.info.color_thumb;
+      const u8 color_track = widget->graphics.info.color_track;
       
       u8 tile_id = 0;
       
@@ -185,13 +197,13 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
             
             prior_tile_count = thumb_size / TILE_HEIGHT;
             prior_tile_split = thumb_size % TILE_HEIGHT;
-            after_tile_count = widget->graphics.length - prior_tile_count;
+            after_tile_count = widget->graphics.info.length - prior_tile_count;
          } else {
             prior_color = color_track;
             after_color = color_thumb;
             
             after_tile_count = thumb_size / TILE_HEIGHT;
-            prior_tile_count = widget->graphics.length - after_tile_count;
+            prior_tile_count = widget->graphics.info.length - after_tile_count;
             prior_tile_split = thumb_size % TILE_HEIGHT;
             if (prior_tile_split) {
                prior_tile_split = TILE_HEIGHT - prior_tile_split;
@@ -247,7 +259,7 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
             // Start by placing the all-track tiles.
             //
             const u8 track_before = thumb_pos;
-            const u8 track_after  = (widget->graphics.length * TILE_HEIGHT) - (thumb_pos + thumb_size);
+            const u8 track_after  = track_height - (thumb_pos + thumb_size);
             
             const u8 tiles_before = track_before / TILE_HEIGHT;
             const u8 tiles_after  = track_after  / TILE_HEIGHT;
@@ -259,7 +271,7 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
                u8 track_tile_count = thumb_pos / TILE_HEIGHT;
                
                PaintFullTile(GetNthTileData(widget, tile_id), color_track);
-               PlaceNthTile(widget, tile_id, 1, track_tile_count);
+               PlaceNthTile(widget, tile_id, 0, track_tile_count);
                
                track_tile_id = tile_id;
                ++tile_id;
@@ -270,7 +282,7 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
                   track_tile_id = tile_id;
                   ++tile_id;
                }
-               PlaceNthTile(widget, track_tile_id, widget->graphics.length - tiles_after, tiles_after);
+               PlaceNthTile(widget, track_tile_id, widget->graphics.info.length - tiles_after, tiles_after);
             }
          }
          //
@@ -335,14 +347,15 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
    
    // Copy updated tile graphics into VRAM.
    LoadBgTiles(
-      widget->graphics.bg_layer,
+      widget->graphics.info.bg_layer,
       widget->graphics.tile_buffer,
       0x20 * 1 * SCROLLBAR_TILE_COUNT, // size of tile graphic * width * height
-      widget->graphics.first_tile_id
+      widget->graphics.info.first_tile_id
    );
    
-   // Update the VRAM-side tilemap. (Actually, nvm -- let the owning menu do this.)
-   // CopyBgTilemapBufferToVram(widget->graphics.bg_layer);
+   // Update the VRAM-side tilemap.
+   // (TODO: Let the caller decide? This would be redundant with e.g. Window updates.)
+   CopyBgTilemapBufferToVram(widget->graphics.info.bg_layer);
 }
 
 extern void DestroyScrollbarV(struct LuScrollbar* widget) {
