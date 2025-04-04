@@ -5,12 +5,6 @@
 
 #define SCROLLBAR_TILE_COUNT 4
 
-struct LuScrollbarColors { // palette indices
-   u8 track      : 4;
-   u8 thumb      : 4;
-   u8 background : 4; // background on either side of the scrollbar, and shown if no scrollbar
-};
-
 struct LuScrollbarGraphicsParams {
    u8  bg_layer    : 2;
    u8  palette_id  : 4;
