@@ -13,8 +13,8 @@ struct LuScrollbarColors { // palette indices
 
 struct LuScrollbar {
    struct {
-      u8 bg_layer;
-      u8 palette_id;
+      u8 bg_layer   : 2;
+      u8 palette_id : 4;
       struct LuScrollbarColors colors;
       struct {
          u8 x; // in tiles
@@ -25,9 +25,9 @@ struct LuScrollbar {
       
       void* tile_buffer; // heap-allocated
    } graphics;
-   u8 scroll_pos;
-   u8 item_count;
-   u8 max_visible_items;
+   u16 scroll_pos;
+   u16 item_count;
+   u16 max_visible_items;
 };
 
 #endif

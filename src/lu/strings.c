@@ -35,10 +35,12 @@ const u8 gText_lu_CGRevivesNotAllowedInBattle[] = ("Can't use revives in battle.
 // CUSTOM GAME OPTIONS MENU
 //
 
-const u8 gText_lu_CGO_KeybindsForItem[]    = _("{DPAD_UPDOWN}PICK  {DPAD_LEFTRIGHT}CHANGE  {B_BUTTON}BACK");
-const u8 gText_lu_CGO_KeybindsForHelp[]    = _("{B_BUTTON}RETURN TO MENU");
-const u8 gText_lu_CGO_keybindsForSubmenu[] = _("{DPAD_UPDOWN}PICK  {A_BUTTON}ENTER SUBMENU  {B_BUTTON}BACK");
-const u8 gText_lu_CGO_keybindFragment_ItemHelp[] = _("  {L_BUTTON}{R_BUTTON}HELP");
+const u8 gText_lu_UI_KeybindBack[]         = _("BACK");   // back out of a (sub)menu
+const u8 gText_lu_UI_KeybindChange[]       = _("CHANGE"); // modify the value of something
+const u8 gText_lu_UI_KeybindEnterSubmenu[] = _("ENTER SUBMENU");
+const u8 gText_lu_UI_KeybindHelp[]         = _("HELP");   // open a help screen
+const u8 gText_lu_UI_KeybindPick[]         = _("PICK");   // move the cursor within a menu
+const u8 gText_lu_UI_KeybindReturnToMenu[] = _("RETURN TO MENU"); // return from an informational screen
 
 const u8 gText_lu_CGO_menuTitle[] = _("CUSTOM GAME OPTIONS");
 

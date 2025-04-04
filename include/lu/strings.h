@@ -27,10 +27,12 @@ extern const u8 gText_lu_CGRevivesNotAllowedInBattle[];
 // CUSTOM GAME OPTIONS MENU
 //
 
-extern const u8 gText_lu_CGO_KeybindsForHelp[];
-extern const u8 gText_lu_CGO_KeybindsForItem[];
-extern const u8 gText_lu_CGO_keybindsForSubmenu[];
-extern const u8 gText_lu_CGO_keybindFragment_ItemHelp[];
+extern const u8 gText_lu_UI_KeybindBack[];
+extern const u8 gText_lu_UI_KeybindChange[];
+extern const u8 gText_lu_UI_KeybindEnterSubmenu[];
+extern const u8 gText_lu_UI_KeybindHelp[];
+extern const u8 gText_lu_UI_KeybindPick[];
+extern const u8 gText_lu_UI_KeybindReturnToMenu[];
 
 extern const u8 gText_lu_CGO_menuTitle[];
 

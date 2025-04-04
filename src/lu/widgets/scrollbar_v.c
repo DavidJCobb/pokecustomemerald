@@ -162,7 +162,7 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
       u8 tile_id = 0;
       
       bool8 thumb_at_start = (thumb_pos == 0);
-      bool8 thumb_at_end   = (tuhmb_pos + thumb_size >= track_height);
+      bool8 thumb_at_end   = (thumb_pos + thumb_size >= track_height);
       if (thumb_at_start || thumb_at_end) {
          //
          // The logic for both of these is essentially the same: the scrollbar 
@@ -185,14 +185,14 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
             
             prior_tile_count = thumb_size / TILE_HEIGHT;
             prior_tile_split = thumb_size % TILE_HEIGHT;
-            after_tile_count = widget->graphics.length - thumb_tile_count;
+            after_tile_count = widget->graphics.length - prior_tile_count;
          } else {
             prior_color = color_track;
             after_color = color_thumb;
             
-            prior_tile_count = widget->graphics.length - thumb_tile_count;
-            prior_tile_split = thumb_size % TILE_HEIGHT;
             after_tile_count = thumb_size / TILE_HEIGHT;
+            prior_tile_count = widget->graphics.length - after_tile_count;
+            prior_tile_split = thumb_size % TILE_HEIGHT;
             if (prior_tile_split) {
                prior_tile_split = TILE_HEIGHT - prior_tile_split;
             }
@@ -257,13 +257,11 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
             u8 track_tile_id = 0xFF;
             if (tiles_before) {
                u8 track_tile_count = thumb_pos / TILE_HEIGHT;
-               local_thumb_pos = thumb_pos % TILE_HEIGHT;
                
                PaintFullTile(GetNthTileData(widget, tile_id), color_track);
-               PlaceNthTile(widget, tile_id, tile_y, track_tile_count);
+               PlaceNthTile(widget, tile_id, 1, track_tile_count);
                
                track_tile_id = tile_id;
-               tile_y = track_tile_count;
                ++tile_id;
             }
             if (tiles_after) {

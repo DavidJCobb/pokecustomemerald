@@ -6,43 +6,42 @@
 
 #define KEYBIND_STRIP_TILE_WIDTH  DISPLAY_TILE_WIDTH
 #define KEYBIND_STRIP_TILE_HEIGHT 2
-
-#define KEYBIND_STRIP_ENTRY_COUNT 6
+#define KEYBIND_STRIP_TILE_COUNT  (KEYBIND_STRIP_TILE_WIDTH * KEYBIND_STRIP_TILE_HEIGHT)
 
 struct LuKeybindStripEntry {
    u16       buttons; // bitmask
-   bool8     show;
    const u8* text;
 };
 
 struct LuKeybindStrip {
-   struct {
-      u8 bg_layer;
-      u8 palette_id; // we'll load the palette for you; just tell us where to load it
-      u8 first_tile_id;
-   } config;
-   
-   // Update these as needed and then call the repaint function.
-   // Please ensure that these are either valid or zeroed out 
-   // before the first paint.
-   LuKeybindStripEntry entries[KEYBIND_STRIP_ENTRY_COUNT];
-   
-   struct {
-      u16 window_id; // we create and destroy this for you
-   } state;
+   const struct LuKeybindStripEntry* entries;
+   u8 entry_count;
+   u8 enabled_entries; // bitmask
+   u8 _window_id;
+};
+
+// Used when constructing a keybind strip widget.
+struct LuKeybindStripInitParams {
+   u8  bg_layer;
+   u16 first_tile_id; // i.e. baseBlock for a Window
+   u8  palette_id;    // we'll load the palette for you; just tell us where to load it
 };
 
 // Call after any InitWindows calls your UI may use, please.
 // We use AddWindow to make our window, but InitWindows sets 
 // fixed window indices and is likely to overwrite us.
 //
-// Please zero-initialize your keybind strip before calling 
-// this (i.e. `myStrip = { 0 };`).
-void InitKeybindStrip(struct LuKeybindStrip*);
+// Zero-initializes the keybind strip widget. Write your entry 
+// list after.
+extern void InitKeybindStrip(struct LuKeybindStrip* widget, const struct LuKeybindStripInitParams*);
 
-void RepaintKeybindStrip(struct LuKeybindStrip*);
+extern void SetKeybindStripAllEntriesEnabled(struct LuKeybindStrip*, bool8 enabled);
+extern void SetKeybindStripEntryEnabled(struct LuKeybindStrip*, u8 index, bool8 enabled);
 
-// Call before destroying all windows, please.
-void DestroyKeybindStrip(struct LuKeybindStrip*);
+extern void RepaintKeybindStrip(const struct LuKeybindStrip*);
+
+// Call before destroying all windows, please. Will destroy 
+// the keybind strip's window.
+extern void DestroyKeybindStrip(struct LuKeybindStrip*);
 
 #endif

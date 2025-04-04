@@ -25,6 +25,7 @@
 
 #include "constants/characters.h"
 #include "string_util.h"
+#include "lu/widgets/keybind_strip.h"
 #include "lu/string_wrap.h"
 #include "lu/strings.h"
 #include "lu/ui_helpers.h"
@@ -98,7 +99,6 @@
 
 enum {
    WIN_HEADER,
-   WIN_KEYBINDS_STRIP,
    WIN_OPTIONS,
    WIN_HELP,
    //
@@ -115,7 +115,6 @@ EWRAM_DATA static struct CustomGameOptions sTempOptions;
 
 #include "lu/custom_game_options_menu/menu_item.h"
 #include "lu/custom_game_options_menu/menu_hierarchy_definition.h" // sTopLevelMenu is the top-level menu
-
 
 //
 // Menu state and associated funcs:
@@ -134,6 +133,9 @@ struct MenuState {
    bool8 is_in_help;
    u8    sprite_id_value_arrow_l;
    u8    sprite_id_value_arrow_r;
+   struct {
+      struct LuKeybindStrip keybind_strip;
+   } widgets;
 };
 
 static EWRAM_DATA struct MenuState* sMenuState = NULL;
@@ -273,9 +275,6 @@ static const u8 sTextColor_HelpBodyText[] = {1, 2, 3};
 #define WIN_HEADER_TILE_WIDTH    DISPLAY_TILE_WIDTH
 #define WIN_HEADER_TILE_HEIGHT   TEXT_ROW_HEIGHT_IN_TILES
 //
-#define WIN_KEYBIND_STRIP_TILE_WIDTH    DISPLAY_TILE_WIDTH
-#define WIN_KEYBIND_STRIP_TILE_HEIGHT   TEXT_ROW_HEIGHT_IN_TILES
-//
 #define WIN_OPTIONS_X_TILES             2
 #define WIN_OPTIONS_Y_TILES             WIN_HEADER_TILE_HEIGHT + 1
 #define OPTIONS_INSET_RIGHT_TILES       2
@@ -286,7 +285,7 @@ static const u8 sTextColor_HelpBodyText[] = {1, 2, 3};
 #define WIN_OPTIONS_TILE_HEIGHT   (OPTIONS_LIST_ROW_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)
 //
 #define WIN_HELP_TILE_WIDTH    DISPLAY_TILE_WIDTH
-#define WIN_HELP_TILE_HEIGHT   (DISPLAY_TILE_HEIGHT - WIN_HEADER_TILE_HEIGHT - WIN_KEYBIND_STRIP_TILE_HEIGHT)
+#define WIN_HELP_TILE_HEIGHT   (DISPLAY_TILE_HEIGHT - WIN_HEADER_TILE_HEIGHT - KEYBIND_STRIP_TILE_HEIGHT)
 //
 #define MAX_MENU_ITEMS_VISIBLE_AT_ONCE   OPTIONS_LIST_ROW_HEIGHT
 #define MENU_ITEM_HALFWAY_ROW            (MAX_MENU_ITEMS_VISIBLE_AT_ONCE / 2)
@@ -297,7 +296,6 @@ static const u8 sTextColor_HelpBodyText[] = {1, 2, 3};
 #define SCROLLBAR_X     232
 #define SCROLLBAR_WIDTH   3
 #define SCROLLBAR_TRACK_HEIGHT   (WIN_OPTIONS_TILE_HEIGHT * TILE_HEIGHT)
-
 
 
 #define BG_LAYER_HELP_TILESET_INDEX 2
@@ -313,7 +311,7 @@ typedef struct {
    VRAMTilemap tilemaps[4];
    
    VRAMTile win_tiles_for_header[WIN_HEADER_TILE_WIDTH * WIN_HEADER_TILE_HEIGHT];
-   VRAMTile win_tiles_for_keybinds[WIN_KEYBIND_STRIP_TILE_WIDTH * WIN_KEYBIND_STRIP_TILE_HEIGHT];
+   VRAMTile win_tiles_for_keybinds[KEYBIND_STRIP_TILE_COUNT];
    VRAMTile win_tiles_for_options[WIN_OPTIONS_TILE_WIDTH * WIN_OPTIONS_TILE_HEIGHT];
    
    // We have the help screen set to use Tileset 2, so it can address tiles in the range [1536, 2047].
@@ -321,6 +319,38 @@ typedef struct {
    VRAMTile VRAM_BG_AT_CHAR_BASE_INDEX(BG_LAYER_HELP_TILESET_INDEX) blank_tile_for_help;
    VRAMTile win_tiles_for_help[WIN_HELP_TILE_WIDTH * WIN_HELP_TILE_HEIGHT];
 } VRAMTileLayout;
+
+static const struct LuKeybindStripEntry sKeybindStripEntries[] = {
+   {
+      .buttons = (1 << CHAR_DPAD_UPDOWN),
+      .text    = gText_lu_UI_KeybindPick
+   },
+   {
+      .buttons = (1 << CHAR_DPAD_LEFTRIGHT),
+      .text    = gText_lu_UI_KeybindChange
+   },
+   {
+      .buttons = (1 << CHAR_A_BUTTON),
+      .text    = gText_lu_UI_KeybindEnterSubmenu
+   },
+   {
+      .buttons = (1 << CHAR_B_BUTTON),
+      .text    = gText_lu_UI_KeybindReturnToMenu
+   },
+   {
+      .buttons = (1 << CHAR_B_BUTTON),
+      .text    = gText_lu_UI_KeybindBack
+   },
+   {
+      .buttons = (1 << CHAR_L_BUTTON) | (1 << CHAR_R_BUTTON),
+      .text    = gText_lu_UI_KeybindHelp
+   },
+};
+static const struct LuKeybindStripInitParams sKeybindStripInit = {
+   .bg_layer      = BACKGROUND_LAYER_NORMAL,
+   .first_tile_id = VRAM_BG_TileID(VRAMTileLayout, win_tiles_for_keybinds),
+   .palette_id    = BACKGROUND_PALETTE_ID_CONTROLS
+};
 
 // ensure we fit within 64KB VRAM limit.
 STATIC_ASSERT(sizeof(VRAMTileLayout) <= BG_VRAM_SIZE, sStaticAssertion01_VramUsage);
@@ -367,15 +397,6 @@ static const struct WindowTemplate sOptionMenuWinTemplates[] = {
         .height      = WIN_HEADER_TILE_HEIGHT,
         .paletteNum  = BACKGROUND_PALETTE_ID_CONTROLS,
         .baseBlock   = VRAM_BG_TileID(VRAMTileLayout, win_tiles_for_header)
-    },
-    [WIN_KEYBINDS_STRIP] = {
-        .bg          = BACKGROUND_LAYER_NORMAL,
-        .tilemapLeft = 0,
-        .tilemapTop  = DISPLAY_TILE_HEIGHT - 2,
-        .width       = WIN_KEYBIND_STRIP_TILE_WIDTH,
-        .height      = WIN_KEYBIND_STRIP_TILE_HEIGHT,
-        .paletteNum  = BACKGROUND_PALETTE_ID_CONTROLS,
-        .baseBlock   = VRAM_BG_TileID(VRAMTileLayout, win_tiles_for_keybinds)
     },
     [WIN_OPTIONS] = {
         .bg          = BACKGROUND_LAYER_OPTIONS,
@@ -592,7 +613,7 @@ void CB2_InitCustomGameOptionMenu(void) {
          gMain.state++;
          break;
        case 9:
-         PutWindowTilemap(WIN_KEYBINDS_STRIP);
+         //
          gMain.state++;
          break;
        case 10:
@@ -602,6 +623,11 @@ void CB2_InitCustomGameOptionMenu(void) {
                sMenuState = AllocZeroed(sizeof(struct MenuState));
                ResetMenuState();
                CreateInterfaceSprites();
+               {
+                  InitKeybindStrip(&sMenuState->widgets.keybind_strip, &sKeybindStripInit);
+                  sMenuState->widgets.keybind_strip.entries     = sKeybindStripEntries;
+                  sMenuState->widgets.keybind_strip.entry_count = ARRAY_COUNT(sKeybindStripEntries);
+               }
             }
             sTempOptions = gCustomGameOptions;
             UpdateDisplayedMenuName();
@@ -802,6 +828,7 @@ static void Task_CGOptionMenuSave(u8 taskId) {
 static void Task_CGOptionMenuFadeOut(u8 taskId) {
    if (!gPaletteFade.active) {
       DestroyTask(taskId);
+      DestroyKeybindStrip(&sMenuState->widgets.keybind_strip);
       FreeAllWindowBuffers();
       Free(sMenuState);
       sMenuState = NULL;
@@ -1097,19 +1124,13 @@ static void RepaintScrollbar(void) {
    );
 }
 static void UpdateDisplayedControls(void) {
-   bool8 draw_help_option;
-   //
-   const u8* text;
-   const u8  color[3] = { TEXT_DYNAMIC_COLOR_6, TEXT_COLOR_WHITE, TEXT_COLOR_DARK_GRAY };
-
-   FillWindowPixelBuffer(WIN_KEYBINDS_STRIP, PIXEL_FILL(15));
-   
-   draw_help_option = FALSE;
-   //
-   text = gText_lu_CGO_KeybindsForItem;
+   u8 enabled_entries = 0;
    if (sMenuState->is_in_help) {
-      text = gText_lu_CGO_KeybindsForHelp;
+      enabled_entries |= 1 << 3; // Return to Menu
    } else {
+      enabled_entries |= 1 << 0; // Pick
+      enabled_entries |= 1 << 4; // Back
+      
       const struct CGOptionMenuItem* item;
       const struct CGOptionMenuItem* items = GetCurrentMenuItemList();
       
@@ -1119,18 +1140,15 @@ static void UpdateDisplayedControls(void) {
       
       if (item) {
          if ((item->flags & (1 << MENUITEM_FLAG_IS_SUBMENU)) != 0) {
-            text = gText_lu_CGO_keybindsForSubmenu;
+            enabled_entries |= 1 << 2; // Enter Submenu
+         } else {
+            enabled_entries |= 1 << 1; // Change
          }
          if (GetRelevantHelpText(item) != NULL) {
-            draw_help_option = TRUE;
+            enabled_entries |= 1 << 5; // Help
          }
       }
    }
-   AddTextPrinterParameterized3(WIN_KEYBINDS_STRIP, FONT_SMALL, 2, 1, color, TEXT_SKIP_DRAW, text);
-   if (draw_help_option) {
-      u8 draw_help_option_at = GetStringWidth(FONT_SMALL, text, 0);
-      AddTextPrinterParameterized3(WIN_KEYBINDS_STRIP, FONT_SMALL, 2 + draw_help_option_at, 1, color, TEXT_SKIP_DRAW, gText_lu_CGO_keybindFragment_ItemHelp);
-   }
-   
-   CopyWindowToVram(WIN_KEYBINDS_STRIP, COPYWIN_FULL);
+   sMenuState->widgets.keybind_strip.enabled_entries = enabled_entries;
+   RepaintKeybindStrip(&sMenuState->widgets.keybind_strip);
 }
