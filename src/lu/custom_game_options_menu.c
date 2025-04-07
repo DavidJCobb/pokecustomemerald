@@ -668,7 +668,9 @@ void CB2_InitCustomGameOptionMenu(void) {
 #define sMoving     data[1]
 #define sDistance   data[2]
 
-// Ideally 5, as that's the default `gKeyRepeatContinueDelay`.
+// Ideally 5, as that's the default `gKeyRepeatContinueDelay`: we move 
+// the arrow by one pixel per frame, for as many frames as will pass 
+// before the key repeats.
 #define VALUE_ARROW_MOVE_DISTANCE 5
 
 static void CreateInterfaceSprites(void) {
