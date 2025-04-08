@@ -25,6 +25,32 @@
 #include "constants/trainers.h"
 #include "constants/rgb.h"
 
+//
+// Configuration.
+//
+
+// Before any unique transition effect plays, the game rapidly fades back and 
+// forth between full-color and opaque gray. The "increment" options here will 
+// influence the fade speed.
+//
+// Increasing the increment looks really bad and a little seizuriffic.
+//
+// Setting the number of fades to 0 will cause the effect to loop forever.
+#define TRANSITION_INTRO_FADE_TO_GRAY_DELAY       0 // vanilla: 0
+#define TRANSITION_INTRO_FADE_FROM_GRAY_DELAY     0 // vanilla: 0
+#define TRANSITION_INTRO_NUMBER_OF_FADES          1 // vanilla: 3
+#define TRANSITION_INTRO_FADE_TO_GRAY_INCREMENT   2 // vanilla: 2
+#define TRANSITION_INTRO_FADE_FROM_GRAY_INCREMENT 2 // vanilla: 2
+
+#define SLICE_TRANSITION_INITIAL_SPEED 1 // vanilla: 1
+#define SLICE_TRANSITION_INITIAL_ACCEL 1 // vanilla: 1
+
+
+
+//
+//
+//
+
 #define PALTAG_UNUSED_MUGSHOT 0x100A
 
 #define B_TRANS_DMA_FLAGS (1 | ((DMA_SRC_INC | DMA_DEST_FIXED | DMA_REPEAT | DMA_16BIT | DMA_START_HBLANK | DMA_ENABLE) << 16))
@@ -1118,7 +1144,13 @@ static void Task_Intro(u8 taskId)
     if (gTasks[taskId].tState == 0)
     {
         gTasks[taskId].tState++;
-        CreateIntroTask(0, 0, 3, 2, 2);
+        CreateIntroTask(
+            TRANSITION_INTRO_FADE_TO_GRAY_DELAY,
+            TRANSITION_INTRO_FADE_FROM_GRAY_DELAY,
+            TRANSITION_INTRO_NUMBER_OF_FADES,
+            TRANSITION_INTRO_FADE_TO_GRAY_INCREMENT,
+            TRANSITION_INTRO_FADE_FROM_GRAY_INCREMENT
+        );
     }
     else if (IsIntroTaskDone())
     {
@@ -1129,6 +1161,7 @@ static void Task_Intro(u8 taskId)
 //--------------------
 // B_TRANSITION_BLUR
 //--------------------
+// Vanilla: used in a Flash cave if the enemy wild Pokemon is stronger than the player.
 
 #define tDelay   data[1]
 #define tCounter data[2]
@@ -1246,6 +1279,7 @@ static void HBlankCB_Swirl(void)
 //----------------------
 // B_TRANSITION_SHUFFLE
 //----------------------
+// Vanilla: used in a cave if the enemy trainer is stronger than the player.
 
 #define tSinVal    data[1]
 #define tAmplitude data[2]
@@ -1758,6 +1792,7 @@ static void VBlankCB_CircularMask(void)
 //------------------------------
 // B_TRANSITION_POKEBALLS_TRAIL
 //------------------------------
+// Vanilla: used for trainer encounters in most locations, when the foe is stronger than the player.
 
 #define sSide  data[0]
 #define sDelay data[1]
@@ -1875,6 +1910,7 @@ static void SpriteCB_FldEffPokeballTrail(struct Sprite *sprite)
 //-----------------------------
 // B_TRANSITION_CLOCKWISE_WIPE
 //-----------------------------
+// Vanilla: used for wild encounters in caves, when the foe is stronger than the player.
 
 static void Task_ClockwiseWipe(u8 taskId)
 {
@@ -2069,6 +2105,7 @@ static void VBlankCB_ClockwiseWipe(void)
 //---------------------
 // B_TRANSITION_RIPPLE
 //---------------------
+// Vanilla: used for wild encounters on water, when the player is stronger than the foe.
 
 #define tSinVal       data[1]
 #define tAmplitudeVal data[2]
@@ -2156,6 +2193,7 @@ static void HBlankCB_Ripple(void)
 //-------------------
 // B_TRANSITION_WAVE
 //-------------------
+// Vanilla: used for wild encounters on water, when the foe is stronger than the player.
 
 #define tX        data[1]
 #define tSinIndex data[2]
@@ -2715,6 +2753,7 @@ static s16 IsTrainerPicSlideDone(s16 spriteId)
 //--------------------
 // B_TRANSITION_SLICE
 //--------------------
+// Vanilla: used for ordinary wild encounters, when the player is stronger than the foe.
 
 #define tEffectX data[1]
 #define tSpeed   data[2]
@@ -2732,8 +2771,8 @@ static bool8 Slice_Init(struct Task *task)
     InitTransitionData();
     ScanlineEffect_Clear();
 
-    task->tSpeed = 1 << 8;
-    task->tAccel = 1;
+    task->tSpeed = SLICE_TRANSITION_INITIAL_SPEED << 8;
+    task->tAccel = SLICE_TRANSITION_INITIAL_ACCEL;
     sTransitionData->WININ = WININ_WIN0_ALL;
     sTransitionData->WINOUT = 0;
     sTransitionData->WIN0V = DISPLAY_HEIGHT;
@@ -3967,6 +4006,17 @@ static void VBlankCB_AngledWipes(void)
 
 static void CreateIntroTask(s16 fadeToGrayDelay, s16 fadeFromGrayDelay, s16 numFades, s16 fadeToGrayIncrement, s16 fadeFromGrayIncrement)
 {
+    if (numFades == 0)
+    {
+        //
+        // Don't create the intro-fade task at all, as the way it's structured 
+        // means it'll loop forever if the fade count is 0. Other parts of the 
+        // battle transition code just poll to see if the task has ceased to 
+        // exist, so if we never create it in the first place, then the main 
+        // transition should play seamlessly.
+        //
+        return;
+    }
     u8 taskId = CreateTask(Task_BattleTransition_Intro, 3);
     gTasks[taskId].tFadeToGrayDelay = fadeToGrayDelay;
     gTasks[taskId].tFadeFromGrayDelay = fadeFromGrayDelay;
