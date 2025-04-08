@@ -41,6 +41,8 @@
 
 * Slightly increased the speed of the battle start letterbox animation. This doesn't allow you to actually start engaging with the battle faster (the slide-in animation is the trigger), but it makes the intro feel slightly more responsive.
 
+* The vanilla game always plays stat-change animations, even when battle animations are disabled, because it's awkward to have a visual affordance (blinking sprite) when damage is taken but not when stats are changed. Custom Emerald also plays stat-change animations, but when battle animations are disabled, we use faster timings and higher opacity for stat-change animations.
+
 * Minor, as-yet-untested bugfixes.
 
   * Activating a PokeCenter with an empty party should no longer lock you in a 256-ball loop.

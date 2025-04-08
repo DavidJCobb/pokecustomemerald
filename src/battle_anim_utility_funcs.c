@@ -400,16 +400,16 @@ static void AnimTask_DrawFallingWhiteLinesOnAttacker_Step(u8 taskId)
 
 // Task data defines for InitStatsChangeAnimation
 #define tAnimSpriteId1    data[0]
-#define tVelocity         data[1]
+#define tVelocity         data[1] // speed at which the stat-change texture scrolls
 #define tMultipleBattlers data[2]
 #define tAnimSpriteId2    data[3]
-#define tTargetBlend      data[4]
-#define tWaitTime         data[5]
+#define tTargetBlend      data[4] // desired max opacity. measured in multiples of 16.
+#define tWaitTime         data[5] // number of frames for which the animation should linger at max opacity
 #define tHidBattler2      data[6]
 #define tBattler2SpriteId data[7]
-#define tWaitTimer        data[10]
-#define tFadeTimer        data[11]
-#define tBlend            data[12]
+#define tWaitTimer        data[10] // number of frames we have currently spent at max opacity
+#define tBlendRate        data[11] // opacity change (in multiples of 16) per frame. vanilla = 1.
+#define tBlend            data[12] // current opacity
 #define tState            data[15]
 
 void InitStatsChangeAnimation(u8 taskId)
@@ -540,6 +540,7 @@ static void StatsChangeAnimation_Step2(u8 taskId)
         gTasks[taskId].tVelocity = 3;
     }
 
+    gTasks[taskId].tBlendRate = 1;
     if (!sAnimStatsChangeData->aSharply)
     {
         gTasks[taskId].tTargetBlend = 10;
@@ -549,6 +550,26 @@ static void StatsChangeAnimation_Step2(u8 taskId)
     {
         gTasks[taskId].tTargetBlend = 13;
         gTasks[taskId].tWaitTime = 30;
+    }
+    
+    if (gHitMarker & HITMARKER_NO_ANIMATIONS)
+    {
+        //
+        // The player asked to turn animations off. The vanilla game 
+        // doesn't honor this for stat change animations, because 
+        // doing so would look weird: a Pokemon sprite blinks when it 
+        // takes damage, but has no visible reaction to stat changes.
+        //
+        // What we'll do is just shorten the animation.
+        //
+        gTasks[taskId].tTargetBlend = 13;
+        gTasks[taskId].tBlendRate   = 3;
+        gTasks[taskId].tWaitTime    = 10;
+        if (sAnimStatsChangeData->aSharply)
+        {
+            gTasks[taskId].tTargetBlend = 16;
+            gTasks[taskId].tWaitTime    = 15;
+        }
     }
 
     gTasks[taskId].tAnimSpriteId1 = spriteId;
@@ -572,12 +593,14 @@ static void StatsChangeAnimation_Step3(u8 taskId)
     {
     case 0:
         // Fade in
-        if (gTasks[taskId].tFadeTimer++ > 0)
         {
-            gTasks[taskId].tFadeTimer = 0;
-            gTasks[taskId].tBlend++;
+            gTasks[taskId].tBlend += gTasks[taskId].tBlendRate;
+            if (gTasks[taskId].tBlend > 16)
+            {
+                gTasks[taskId].tBlend = 16;
+            }
             SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(gTasks[taskId].tBlend, 16 - gTasks[taskId].tBlend));
-            if (gTasks[taskId].tBlend == gTasks[taskId].tTargetBlend)
+            if (gTasks[taskId].tBlend >= gTasks[taskId].tTargetBlend)
                 gTasks[taskId].tState++;
         }
         break;
@@ -588,10 +611,12 @@ static void StatsChangeAnimation_Step3(u8 taskId)
         break;
     case 2:
         // Fade out
-        if (gTasks[taskId].tFadeTimer++ > 0)
         {
-            gTasks[taskId].tFadeTimer = 0;
-            gTasks[taskId].tBlend--;
+            gTasks[taskId].tBlend -= gTasks[taskId].tBlendRate;
+            if (gTasks[taskId].tBlend < 0)
+            {
+                gTasks[taskId].tBlend = 0;
+            }
             SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(gTasks[taskId].tBlend, 16 - gTasks[taskId].tBlend));
             if (gTasks[taskId].tBlend == 0)
             {
@@ -642,7 +667,7 @@ static void StatsChangeAnimation_Step3(u8 taskId)
 #undef tHidBattler2
 #undef tBattler2SpriteId
 #undef tWaitTimer
-#undef tFadeTimer
+#undef tBlendRate
 #undef tBlend
 #undef tState
 
