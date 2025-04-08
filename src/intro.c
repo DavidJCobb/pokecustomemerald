@@ -114,7 +114,7 @@ extern const struct SpriteTemplate gAncientPowerRockSpriteTemplate;
 
 enum {
     COPYRIGHT_INITIALIZE,
-    COPYRIGHT_START_FADE = 140,
+    COPYRIGHT_START_FADE = 70,
     COPYRIGHT_START_INTRO,
 };
 
@@ -1091,7 +1091,7 @@ static u8 SetUpCopyrightScreen(void)
         ResetTasks();
         ResetSpriteData();
         FreeAllSpritePalettes();
-        BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_WHITEALPHA);
+        BeginNormalPaletteFade(PALETTES_ALL, -1, 16, 0, RGB_WHITEALPHA);
         SetGpuReg(REG_OFFSET_BG0CNT, BGCNT_PRIORITY(0)
                                    | BGCNT_CHARBASE(0)
                                    | BGCNT_SCREENBASE(7)
@@ -1102,27 +1102,54 @@ static u8 SetUpCopyrightScreen(void)
         REG_DISPCNT = DISPCNT_MODE_0 | DISPCNT_OBJ_1D_MAP | DISPCNT_BG0_ON;
         SetSerialCallback(SerialCB_CopyrightScreen);
         GameCubeMultiBoot_Init(&gMultibootProgramStruct);
+        // fallthrough.
     default:
         UpdatePaletteFade();
         gMain.state++;
+        //
+        // The GameCubeMultiBoot_Main function is latent, and handles the GameCube 
+        // multi-boot process. It executes in the following stages:
+        //
+        //  - Wait until we receive from the GCN a copy of the Nintendo logo, 
+        //    identical to one baked into the GBA ROM. Until we receive one, 
+        //    jump into the GameCubeMultiBoot_Init function to reset ourselves.
+        //
+        //  - Once we've received the logo, advance to MBPROGRESS_LOGO_CORRECT.
+        //
+        //  - When GameCubeMultiBoot_Main is next called, it'll see that the state 
+        //    is MBPROGRESS_LOGO_CORRECT, and advance to decrypting further data 
+        //    received from the GCN. If the data is invalid, then jump into the 
+        //    GameCubeMultiBoot_Init function to reset ourselves.
+        //
+        //  - Once we've received valid data, advance to MBPROGRESS_READY_TO_BOOT. 
+        //    Any further calls to GameCubeMultiBoot_Main past this point will 
+        //    return immediately.
+        //
         GameCubeMultiBoot_Main(&gMultibootProgramStruct);
         break;
     case COPYRIGHT_START_FADE:
         GameCubeMultiBoot_Main(&gMultibootProgramStruct);
-        if (gMultibootProgramStruct.gcmb_field_2 != 1)
+        if (gMultibootProgramStruct.gcmb_field_2 != 1) // != MBPROGRESS_LOGO_CORRECT
         {
-            BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+            // Get rid of the fade-to-black from the copyright screen. Instead, 
+            // cut to black, and let the intro cutscene quickly fade in from it. 
+            // This makes bootup feel less sluggish.
+            //
+            //BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
             gMain.state++;
         }
         break;
     case COPYRIGHT_START_INTRO:
         if (UpdatePaletteFade())
             break;
+        //
+        // We're done fading to black.
+        //
         CreateTask(Task_Scene1_Load, 0);
         SetMainCallback2(MainCB2_Intro);
-        if (gMultibootProgramStruct.gcmb_field_2 != 0)
+        if (gMultibootProgramStruct.gcmb_field_2 != 0) // != MBPROGRESS_NONE
         {
-            if (gMultibootProgramStruct.gcmb_field_2 == 2)
+            if (gMultibootProgramStruct.gcmb_field_2 == 2) // == MBPROGRESS_READY_TO_BOOT
             {
                 // check the multiboot ROM header game code to see if we already did this
                 if (*(u32 *)(EWRAM_START + 0xAC) == COLOSSEUM_GAME_CODE)
@@ -1135,13 +1162,17 @@ static u8 SetUpCopyrightScreen(void)
         }
         else
         {
+            //
+            // Give up on waiting for GCN multi-boot, and proceed with actually 
+            // starting Pokemon Emerald.
+            //
             GameCubeMultiBoot_Quit();
             SetSerialCallback(SerialCB);
         }
-        return 0;
+        return 0; // latent function done
     }
 
-    return 1;
+    return 1; // latent function not yet done
 }
 
 void CB2_InitCopyrightScreenAfterBootup(void)
