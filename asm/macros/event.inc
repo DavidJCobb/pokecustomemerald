@@ -1738,6 +1738,26 @@
 	.2byte \item
 	.2byte \quantity
 	.endm
+   
+   @ ADDED:
+   
+   @ The same as the `message` command, but with automatic word-wrapping.
+   .macro lu_message_wordwrapped text:req
+   .byte SCR_OP_LU_EXTENDED
+   .byte 0x01
+   .4byte \text
+   .endm
+   
+   @ The same as the `msgbox <text> MSGBOX_DEFAULT` command, but with automatic word-wrapping. 
+   @ That command works by calling one of the standard scripts (callstd), which basically keeps 
+   @ ROM size down despite it being used in several places. Here, for now, we're just inlining 
+   @ everything.
+   .macro lu_msgbox_default_wordwrapped text:req
+   lu_message_wordwrapped \text
+   waitmessage
+   waitbuttonpress
+   .endm
+
 
 
 @ Supplementary
