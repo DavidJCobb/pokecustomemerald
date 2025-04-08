@@ -9,6 +9,7 @@
 #include "scanline_effect.h"
 #include "task.h"
 #include "trig.h"
+#include "constants/battle_intro.h"
 #include "constants/trainers.h"
 
 static EWRAM_DATA u16 sBgCnt = 0;
@@ -35,6 +36,10 @@ static const TaskFunc sBattleIntroSlideFuncs[] =
     [BATTLE_TERRAIN_BUILDING]   = BattleIntroSlide3,
     [BATTLE_TERRAIN_PLAIN]      = BattleIntroSlide3,
 };
+
+#ifdef MODERN
+   _Static_assert(DISPLAY_WIDTH % BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED == 0, "the terrain slide speed must multiply evenly into the screen width");
+#endif
 
 void SetAnimBgAttribute(u8 bgId, u8 attributeId, u8 value)
 {
@@ -153,6 +158,18 @@ static void BattleIntroSlideEnd(u8 taskId)
 
 static void BattleIntroSlide1(u8 taskId)
 {
+    /*
+        BG1 is the foreground/parallax decoration, e.g. spiky blades of grass 
+        for battles in grass. Here, the parallax decoration moves rightward by 
+        6 pixels per frame, and downward by 1 or 2 pixels per frame (2 if it's 
+        "long grass").
+        
+        BG3 is the main background: the terrain visible below each combatant, 
+        and the striped pattern and gradient behind that. The terrain graphics 
+        are fixed in the positions they'll have for most of the battle; to 
+        animate the player-side terrain from right to left, a scanline effect 
+        is used.
+    */
     int i;
 
     gBattle_BG1_X += 6;
@@ -210,7 +227,7 @@ static void BattleIntroSlide1(u8 taskId)
             gBattle_WIN0V -= 0x3FC;
 
         if (gTasks[taskId].data[2])
-            gTasks[taskId].data[2] -= 2;
+            gTasks[taskId].data[2] -= BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED;
 
         // Scanline settings have already been set in CB2_InitBattleInternal()
         for (i = 0; i < DISPLAY_HEIGHT / 2; i++)
@@ -319,7 +336,7 @@ static void BattleIntroSlide2(u8 taskId)
             gBattle_WIN0V -= 0x3FC;
 
         if (gTasks[taskId].data[2])
-            gTasks[taskId].data[2] -= 2;
+            gTasks[taskId].data[2] -= BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED;
 
         // Scanline settings have already been set in CB2_InitBattleInternal()
         for (i = 0; i < DISPLAY_HEIGHT / 2; i++)
@@ -407,7 +424,7 @@ static void BattleIntroSlide3(u8 taskId)
             gBattle_WIN0V -= 0x3FC;
 
         if (gTasks[taskId].data[2])
-            gTasks[taskId].data[2] -= 2;
+            gTasks[taskId].data[2] -= BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED;
 
         // Scanline settings have already been set in CB2_InitBattleInternal()
         for (i = 0; i < DISPLAY_HEIGHT / 2; i++)
@@ -489,7 +506,7 @@ static void BattleIntroSlideLink(u8 taskId)
             gBattle_WIN0V -= 0x3FC;
 
         if (gTasks[taskId].data[2])
-            gTasks[taskId].data[2] -= 2;
+            gTasks[taskId].data[2] -= BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED;
 
         // Scanline settings have already been set in CB2_InitBattleInternal()
         for (i = 0; i < DISPLAY_HEIGHT / 2; i++)
