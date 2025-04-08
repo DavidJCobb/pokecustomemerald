@@ -39,6 +39,8 @@
 
 * Increased the speed of the battle start slide-in animation by 50%.
 
+* Slightly increased the speed of the battle start letterbox animation. This doesn't allow you to actually start engaging with the battle faster (the slide-in animation is the trigger), but it makes the intro feel slightly more responsive.
+
 * Minor, as-yet-untested bugfixes.
 
   * Activating a PokeCenter with an empty party should no longer lock you in a 256-ball loop.

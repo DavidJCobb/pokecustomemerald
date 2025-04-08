@@ -38,6 +38,23 @@ static const TaskFunc sBattleIntroSlideFuncs[] =
 };
 
 #ifdef MODERN
+   _Static_assert(BATTLE_INTRO_LETTERBOX_RECEDE_SPEED_INITIAL >= 1, "the letterbox recede speed must be a positive non-zero number");
+   _Static_assert(BATTLE_INTRO_LETTERBOX_RECEDE_SPEED_BOOSTED >= 4, "the letterbox recede speed must be a positive non-zero number");
+   //
+   // See code comments in `BattleIntroSlide1`, below, for an explanation 
+   // of the constraints below.
+   //
+   _Static_assert(0x20 % BATTLE_INTRO_LETTERBOX_RECEDE_SPEED_INITIAL == 0, "the initial letterbox recede speed must multiply evenly into 0x20");
+   //
+   _Static_assert(0x30 % BATTLE_INTRO_LETTERBOX_RECEDE_SPEED_BOOSTED == 0, "the boosted letterbox recede speed must multiply evenly into 0x30");
+#endif
+#define BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_INITIAL \
+   (BATTLE_INTRO_LETTERBOX_RECEDE_SPEED_INITIAL * 0x100) - BATTLE_INTRO_LETTERBOX_RECEDE_SPEED_INITIAL
+//
+#define BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_BOOSTED \
+   (BATTLE_INTRO_LETTERBOX_RECEDE_SPEED_BOOSTED * 0x100) - BATTLE_INTRO_LETTERBOX_RECEDE_SPEED_BOOSTED
+
+#ifdef MODERN
    _Static_assert(DISPLAY_WIDTH % BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED == 0, "the terrain slide speed must multiply evenly into the screen width");
 #endif
 
@@ -169,6 +186,15 @@ static void BattleIntroSlide1(u8 taskId)
         are fixed in the positions they'll have for most of the battle; to 
         animate the player-side terrain from right to left, a scanline effect 
         is used.
+        
+        During the battle intro, all background layers are clipped to the 
+        inside of screen window 0. This is how the game does the "receding 
+        letterboxing" intro effect. The initial bounds of window 0 aren't set 
+        here, but rather in battle_main.c's CB2_InitBattleInternal; they're 
+        set so that the top edge of the window is halfway down the screen, and 
+        the bottom edge is one pixel below that, setting the window up to be 
+        one pixel tall initially. (The specific coordinates are 80px and 81px; 
+        the I/O register value is thus 0x5051.)
     */
     int i;
 
@@ -191,12 +217,47 @@ static void BattleIntroSlide1(u8 taskId)
         if (--gTasks[taskId].data[2] == 0)
         {
             gTasks[taskId].tState++;
+            //
+            // Set up window 0 so that the background and sprites are only 
+            // visible wherever they overlap it.
+            //
             SetGpuReg(REG_OFFSET_WININ, WININ_WIN0_BG_ALL | WININ_WIN0_OBJ | WININ_WIN0_CLR);
         }
         break;
     case 2:
-        gBattle_WIN0V -= 0xFF;
-        if ((gBattle_WIN0V & 0xFF00) == 0x3000)
+        //
+        // The vanilla game animates (recedes) the black bars at the top and 
+        // bottom of the screen using this expression:
+        //
+        //    gBattle_WIN0V -= 0xFF;
+        //
+        // This subtraction is a clever trick to expand the window along both 
+        // the top and bottom directions. Recall that the window range is 
+        // stored as a two-byte integer, with the high byte being the Y-coord 
+        // of the window's top edge, and the low byte being the Y-coord of the 
+        // window's bottom edge. It's initialized to 0x5051, which creates a 
+        // one-pixel-tall window centered within the screen. Well, here's what 
+        // happens when we subtract 0xFF:
+        //
+        //    0x5051
+        //    0x4F52
+        //    0x4E53
+        //    0x4D54
+        //
+        // The top edge is pulled back, and the bottom edge is pushed down.
+        //
+        // The expression here is effectively (x - 0x100 + 1). If you want to 
+        // change the rate at which the letterboxing recedes, then you can 
+        // formulate a similar expression: (x - 0x200 + 2) == (x - 0x1FE), 
+        // for example...
+        //
+        gBattle_WIN0V -= BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_INITIAL;
+        //
+        // ...But in order for the check below to pass, your chosen speed 
+        // must multiply evenly into 0x20. That is: given a desired speed S, 
+        // you must arrange it so that (0x20 % S) == 0.
+        //
+        if ((gBattle_WIN0V & 0xFF00) == 0x3000) // window 0 top edge is at 48px
         {
             gTasks[taskId].tState++;
             gTasks[taskId].data[2] = DISPLAY_WIDTH;
@@ -223,8 +284,34 @@ static void BattleIntroSlide1(u8 taskId)
             }
         }
 
-        if (gBattle_WIN0V & 0xFF00)
-            gBattle_WIN0V -= 0x3FC;
+        if (gBattle_WIN0V & 0xFF00) // window 0 top edge is inset by any amount
+        {
+            //
+            // The vanilla game runs the following expression:
+            //
+            //    gBattle_WIN0V -= 0x3FC;
+            //
+            // This is the same basic principle as the subtraction used above: 
+            // we're still receding the letterbox effect, but now at a faster 
+            // rate. Consider that when we first reach this point, the window 
+            // register should have the value 0x3071. Subtracting 0x3FC, then, 
+            // we see this:
+            //
+            //    0x3071
+            //    0x2C75
+            //    0x2879
+            //
+            // The low byte makes it obvious: we're using the same trick, but 
+            // now with a speed of 4, such that the vanilla subtraction value 
+            // is (0x400 - 4) = 0x3FC.
+            //
+            // The caveat in this case is that the speed must multiply evenly 
+            // into 0x30, or else we'll underflow rather than settling at a 
+            // window top Y-coordinate of zero. That is: (0x30 % S) must equal 
+            // zero in order to avoid missing our goal.
+            //
+            gBattle_WIN0V -= BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_BOOSTED;
+        }
 
         if (gTasks[taskId].data[2])
             gTasks[taskId].data[2] -= BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED;
@@ -303,7 +390,7 @@ static void BattleIntroSlide2(u8 taskId)
         }
         break;
     case 2:
-        gBattle_WIN0V -= 0xFF;
+        gBattle_WIN0V -= BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_INITIAL;
         if ((gBattle_WIN0V & 0xFF00) == 0x3000)
         {
             gTasks[taskId].tState++;
@@ -333,7 +420,7 @@ static void BattleIntroSlide2(u8 taskId)
         }
 
         if (gBattle_WIN0V & 0xFF00)
-            gBattle_WIN0V -= 0x3FC;
+            gBattle_WIN0V -= BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_BOOSTED;
 
         if (gTasks[taskId].data[2])
             gTasks[taskId].data[2] -= BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED;
@@ -396,7 +483,7 @@ static void BattleIntroSlide3(u8 taskId)
         }
         break;
     case 2:
-        gBattle_WIN0V -= 0xFF;
+        gBattle_WIN0V -= BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_INITIAL;
         if ((gBattle_WIN0V & 0xFF00) == 0x3000)
         {
             gTasks[taskId].tState++;
@@ -421,7 +508,7 @@ static void BattleIntroSlide3(u8 taskId)
         }
 
         if (gBattle_WIN0V & 0xFF00)
-            gBattle_WIN0V -= 0x3FC;
+            gBattle_WIN0V -= BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_BOOSTED;
 
         if (gTasks[taskId].data[2])
             gTasks[taskId].data[2] -= BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED;
@@ -492,7 +579,7 @@ static void BattleIntroSlideLink(u8 taskId)
         }
         break;
     case 2:
-        gBattle_WIN0V -= 0xFF;
+        gBattle_WIN0V -= BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_INITIAL;
         if ((gBattle_WIN0V & 0xFF00) == 0x3000)
         {
             gTasks[taskId].tState++;
@@ -503,7 +590,7 @@ static void BattleIntroSlideLink(u8 taskId)
         break;
     case 3:
         if (gBattle_WIN0V & 0xFF00)
-            gBattle_WIN0V -= 0x3FC;
+            gBattle_WIN0V -= BATTLE_INTRO_LETTERBOX_RECEDE_SUBTRACTION_BOOSTED;
 
         if (gTasks[taskId].data[2])
             gTasks[taskId].data[2] -= BATTLE_INTRO_COMBATANT_SLIDE_IN_SPEED;
