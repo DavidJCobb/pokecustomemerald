@@ -3,7 +3,6 @@
 #include "lu/custom_game_options.h"
 
 #include "bg.h"
-#include "decompress.h" // LoadCompressedSpriteSheet
 #include "gpu_regs.h"
 #include "main.h"
 #include "malloc.h" // AllocZeroed, Free
@@ -25,6 +24,7 @@
 
 #include "constants/characters.h"
 #include "string_util.h"
+#include "lu/widgets/enum_picker.h"
 #include "lu/widgets/keybind_strip.h"
 #include "lu/widgets/scrollbar_v.h"
 #include "lu/string_wrap.h"
@@ -107,7 +107,6 @@ enum {
 };
 
 #define SOUND_EFFECT_MENU_SCROLL   SE_SELECT
-#define SOUND_EFFECT_VALUE_SCROLL  SE_SELECT
 #define SOUND_EFFECT_SUBMENU_ENTER SE_SELECT
 #define SOUND_EFFECT_SUBMENU_EXIT  SE_SELECT
 #define SOUND_EFFECT_HELP_EXIT     SE_SELECT
@@ -132,9 +131,8 @@ struct MenuState {
    struct MenuStackFrame breadcrumbs[MAX_MENU_TRAVERSAL_DEPTH];
    u8    cursor_pos;
    bool8 is_in_help;
-   u8    sprite_id_value_arrow_l;
-   u8    sprite_id_value_arrow_r;
    struct {
+      struct LuEnumPicker   enum_picker;
       struct LuKeybindStrip keybind_strip;
       struct LuScrollbar    scrollbar;
    } widgets;
@@ -159,59 +157,7 @@ static void TryMoveMenuCursor(s8 by);
 // Sprites:
 //
 
-#define SPRITE_TAG_VALUE_ARROW 4096
-
-static void SpriteCB_ValueArrow(struct Sprite*);
-
-static const struct OamData sOamData_ValueArrow = {
-    .y           = 0,
-    .affineMode  = ST_OAM_AFFINE_OFF,
-    .objMode     = ST_OAM_OBJ_NORMAL,
-    .mosaic      = FALSE,
-    .bpp         = ST_OAM_4BPP,
-    .shape       = SPRITE_SHAPE(8x8),
-    .x           = 0,
-    .matrixNum   = 0,
-    .size        = SPRITE_SIZE(8x8),
-    .tileNum     = 0,
-    .priority    = 1,
-    .paletteNum  = 0,
-    .affineParam = 0
-};
-
-static const union AnimCmd sSpriteAnim_ValueArrow[] = {
-   ANIMCMD_FRAME(0, 0),
-   ANIMCMD_END
-};
-//
-static const union AnimCmd* const sSpriteAnimTable_ValueArrow[] = {
-   sSpriteAnim_ValueArrow
-};
-
-static const struct SpriteTemplate sSpriteTemplate_ValueArrow = {
-    .tileTag     = SPRITE_TAG_VALUE_ARROW,
-    .paletteTag  = SPRITE_TAG_VALUE_ARROW,
-    .oam         = &sOamData_ValueArrow,
-    .anims       = sSpriteAnimTable_ValueArrow,
-    .images      = NULL,
-    .affineAnims = gDummySpriteAffineAnimTable,
-    .callback    = SpriteCB_ValueArrow,
-};
-
-static const u32 sInterfaceSpriteGfx[] = INCBIN_U32("graphics/lu/cgo_menu/interface-sprites.4bpp.lz");
-static const u16 sInterfaceSpritePal[] = INCBIN_U16("graphics/lu/cgo_menu/interface-sprites.gbapal");
-
-static const struct CompressedSpriteSheet sInterfaceSpriteSheet[] = {
-   {sInterfaceSpriteGfx, 0x2000, SPRITE_TAG_VALUE_ARROW},
-   {0}
-};
-static const struct SpritePalette sInterfaceSpritePalette[] = {
-   {sInterfaceSpritePal, SPRITE_TAG_VALUE_ARROW},
-   {0}
-};
-
-static void CreateInterfaceSprites(void);
-static void PositionValueArrowsAtRow(u8 screen_row);
+#define SPRITE_TAG_ENUM_PICKER 4096
 
 //
 // Task and drawing stuff:
@@ -222,8 +168,6 @@ static void Task_CGOptionMenuProcessInput(u8 taskId);
 static void Task_CGOptionMenuSave(u8 taskId);
 static void Task_CGOptionMenuFadeOut(u8 taskId);
 static void HighlightCGOptionMenuItem();
-
-static void SpriteCB_ScrollbarThumb(struct Sprite*);
 
 static void TryDisplayHelp(const struct CGOptionMenuItem* item);
 
@@ -278,7 +222,7 @@ static const u8 sTextColor_HelpBodyText[] = {1, 2, 3};
 #define WIN_HEADER_TILE_HEIGHT   TEXT_ROW_HEIGHT_IN_TILES
 //
 #define WIN_OPTIONS_X_TILES             2
-#define WIN_OPTIONS_Y_TILES             WIN_HEADER_TILE_HEIGHT + 1
+#define WIN_OPTIONS_Y_TILES             (WIN_HEADER_TILE_HEIGHT + 1)
 #define OPTIONS_INSET_RIGHT_TILES       1
 #define OPTIONS_LIST_INSET_RIGHT        (OPTIONS_INSET_RIGHT_TILES * TILE_WIDTH)
 #define OPTIONS_LIST_ROW_HEIGHT         7
@@ -322,6 +266,17 @@ typedef struct {
 // ensure we fit within 64KB VRAM limit.
 STATIC_ASSERT(sizeof(VRAMTileLayout) <= BG_VRAM_SIZE, sStaticAssertion01_VramUsage);
 
+static const struct LuEnumPickerInitParams sEnumPickerInit = {
+   .base_pos = {
+      .x = (WIN_OPTIONS_X_TILES * TILE_WIDTH) + OPTION_VALUE_COLUMN_X,
+      .y = (WIN_OPTIONS_Y_TILES * TILE_HEIGHT),
+   },
+   .sprite_tags = {
+      .tile    = SPRITE_TAG_ENUM_PICKER,
+      .palette = SPRITE_TAG_ENUM_PICKER,
+   },
+   .width = OPTION_VALUE_COLUMN_WIDTH,
+};
 static const struct LuKeybindStripEntry sKeybindStripEntries[] = {
    {
       .buttons = (1 << CHAR_DPAD_UPDOWN),
@@ -353,7 +308,6 @@ static const struct LuKeybindStripInitParams sKeybindStripInit = {
    .first_tile_id = VRAM_BG_TileID(VRAMTileLayout, win_tiles_for_keybinds),
    .palette_id    = BACKGROUND_PALETTE_ID_CONTROLS
 };
-
 static const struct LuScrollbarGraphicsParams sScrollbarInit = {
    .bg_layer      = BACKGROUND_LAYER_OPTIONS,
    .palette_id    = BACKGROUND_PALETTE_ID_TEXT,
@@ -584,9 +538,6 @@ void CB2_InitCustomGameOptionMenu(void) {
          LuUI_ResetSpritesAndEffects();
          ResetTasks();
          
-         LoadCompressedSpriteSheet(&sInterfaceSpriteSheet[0]);
-         LoadSpritePalettes(sInterfaceSpritePalette);
-         
          VRAM_BG_LoadTiles(VRAMTileLayout, blank_tile, BACKGROUND_LAYER_OPTIONS, sBlankBGTile);
          VRAM_BG_LoadTiles(VRAMTileLayout, selection_cursor_tiles, BACKGROUND_LAYER_OPTIONS, sMenuCursorBGTiles);
          
@@ -633,7 +584,9 @@ void CB2_InitCustomGameOptionMenu(void) {
             {
                sMenuState = AllocZeroed(sizeof(struct MenuState));
                ResetMenuState();
-               CreateInterfaceSprites();
+               {
+                  InitEnumPicker(&sMenuState->widgets.enum_picker, &sEnumPickerInit);
+               }
                {
                   InitKeybindStrip(&sMenuState->widgets.keybind_strip, &sKeybindStripInit);
                   sMenuState->widgets.keybind_strip.entries     = sKeybindStripEntries;
@@ -662,77 +615,6 @@ void CB2_InitCustomGameOptionMenu(void) {
          return;
    }
 }
-
-
-#define sDirectionX data[0]
-#define sMoving     data[1]
-#define sDistance   data[2]
-
-// Ideally 5, as that's the default `gKeyRepeatContinueDelay`: we move 
-// the arrow by one pixel per frame, for as many frames as will pass 
-// before the key repeats.
-#define VALUE_ARROW_MOVE_DISTANCE 5
-
-static void CreateInterfaceSprites(void) {
-   u8 id_l;
-   u8 id_r;
-   u8 x;
-   
-   sMenuState->sprite_id_value_arrow_l = id_l = CreateSprite(&sSpriteTemplate_ValueArrow, 0, 0, 0);
-   sMenuState->sprite_id_value_arrow_r = id_r = CreateSprite(&sSpriteTemplate_ValueArrow, 0, 0, 0);
-   
-   gSprites[id_r].hFlip = TRUE;
-   
-   gSprites[id_l].sDirectionX = -1;
-   gSprites[id_r].sDirectionX =  1;
-   //
-   gSprites[id_l].sMoving   = 0;
-   gSprites[id_l].sDistance = 0;
-   gSprites[id_r].sMoving   = 0;
-   gSprites[id_r].sDistance = 0;
-   
-   x = (sOptionMenuWinTemplates[WIN_OPTIONS].tilemapLeft * TILE_WIDTH);
-   
-   gSprites[id_l].x = x + OPTION_VALUE_COLUMN_X;
-   gSprites[id_r].x = x + OPTION_VALUE_COLUMN_X + OPTION_VALUE_COLUMN_WIDTH;
-}
-static void PositionValueArrowsAtRow(u8 screen_row) {
-   u8 y = (WIN_OPTIONS_Y_TILES * TILE_HEIGHT) + (screen_row * 16) + 6 + (TILE_HEIGHT * 2) + 1;
-   // 6 == offset to center-align with text
-   // 1 == additional offset that was applied to the text itself
-   // extra tiles = unknown. compensates for a compiler bug?
-   
-   gSprites[sMenuState->sprite_id_value_arrow_l].y = y;
-   gSprites[sMenuState->sprite_id_value_arrow_r].y = y;
-}
-static void SetValueArrowVisibility(bool8 visible) {
-   gSprites[sMenuState->sprite_id_value_arrow_l].invisible = !visible;
-   gSprites[sMenuState->sprite_id_value_arrow_r].invisible = !visible;
-}
-static void AnimateValueArrows(s8 by) {
-   if (by < 0) {
-      gSprites[sMenuState->sprite_id_value_arrow_l].sMoving = 1;
-   } else {
-      gSprites[sMenuState->sprite_id_value_arrow_r].sMoving = 1;
-   }
-}
-//
-static void SpriteCB_ValueArrow(struct Sprite* sprite) {
-   if (sprite->sMoving) {
-      sprite->x2 += sprite->sDirectionX;
-      if (++sprite->sDistance > VALUE_ARROW_MOVE_DISTANCE) {
-         sprite->sMoving   = 0;
-         sprite->x2        = 0;
-         sprite->sDistance = 0;
-      }
-   }
-}
-
-#undef sDirectionX
-#undef sMoving
-
-#undef VALUE_ARROW_MOVE_DISTANCE
-
 
 static void Task_CGOptionMenuFadeIn(u8 taskId) {
    if (!gPaletteFade.active)
@@ -827,9 +709,11 @@ static void Task_CGOptionMenuProcessInput(u8 taskId) {
          CycleOptionSelectedValue(&items[sMenuState->cursor_pos], by);
          DrawMenuItem(&items[sMenuState->cursor_pos], row, TRUE);
          
-         AnimateValueArrows(by);
-         
-         PlaySE(SOUND_EFFECT_VALUE_SCROLL);
+         if (by < 0) {
+            OnEnumPickerDecreased(&sMenuState->widgets.enum_picker);
+         } else {
+            OnEnumPickerIncreased(&sMenuState->widgets.enum_picker);
+         }
          
          return;
       }
@@ -846,6 +730,7 @@ static void Task_CGOptionMenuSave(u8 taskId) {
 static void Task_CGOptionMenuFadeOut(u8 taskId) {
    if (!gPaletteFade.active) {
       DestroyTask(taskId);
+      DestroyEnumPicker(&sMenuState->widgets.enum_picker);
       DestroyKeybindStrip(&sMenuState->widgets.keybind_strip);
       DestroyScrollbarV(&sMenuState->widgets.scrollbar);
       FreeAllWindowBuffers();
@@ -922,7 +807,7 @@ static void HighlightCGOptionMenuItem() {
    
    // For options (i.e. not submenus, etc.), position arrow indicators around the value. 
    // We'll animate them when the player changes the value, for flavor.
-   PositionValueArrowsAtRow(index);
+   SetEnumPickerRow(&sMenuState->widgets.enum_picker, index);
    
    // Of course, for non-options, we need to *hide* those arrows...
    
@@ -932,13 +817,13 @@ static void HighlightCGOptionMenuItem() {
    }
    
    if (item == NULL) {
-      SetValueArrowVisibility(FALSE);
+      SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
       return;
    }
    if ((item->flags & (1 << MENUITEM_FLAG_IS_SUBMENU)) == 0) {
-      SetValueArrowVisibility(TRUE);
+      SetEnumPickerVisible(&sMenuState->widgets.enum_picker, TRUE);
    } else {
-      SetValueArrowVisibility(FALSE);
+      SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
    }
 }
 

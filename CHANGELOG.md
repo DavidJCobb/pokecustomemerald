@@ -28,6 +28,8 @@
     * Run indoors
     * Bike indoors
     * Poison damage and interval
+    
+### Pacing
 
 * Coalesced all item pick-up text. The vanilla game uses two textboxes: one to tell you what you picked up, and another to tell you what bag pocket you put it in. We combine these into one textbox.
 
@@ -35,13 +37,21 @@
 
 * Substantially reduced the delay before Professor Birch appears in the New Game intro.
 
+#### Battles
+
 * Removed the grey flashes at the start of all battle transitions, to waste less time when going from the overworld to a battle.
 
 * Increased the speed of the battle start slide-in animation by 50%.
 
 * Slightly increased the speed of the battle start letterbox animation. This doesn't allow you to actually start engaging with the battle faster (the slide-in animation is the trigger), but it makes the intro feel slightly more responsive.
 
-* The vanilla game always plays stat-change animations, even when battle animations are disabled, because it's awkward to have a visual affordance (blinking sprite) when damage is taken but not when stats are changed. Custom Emerald also plays stat-change animations, but when battle animations are disabled, we use faster timings and higher opacity for stat-change animations.
+* The vanilla game always plays stat-change animations, even when battle animations are disabled, because it's awkward to have a visual affordance (blinking sprite) for when damage is taken but not for when stats are changed. Custom Emerald also plays stat-change animations, but when battle animations are disabled, we use faster timings and higher opacity for stat-change animations.
+
+### Vanilla bug-fixes and engine improvements
+
+* Slight refactor to the options menu, to support scrolling. This makes it slightly easier to add a few new options, but since each option's current value is still stored in task data, a further refactor will be needed to add terribly many more.
+
+* Added script commands to facilitate displaying text with automatic word-wrapping performed at run-time.
 
 * Minor, as-yet-untested bugfixes.
 
