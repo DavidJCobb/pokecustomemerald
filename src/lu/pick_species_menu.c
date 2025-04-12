@@ -1,13 +1,16 @@
 #include "global.h"
 #include "lu/pick_species_menu.h"
 
+#include "battle_main.h" // gTypeNames
 #include "bg.h"
+#include "data.h" // gSpeciesNames
 #include "decompress.h" // LoadCompressedSpriteSheet
 #include "gpu_regs.h"
 #include "main.h"
 #include "malloc.h" // AllocZeroed, Free
 #include "menu.h"
 #include "palette.h"
+#include "pokemon.h" // gSpeciesInfo
 #include "scanline_effect.h"
 #include "sound.h" // PlaySE
 #include "sprite.h"
@@ -21,6 +24,8 @@
 #include "constants/songs.h" // SE_SELECT and other sound effect constants
 
 #include "constants/characters.h"
+#include "constants/pokemon.h" // TYPE_..., NUMBER_OF_MON_TYPES
+#include "constants/species.h"
 #include "lu/widgets/enum_picker.h"
 #include "lu/widgets/keybind_strip.h"
 #include "lu/widgets/scrollbar_v.h"
@@ -28,6 +33,9 @@
 #include "lu/strings.h"
 #include "lu/ui_helpers.h"
 #include "lu/vram_layout_helpers.h"
+
+#include "lu/pick_species_menu.strings.h"
+#include "lu/species_list_utils.h"
 
 enum {
    LISTING_POS_FIRST_LETTER,
@@ -37,11 +45,47 @@ enum {
    LISTING_POS_SWITCH_FOCUS_TO_RESULTS,
 };
 
+enum PaneEnum {
+   PANE_FORM,
+   PANE_LISTING,
+};
+
+enum {
+   FIRST_LETTER_ANY = 0,
+   FIRST_LETTER_A   = 1,
+   FIRST_LETTER_Z   = 26,
+   FIRST_LETTER_COUNT
+};
+enum {
+   TYPE_CRITERION_ANY  = NUMBER_OF_MON_TYPES + 1,
+   TYPE_CRITERION_NONE = NUMBER_OF_MON_TYPES + 2,
+   TYPE_CRITERION_VALUE_COUNT
+};
+enum {
+   GENERATION_ANY = 0,
+   GENERATION_KANTO,
+   GENERATION_JOHTO,
+   GENERATION_HOENN,
+   
+   GENERATIONS_COUNT
+};
+
 struct MenuState {
+   struct PickSpeciesMenuParams params;
+   
    u8  cursor_is_in_results;
    u16 cursor_pos;
-   u8  sprite_id_value_arrow_l;
-   u8  sprite_id_value_arrow_r;
+   u16 selection;
+   struct {
+      u8 first_letter;
+      u8 types[2];
+      u8 generation;
+   } filter_params;
+   struct {
+      struct SpeciesList contents;
+      u16 scroll_pos;
+   } listing;
+   
    struct {
       struct LuEnumPicker   enum_picker;   // for filtering options
       struct LuKeybindStrip keybind_strip;
@@ -59,13 +103,6 @@ static const u16 sOptionsListingPalette[] = INCBIN_U16("graphics/lu/cgo_menu/opt
 //
 static const u8 sTextColor_OptionNames[] = {1, 2, 3};
 static const u8 sTextColor_OptionValues[] = {1, 4, 5};
-
-static void CreateInterfaceSprites(void);
-static void PositionValueArrowsAtRow(u8 screen_row);
-
-static void Task_MenuFadeIn(u8 taskId);
-static void Task_MenuProcessInput(u8 taskId);
-static void Task_MenuFadeOut(u8 taskId);
 
 enum {
    WIN_HEADER,
@@ -96,10 +133,15 @@ enum {
 #define WIN_FORM_TILE_WIDTH  (DISPLAY_TILE_WIDTH / 2)
 #define WIN_FORM_TILE_HEIGHT (DISPLAY_TILE_HEIGHT - WIN_FORM_TILE_Y - KEYBIND_STRIP_TILE_HEIGHT)
 
+#define FORM_CRITERION_VALUE_X 50
+
 #define WIN_LISTING_TILE_X      (WIN_FORM_TILE_X + WIN_FORM_TILE_WIDTH)
 #define WIN_LISTING_TILE_Y      WIN_FORM_TILE_Y
 #define WIN_LISTING_TILE_WIDTH  (DISPLAY_TILE_WIDTH - WIN_LISTING_TILE_X - 1)
 #define WIN_LISTING_TILE_HEIGHT WIN_FORM_TILE_HEIGHT
+
+#define MAX_MENU_ITEMS_VISIBLE_AT_ONCE   (WIN_LISTING_TILE_HEIGHT / TEXT_ROW_HEIGHT_IN_TILES)
+#define MENU_ITEM_HALFWAY_ROW            (MAX_MENU_ITEMS_VISIBLE_AT_ONCE / 2)
 
 // Never instantiated. Just a marginally less hideous way to manage all this 
 // compared to preprocessor macros. Unit of measurement is 4bpp tile IDs.
@@ -119,6 +161,17 @@ typedef struct {
 } VRAMTileLayout;
 STATIC_ASSERT(sizeof(VRAMTileLayout) <= BG_VRAM_SIZE, sStaticAssertion01_VramUsage);
 
+static const struct LuEnumPickerInitParams sEnumPickerInit = {
+   .base_pos = {
+      .x = (WIN_LISTING_TILE_X * TILE_WIDTH) - 8,
+      .y = (WIN_LISTING_TILE_Y * TILE_HEIGHT),
+   },
+   .sprite_tags = {
+      .tile    = 4096,
+      .palette = 4096,
+   },
+   .width = WIN_LISTING_TILE_WIDTH * TILE_WIDTH + 8,
+};
 static const struct LuKeybindStripEntry sKeybindStripEntries[] = {
    {
       .buttons = (1 << CHAR_DPAD_UPDOWN),
@@ -222,3 +275,577 @@ static void VBlankCB(void) {
    TransferPlttBuffer();
 }
 
+//
+
+static void Task_MenuFadeIn(u8 taskId);
+static void Task_MenuProcessInput(u8 taskId);
+static void Task_MenuFadeOut(u8 taskId);
+
+static void PaintMenuHeader(void);
+static void PaintFilterCriteriaLabels(void);
+static void PaintFilterCriteriaValues(void);
+static void PaintCursor(void);
+static void PaintListingContents(void);
+
+static void MoveCursor(s8 by);
+static void SetFocusedPane(enum PaneEnum);
+
+static void OnFilterChanged(void);
+
+static void CB2_InitPickSpeciesMenu(void) {
+   switch (gMain.state) {
+      default:
+      case 0:
+         SetVBlankCallback(NULL);
+         gMain.state++;
+         break;
+      case 1:
+         LuUI_ResetBackgroundsAndVRAM();
+         InitBgsFromTemplates(0, sOptionMenuBgTemplates, ARRAY_COUNT(sOptionMenuBgTemplates));
+           
+         InitWindows(sOptionMenuWinTemplates);
+         DeactivateAllTextPrinters();
+         
+         ShowBg(BACKGROUND_LAYER_NORMAL);
+         
+         // Enable sprite layer:
+         SetGpuReg(REG_OFFSET_DISPCNT, GetGpuReg(REG_OFFSET_DISPCNT) | DISPCNT_OBJ_ON);
+         
+         gMain.state++;
+         break;
+       case 2:
+         LuUI_ResetSpritesAndEffects();
+         //ResetTasks();
+         
+         VRAM_BG_LoadTiles(VRAMTileLayout, blank_tile, BACKGROUND_LAYER_NORMAL, sBlankBGTile);
+         VRAM_BG_LoadTiles(VRAMTileLayout, selection_cursor_tiles, BACKGROUND_LAYER_NORMAL, sMenuCursorBGTiles);
+         
+         gMain.state++;
+         break;
+       case 3:
+         LuUI_LoadPlayerWindowFrame(
+            BACKGROUND_LAYER_NORMAL,
+            BACKGROUND_PALETTE_BOX_FRAME,
+            VRAM_BG_TileID(VRAMTileLayout, user_window_frame)
+         );
+         gMain.state++;
+         break;
+       case 4:
+         LoadPalette(sOptionMenuBg_Pal, BG_PLTT_ID(BACKGROUND_PALETTE_ID_MENU), sizeof(sOptionMenuBg_Pal));
+         gMain.state++;
+         break;
+       case 5:
+         LoadPalette(sOptionsListingPalette, BG_PLTT_ID(BACKGROUND_PALETTE_ID_TEXT), sizeof(sOptionsListingPalette));
+         LoadPalette(GetTextWindowPalette(2), BG_PLTT_ID(BACKGROUND_PALETTE_ID_CONTROLS), PLTT_SIZE_4BPP);
+         gMain.state++;
+         break;
+       case 6:
+         PutWindowTilemap(WIN_HEADER);
+         gMain.state++;
+         break;
+       case 7:
+         PutWindowTilemap(WIN_FORM);
+         gMain.state++;
+         break;
+       case 8:
+         PutWindowTilemap(WIN_LISTING);
+         FillWindowPixelBuffer(WIN_LISTING, PIXEL_FILL(1));
+         CopyWindowToVram(WIN_LISTING, COPYWIN_FULL);
+         gMain.state++;
+         break;
+       case 9:
+         //
+         gMain.state++;
+         break;
+       case 10:
+         {
+            u8 taskId = CreateTask(Task_MenuFadeIn, 0);
+            {
+               InitEnumPicker(&sMenuState->widgets.enum_picker, &sEnumPickerInit);
+            }
+            {
+               InitKeybindStrip(&sMenuState->widgets.keybind_strip, &sKeybindStripInit);
+               sMenuState->widgets.keybind_strip.entries     = sKeybindStripEntries;
+               sMenuState->widgets.keybind_strip.entry_count = ARRAY_COUNT(sKeybindStripEntries);
+            }
+            {
+               struct LuScrollbar* scrollbar = &sMenuState->widgets.scrollbar;
+               InitScrollbarV(&sMenuState->widgets.scrollbar, &sScrollbarInit);
+               scrollbar->max_visible_items = MAX_MENU_ITEMS_VISIBLE_AT_ONCE;
+            }
+            PaintMenuHeader();
+            PaintFilterCriteriaLabels();
+            PaintFilterCriteriaValues();
+            PaintCursor();
+
+            CopyWindowToVram(WIN_FORM, COPYWIN_FULL);
+            CopyWindowToVram(WIN_LISTING, COPYWIN_FULL);
+            gMain.state++;
+         }
+         break;
+       case 11:
+         BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_BLACK);
+         SetVBlankCallback(VBlankCB);
+         SetMainCallback2(MainCB2);
+         return;
+   }
+}
+extern void ShowPickSpeciesMenu(const struct PickSpeciesMenuParams* params) {
+   sMenuState = AllocZeroed(sizeof(struct MenuState));
+   sMenuState->params = *params;
+   sMenuState->selection = PICKSPECIESMENU_RESULT_CANCELED;
+   
+   sMenuState->filter_params.types[0] = TYPE_CRITERION_ANY;
+   sMenuState->filter_params.types[1] = TYPE_CRITERION_ANY;
+   
+   SetMainCallback2(CB2_InitPickSpeciesMenu);
+}
+
+static void Task_MenuFadeIn(u8 taskId) {
+   if (!gPaletteFade.active)
+      gTasks[taskId].func = Task_MenuProcessInput;
+}
+
+static void Task_MenuProcessInput(u8 taskId) {
+   if (JOY_NEW(DPAD_UP)) {
+      MoveCursor(-1);
+      return;
+   }
+   if (JOY_NEW(DPAD_DOWN)) {
+      MoveCursor(1);
+      return;
+   }
+   if (sMenuState->cursor_is_in_results) {
+      if (JOY_NEW(A_BUTTON)) {
+         //
+         // TODO: select current species
+         //
+         return;
+      }
+      if (JOY_NEW(B_BUTTON)) {
+         SetFocusedPane(PANE_FORM);
+         return;
+      }
+   } else {
+      if (JOY_NEW(A_BUTTON)) {
+         if (sMenuState->cursor_pos == LISTING_POS_SWITCH_FOCUS_TO_RESULTS) {
+            SetFocusedPane(PANE_LISTING);
+         }
+         return;
+      }
+      if (JOY_NEW(B_BUTTON)) {
+         gTasks[taskId].func = Task_MenuFadeOut;
+         return;
+      }
+      //
+      // Handle option changes:
+      //
+      s8 by = JOY_REPEAT(DPAD_RIGHT) ? 1 : 0;
+      if (!by) {
+         by = JOY_REPEAT(DPAD_LEFT) ? -1 : 0;
+      }
+      if (by) {
+         {
+            u8* value = NULL;
+            u8  max   = 0;
+            switch (sMenuState->cursor_pos) {
+               case LISTING_POS_TYPE_1:
+               case LISTING_POS_TYPE_2:
+                  {
+                     bool8 is_second = (sMenuState->cursor_pos == LISTING_POS_TYPE_2);
+                     u8*   target    = &sMenuState->filter_params.types[is_second ? 1 : 0];
+                     if (by < 0) {
+                        if (*target == 0) {
+                           *target = TYPE_CRITERION_VALUE_COUNT - 1;
+                        } else {
+                           --(*target);
+                        }
+                     } else {
+                        ++(*target);
+                        if (*target == TYPE_CRITERION_VALUE_COUNT) {
+                           *target = 0;
+                        }
+                     }
+                  }
+                  break;
+               case LISTING_POS_FIRST_LETTER:
+                  value = &sMenuState->filter_params.first_letter;
+                  max   = FIRST_LETTER_Z;
+                  break;
+               case LISTING_POS_GENERATION:
+                  value = &sMenuState->filter_params.generation;
+                  max   = GENERATIONS_COUNT - 1;
+                  break;
+            }
+            if (value) {
+               if (by < 0) {
+                  if (*value == 0)
+                     *value = max;
+                  else
+                     --(*value);
+               } else {
+                  ++(*value);
+                  if (*value > max)
+                     *value = 0;
+               }
+            }
+         }
+         PaintFilterCriteriaValues();
+         OnFilterChanged();
+         if (by < 0) {
+            OnEnumPickerDecreased(&sMenuState->widgets.enum_picker);
+         } else {
+            OnEnumPickerIncreased(&sMenuState->widgets.enum_picker);
+         }
+         return;
+      }
+   }
+}
+
+static void Task_MenuFadeOut(u8 taskId) {
+   if (gPaletteFade.active)
+      return;
+   
+   void (*callback)(u16) = sMenuState->params.callback;
+   u16 value = sMenuState->selection;
+   
+   DestroyTask(taskId);
+   DestroyEnumPicker(&sMenuState->widgets.enum_picker);
+   DestroyKeybindStrip(&sMenuState->widgets.keybind_strip);
+   DestroyScrollbarV(&sMenuState->widgets.scrollbar);
+   FreeAllWindowBuffers();
+   Free(sMenuState);
+   sMenuState = NULL;
+   
+   callback(value);
+}
+
+static void PaintMenuHeader(void) {
+   const u8* title = sMenuState->params.header_text;
+   if (title == NULL) {
+      title = gText_lu_PickSpeciesMenu_DefaultTitle;
+   }
+   FillWindowPixelBuffer(WIN_HEADER, PIXEL_FILL(1));
+   AddTextPrinterParameterized(WIN_HEADER, FONT_NORMAL, title, 8, 1, TEXT_SKIP_DRAW, NULL);
+   CopyWindowToVram(WIN_HEADER, COPYWIN_FULL);
+}
+static void PaintFilterCriteriaLabels(void) {
+   FillWindowPixelBuffer(WIN_FORM, PIXEL_FILL(1));
+   AddTextPrinterParameterized3(
+      WIN_FORM,
+      FONT_NORMAL,
+      (TILE_WIDTH * 1), // x
+      (0 * (TILE_HEIGHT * 2)), // y
+      sTextColor_OptionNames,
+      TEXT_SKIP_DRAW,
+      gText_lu_PickSpeciesMenu_Label_FirstLetter
+   );
+   AddTextPrinterParameterized3(
+      WIN_FORM,
+      FONT_NORMAL,
+      (TILE_WIDTH * 1), // x
+      (1 * (TILE_HEIGHT * 2)), // y
+      sTextColor_OptionNames,
+      TEXT_SKIP_DRAW,
+      gText_lu_PickSpeciesMenu_Label_Type1
+   );
+   AddTextPrinterParameterized3(
+      WIN_FORM,
+      FONT_NORMAL,
+      (TILE_WIDTH * 1), // x
+      (2 * (TILE_HEIGHT * 2)), // y
+      sTextColor_OptionNames,
+      TEXT_SKIP_DRAW,
+      gText_lu_PickSpeciesMenu_Label_Type2
+   );
+   AddTextPrinterParameterized3(
+      WIN_FORM,
+      FONT_NORMAL,
+      (TILE_WIDTH * 1), // x
+      (3 * (TILE_HEIGHT * 2)), // y
+      sTextColor_OptionNames,
+      TEXT_SKIP_DRAW,
+      gText_lu_PickSpeciesMenu_Label_Generation
+   );
+   AddTextPrinterParameterized3(
+      WIN_FORM,
+      FONT_NORMAL,
+      (TILE_WIDTH * 1), // x
+      (4 * (TILE_HEIGHT * 2)), // y
+      sTextColor_OptionValues,
+      TEXT_SKIP_DRAW,
+      gText_lu_PickSpeciesMenu_Label_SwitchToListing
+   );
+}
+static void PaintFilterCriteriaValues(void) {
+   //
+   // First Letter:
+   //
+   if (sMenuState->filter_params.first_letter == 0) {
+      AddTextPrinterParameterized3(
+         WIN_FORM,
+         FONT_NORMAL,
+         FORM_CRITERION_VALUE_X, // x
+         (0 * (TILE_HEIGHT * 2)), // y
+         sTextColor_OptionValues,
+         TEXT_SKIP_DRAW,
+         gText_lu_PickSpeciesMenu_FirstLetter_Any
+      );
+   } else {
+      char str[2];
+      str[0] = CHAR_A + sMenuState->filter_params.first_letter;
+      str[1] = EOS;
+      
+      AddTextPrinterParameterized3(
+         WIN_FORM,
+         FONT_NORMAL,
+         FORM_CRITERION_VALUE_X, // x
+         (0 * (TILE_HEIGHT * 2)), // y
+         sTextColor_OptionValues,
+         TEXT_SKIP_DRAW,
+         str
+      );
+   }
+   //
+   // Types:
+   //
+   for(int i = 0; i < 2; ++i) {
+      const u8* text = NULL;
+      u8 type = sMenuState->filter_params.types[i];
+      if (type == TYPE_CRITERION_ANY) {
+         text = gText_lu_PickSpeciesMenu_Type_Any;
+      } else if (type == TYPE_CRITERION_NONE) {
+         text = gText_lu_PickSpeciesMenu_Type_None;
+      } else {
+         text = gTypeNames[type];
+      }
+      AddTextPrinterParameterized3(
+         WIN_FORM,
+         FONT_NORMAL,
+         FORM_CRITERION_VALUE_X, // x
+         ((1 + i) * (TILE_HEIGHT * 2)), // y
+         sTextColor_OptionValues,
+         TEXT_SKIP_DRAW,
+         text
+      );
+   }
+   //
+   // Generations:
+   //
+   {
+      const u8* text = gText_lu_PickSpeciesMenu_Generation_Any;
+      switch (sMenuState->filter_params.generation) {
+         case GENERATION_KANTO:
+            text = gText_lu_PickSpeciesMenu_Generation_Kanto;
+            break;
+         case GENERATION_JOHTO:
+            text = gText_lu_PickSpeciesMenu_Generation_Johto;
+            break;
+         case GENERATION_HOENN:
+            text = gText_lu_PickSpeciesMenu_Generation_Hoenn;
+            break;
+      }
+      AddTextPrinterParameterized3(
+         WIN_FORM,
+         FONT_NORMAL,
+         FORM_CRITERION_VALUE_X, // x
+         (3 * (TILE_HEIGHT * 2)), // y
+         sTextColor_OptionValues,
+         TEXT_SKIP_DRAW,
+         text
+      );
+   }
+}
+static void PaintCursor(void) {
+   //
+   // TODO: Blank out the cursor column in the form
+   //
+   // TODO: Blank out the cursor column in the listing
+   //
+   if (sMenuState->cursor_is_in_results) {
+      //
+      // TODO: Paint the cursor in the listing
+      //
+   } else {
+      //
+      // TODO: Paint the cursor in the form
+      //
+   }
+}
+static void PaintListingItem(u8 display_pos, PokemonSpeciesID species) {
+   const u8* text = gSpeciesNames[species];
+   if (species == 0) {
+      if (sMenuState->params.zero_type == PICKSPECIESMENU_ZEROTYPE_DEFAULT) {
+         text = gText_lu_PickSpeciesMenu_Species_Default;
+      } else if (sMenuState->params.zero_type == PICKSPECIESMENU_ZEROTYPE_NONE) {
+         text = gText_lu_PickSpeciesMenu_Species_None;
+      }
+   }
+   AddTextPrinterParameterized3(
+      WIN_LISTING,
+      FONT_NORMAL,
+      0,       // x
+      (display_pos * 16) + 1, // y
+      sTextColor_OptionNames,
+      TEXT_SKIP_DRAW,
+      text
+   );
+}
+static void PaintListingContents(void) {
+   u8 pos   = sMenuState->cursor_pos;
+   u8 count = sMenuState->listing.contents.count;
+   if (!sMenuState->cursor_is_in_results) {
+      pos = 0;
+   }
+   {
+      struct LuScrollbar* scrollbar = &sMenuState->widgets.scrollbar;
+      scrollbar->scroll_pos = pos;
+      scrollbar->item_count = count;
+      RepaintScrollbarV(scrollbar);
+   }
+   if (pos <= MENU_ITEM_HALFWAY_ROW || count <= MAX_MENU_ITEMS_VISIBLE_AT_ONCE) {
+      pos = 0;
+   } else {
+      pos -= MENU_ITEM_HALFWAY_ROW;
+      if (pos + MAX_MENU_ITEMS_VISIBLE_AT_ONCE > count) {
+         pos = count - MAX_MENU_ITEMS_VISIBLE_AT_ONCE;
+      }
+   }
+   
+   FillWindowPixelBuffer(WIN_LISTING, PIXEL_FILL(1));
+   for(int i = 0; i < MAX_MENU_ITEMS_VISIBLE_AT_ONCE; ++i) {
+      if (i + pos >= count)
+         break;
+      PaintListingItem(i, sMenuState->listing.contents.speciesIDs[i + pos]);
+   }
+   CopyWindowToVram(WIN_LISTING, COPYWIN_GFX);
+}
+
+static void MoveCursor(s8 by) {
+   if (by == 0) {
+      return;
+   }
+   
+   u16 max;
+   if (sMenuState->cursor_is_in_results) {
+      max = sMenuState->listing.contents.count;
+      if (max > 0)
+         --max;
+   } else {
+      max = LISTING_POS_SWITCH_FOCUS_TO_RESULTS;
+   }
+   
+   if (by < 0) {
+      if (sMenuState->cursor_pos == 0) {
+         sMenuState->cursor_pos = max;
+      } else {
+         ++sMenuState->cursor_pos;
+      }
+   } else {
+      if (sMenuState->cursor_pos == max) {
+         sMenuState->cursor_pos = 0;
+      } else {
+         --sMenuState->cursor_pos;
+      }
+   }
+   if (sMenuState->cursor_is_in_results) {
+      SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
+   } else {
+      if (sMenuState->cursor_pos == LISTING_POS_SWITCH_FOCUS_TO_RESULTS) {
+         SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
+      } else {
+         SetEnumPickerVisible(&sMenuState->widgets.enum_picker, TRUE);
+      }
+   }
+   PaintCursor();
+   PlaySE(SE_SELECT);
+}
+
+static void SetFocusedPane(enum PaneEnum pane) {
+   sMenuState->cursor_pos = 0;
+   if (pane == PANE_LISTING) {
+      sMenuState->cursor_is_in_results = TRUE;
+      SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
+   } else {
+      sMenuState->cursor_is_in_results = FALSE;
+      SetEnumPickerVisible(&sMenuState->widgets.enum_picker, TRUE);
+      SetEnumPickerRow(&sMenuState->widgets.enum_picker, 0);
+   }
+   PaintCursor();
+   //
+   // TODO: indicate where focus is at (darken the unfocused pane?)
+   //
+}
+
+static bool8 FilterSpecies(PokemonSpeciesID species) {
+   if (species == SPECIES_NONE) {
+      return (sMenuState->params.zero_type != PICKSPECIESMENU_ZEROTYPE_DISALLOWED);
+   }
+   if (species >= SPECIES_OLD_UNOWN_B && species <= SPECIES_OLD_UNOWN_Z) {
+      return FALSE;
+   }
+   if (sMenuState->filter_params.first_letter) {
+      u8 ch = CHAR_A + sMenuState->filter_params.first_letter;
+      if (gSpeciesNames[species][0] != ch) {
+         return FALSE;
+      }
+   }
+   {  // Types
+      for(int i = 0; i < 2; ++i) {
+         u8 type = sMenuState->filter_params.types[i];
+         if (type == TYPE_CRITERION_ANY) {
+            continue;
+         }
+         if (type == TYPE_CRITERION_NONE) {
+            if (gSpeciesInfo[species].types[i] != TYPE_NONE)
+               return FALSE;
+         } else {
+            if (gSpeciesInfo[species].types[i] != type)
+               return FALSE;
+         }
+      }
+   }
+   {  // Generation
+      u8 criterion = sMenuState->filter_params.generation;
+      switch (criterion) {
+         case GENERATION_KANTO:
+            if (species > SPECIES_MEW)
+               return FALSE;
+            break;
+         case GENERATION_JOHTO:
+            if (species <= SPECIES_MEW)
+               return FALSE;
+            if (species > SPECIES_CELEBI)
+               return FALSE;
+            break;
+         case GENERATION_HOENN:
+            if (species <= SPECIES_TREECKO)
+               return FALSE;
+            if (species > SPECIES_CHIMECHO)
+               return FALSE;
+            break;
+      }
+   }
+   return TRUE;
+}
+static bool8 SortSpecies(PokemonSpeciesID a, PokemonSpeciesID b) {
+   if (a == 0) {
+      return TRUE;
+   } else if (b == 0) {
+      return FALSE;
+   }
+   u8 x = gSpeciesNames[a][0];
+   u8 y = gSpeciesNames[b][0];
+   return x < y;
+}
+static void OnFilterChanged(void) {
+   AllocFilteredSpeciesList(
+      &sMenuState->listing.contents,
+      FilterSpecies
+   );
+   SortSpeciesList(
+      &sMenuState->listing.contents,
+      SortSpecies
+   );
+   PaintListingContents();
+}
