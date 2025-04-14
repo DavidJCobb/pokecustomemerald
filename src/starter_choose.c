@@ -356,7 +356,7 @@ PokemonSpeciesID GetStarterPokemon(u16 chosenStarterId)
     if (chosenStarterId > STARTER_MON_COUNT)
         chosenStarterId = 0;
      
-    u16 species = gCustomGameOptions.starters[chosenStarterId];
+    u16 species = gCustomGameOptions.starters.species[chosenStarterId];
     if (species != 0) {
         return species;
     }

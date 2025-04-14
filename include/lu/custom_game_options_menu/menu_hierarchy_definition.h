@@ -283,32 +283,73 @@ static const struct CGOptionMenuItem sOverworldPoisonOptions[] = {
    END_OF_LIST_SENTINEL,
 };
 
-static const struct CGOptionMenuItem sStarterSpeciesOptions[] = {
-   {  // Interval
-      .name        = gText_lu_CGOptionName_StarterSpecies_0,
-      .help_string = gText_lu_CGOptionHelp_StarterSpecies_0,
+static const u8* const sOption_Starters_Gender_ValueNameStrings[] = {
+   gText_lu_CGOptionValues_common_Random,
+   gText_lu_CGOptionValueName_Starters_Gender_Male,
+   gText_lu_CGOptionValueName_Starters_Gender_Female,
+};   
+static const u8* const sOption_Starters_Gender_ValueHelpStrings[] = {
+   NULL,
+   NULL,
+};
+//
+static const struct CGOptionMenuItem sStarterPokemonOptions[] = {
+   {  // Species
+      .name        = gText_lu_CGOptionName_Starters_Species_0,
+      .help_string = gText_lu_CGOptionHelp_Starters_Species_0,
       .flags       = (1 << MENUITEM_FLAG_0_MEANS_DEFAULT) | (1 << MENUITEM_FLAG_POKEMON_SPECIES_ALLOW_0),
       .value_type = VALUE_TYPE_POKEMON_SPECIES,
       .target = {
-         .as_u16 = &sTempOptions.starters[0]
+         .as_u16 = &sTempOptions.starters.species[0]
       }
    },
-   {  // Interval
-      .name        = gText_lu_CGOptionName_StarterSpecies_1,
-      .help_string = gText_lu_CGOptionHelp_StarterSpecies_1,
+   {  // Species
+      .name        = gText_lu_CGOptionName_Starters_Species_1,
+      .help_string = gText_lu_CGOptionHelp_Starters_Species_1,
       .flags       = (1 << MENUITEM_FLAG_0_MEANS_DEFAULT) | (1 << MENUITEM_FLAG_POKEMON_SPECIES_ALLOW_0),
       .value_type = VALUE_TYPE_POKEMON_SPECIES,
       .target = {
-         .as_u16 = &sTempOptions.starters[1]
+         .as_u16 = &sTempOptions.starters.species[1]
       }
    },
-   {  // Interval
-      .name        = gText_lu_CGOptionName_StarterSpecies_2,
-      .help_string = gText_lu_CGOptionHelp_StarterSpecies_2,
+   {  // Species
+      .name        = gText_lu_CGOptionName_Starters_Species_2,
+      .help_string = gText_lu_CGOptionHelp_Starters_Species_2,
       .flags       = (1 << MENUITEM_FLAG_0_MEANS_DEFAULT) | (1 << MENUITEM_FLAG_POKEMON_SPECIES_ALLOW_0),
       .value_type = VALUE_TYPE_POKEMON_SPECIES,
       .target = {
-         .as_u16 = &sTempOptions.starters[2]
+         .as_u16 = &sTempOptions.starters.species[2]
+      }
+   },
+   {  // Gender
+      .name        = gText_lu_CGOptionName_Starters_Gender,
+      .help_string = gText_lu_CGOptionHelp_Starters_Gender,
+      .flags       = (1 << MENUITEM_FLAG_IS_ENUM),
+      .value_type = VALUE_TYPE_U8,
+      .values = {
+         .named = {
+            .name_strings = sOption_Starters_Gender_ValueNameStrings,
+            .help_strings = sOption_Starters_Gender_ValueHelpStrings,
+            .count = 3,
+         }
+      },
+      .target = {
+         .as_u8 = &sTempOptions.starters.forceGender
+      }
+   },
+   {  // Level
+      .name        = gText_lu_CGOptionName_Starters_Level,
+      .help_string = gText_lu_CGOptionHelp_Starters_Level,
+      .flags       = 0,
+      .value_type = VALUE_TYPE_U8,
+      .values = {
+         .integral = {
+            .min = 1,
+            .max = 100,
+         }
+      },
+      .target = {
+         .as_u8 = &sTempOptions.starters.level
       }
    },
    END_OF_LIST_SENTINEL,
@@ -370,12 +411,12 @@ static const struct CGOptionMenuItem sTopLevelMenu[] = {
       }
    },
    {  // SUBMENU: Starter species
-      .name        = gText_lu_CGOptionCategoryName_StarterSpecies,
-      .help_string = gText_lu_CGOptionCategoryHelp_StarterSpecies,
+      .name        = gText_lu_CGOptionCategoryName_StarterPokemon,
+      .help_string = gText_lu_CGOptionCategoryHelp_StarterPokemon,
       .flags       = (1 << MENUITEM_FLAG_IS_SUBMENU),
       .value_type = VALUE_TYPE_NONE,
       .target = {
-         .submenu = sStarterSpeciesOptions
+         .submenu = sStarterPokemonOptions
       }
    },
    END_OF_LIST_SENTINEL,

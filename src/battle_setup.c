@@ -47,6 +47,8 @@
 #include "constants/trainer_hill.h"
 #include "constants/weather.h"
 
+#include "lu/custom_game_option_handlers/starter.h" // GenerateAndGivePlayerStarter
+
 enum {
     TRANSITION_TYPE_NORMAL,
     TRANSITION_TYPE_CAVE,
@@ -919,7 +921,7 @@ static void CB2_GiveStarter(void)
 
     *GetVarPointer(VAR_STARTER_MON) = gSpecialVar_Result;
     starterMon = GetStarterPokemon(gSpecialVar_Result);
-    ScriptGiveMon(starterMon, 5, ITEM_NONE, 0, 0, 0);
+    GenerateAndGivePlayerStarter(starterMon);
     ResetTasks();
     PlayBattleBGM();
     SetMainCallback2(CB2_StartFirstBattle);

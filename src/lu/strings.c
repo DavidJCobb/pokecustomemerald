@@ -113,15 +113,22 @@ const u8 gText_lu_CGOptionHelp_OverworldPoison_Interval[] = _("Poisoned Pokémon
 const u8 gText_lu_CGOptionName_OverworldPoison_Damage[] = _("Damage dealt");
 const u8 gText_lu_CGOptionHelp_OverworldPoison_Damage[] = _("Poisoned Pokémon take damage after every few steps you take. You can change the amount of damage dealt at one time.\n\nDefault: Pokémon take 1 HP of damage at a time.");
 
-const u8 gText_lu_CGOptionCategoryName_StarterSpecies[] = _("Starter species");
-const u8 gText_lu_CGOptionCategoryHelp_StarterSpecies[] = _("Override the three starter Pokémon species that you can choose between at the beginning of the game.");
+const u8 gText_lu_CGOptionCategoryName_StarterPokemon[] = _("Starter Pokémon");
+const u8 gText_lu_CGOptionCategoryHelp_StarterPokemon[] = _("Modify the three starter Pokémon that the player can choose from at the beginning of the game.");
 //
-const u8 gText_lu_CGOptionName_StarterSpecies_0[] = _("Starter Species 1");
-const u8 gText_lu_CGOptionHelp_StarterSpecies_0[] = _("Override the lefthand starter option.\n\nDefault: Treecko");
-const u8 gText_lu_CGOptionName_StarterSpecies_1[] = _("Starter Species 2");
-const u8 gText_lu_CGOptionHelp_StarterSpecies_1[] = _("Override the middle starter option.\n\nDefault: Torchic");
-const u8 gText_lu_CGOptionName_StarterSpecies_2[] = _("Starter Species 3");
-const u8 gText_lu_CGOptionHelp_StarterSpecies_2[] = _("Override the righthand starter option.\n\nDefault: Mudkip");
+const u8 gText_lu_CGOptionName_Starters_Species_0[] = _("Starter Species 1");
+const u8 gText_lu_CGOptionHelp_Starters_Species_0[] = _("Override the lefthand starter option.\n\nDefault: Treecko");
+const u8 gText_lu_CGOptionName_Starters_Species_1[] = _("Starter Species 2");
+const u8 gText_lu_CGOptionHelp_Starters_Species_1[] = _("Override the middle starter option.\n\nDefault: Torchic");
+const u8 gText_lu_CGOptionName_Starters_Species_2[] = _("Starter Species 3");
+const u8 gText_lu_CGOptionHelp_Starters_Species_2[] = _("Override the righthand starter option.\n\nDefault: Mudkip");
+const u8 gText_lu_CGOptionName_Starters_Gender[] = _("Player starter gender");
+const u8 gText_lu_CGOptionHelp_Starters_Gender[] = _("Change the gender of the player's starter. This option will do nothing if the starter species chosen by the player is always gender-unknown or always a particular gender.\n\nDefault: Random");
+const u8 gText_lu_CGOptionName_Starters_Level[] = _("Player starter level");
+const u8 gText_lu_CGOptionHelp_Starters_Level[] = _("Change the level of the player's starter.\n\nDefault: 5");
+//
+const u8 gText_lu_CGOptionValueName_Starters_Gender_Male[] = _("Male");
+const u8 gText_lu_CGOptionValueName_Starters_Gender_Female[] = _("Female");
 
 const u8 gText_lu_CGOptionValues_common_Default[] = _("Default");
 const u8 gText_lu_CGOptionValues_common_Disabled[] = _("Disabled");

@@ -13,6 +13,12 @@ enum {
 };
 LU_BP_MINMAX(0, 4) typedef u8 CustomGameItemUseInBattlesMode;
 
+enum {
+   CustomGame_PlayerStarterForceGender_Random,
+   CustomGame_PlayerStarterForceGender_Male,
+   CustomGame_PlayerStarterForceGender_Female,
+};
+
 LU_BP_MINMAX(0, 5000) typedef u16 CustomGameScalePct; // 100 = 100%
 
 struct CustomGameScaleAndClamp {
@@ -66,7 +72,11 @@ extern struct CustomGameOptions {
       LU_BP_MINMAX(1, 2000) u16 damage;
    } overworld_poison;
    
-   LU_BP_DEFAULT(0) PokemonSpeciesID starters[3];
+   struct {
+      LU_BP_DEFAULT(0) PokemonSpeciesID species[3];
+      LU_BP_DEFAULT(0) u8 forceGender;
+      LU_BP_DEFAULT(5) PokemonLevel level;
+   } starters;
    
 } gCustomGameOptions;
 

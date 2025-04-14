@@ -142,9 +142,9 @@
          </counts>
       </category>
       <category name="pokemon-level">
-         <bitcounts total-unpacked="5264" total-packed="4606" />
-         <counts total="658">
-            <in-sector index="0" count="27" />
+         <bitcounts total-unpacked="5272" total-packed="4613" />
+         <counts total="659">
+            <in-sector index="0" count="28" />
             <in-sector index="1" count="12" />
             <in-sector index="2" count="78" />
             <in-sector index="3" count="121" />
@@ -157,6 +157,7 @@
             <in-sector index="11" count="54" />
             <in-sector index="12" count="42" />
             <in-top-level-value name="gSaveBlock2Ptr" count="27" />
+            <in-top-level-value name="gCustomGameOptions" count="1" />
             <in-top-level-value name="gSaveBlock1Ptr" count="211" />
             <in-top-level-value name="gPokemonStoragePtr" count="420" />
          </counts>
@@ -1099,7 +1100,7 @@
       </struct>
       <struct tag="CustomGameOptions" c-alignment="4" c-sizeof="48">
          <stats>
-            <bitcounts total-unpacked="384" total-packed="208" />
+            <bitcounts total-unpacked="384" total-packed="223" />
             <counts total="1">
                <in-sector index="0" count="1" />
                <in-top-level-value name="gCustomGameOptions" count="1" />
@@ -1142,9 +1143,15 @@
                   <integer name="damage" type="u16" bitcount="11" min="1" max="2000" />
                </members>
             </struct>
-            <integer name="starters" type="PokemonSpeciesID[3]" default-value="0">
-               <array-rank extent="3" />
-            </integer>
+            <struct name="starters">
+               <members>
+                  <integer name="species" type="PokemonSpeciesID[3]" default-value="0">
+                     <array-rank extent="3" />
+                  </integer>
+                  <integer name="forceGender" type="u8" default-value="0" />
+                  <integer name="level" type="PokemonLevel" default-value="5" />
+               </members>
+            </struct>
          </members>
          <instructions>
             <boolean value="start_with_running_shoes" type="bool8" />
@@ -1167,9 +1174,11 @@
             <boolean value="modern_calc_player_money_loss_on_defeat" type="bool8" />
             <integer value="overworld_poison.interval" type="u8" bitcount="6" min="0" max="60" />
             <integer value="overworld_poison.damage" type="u16" bitcount="11" min="1" max="2000" />
-            <loop array="starters" start="0" count="3" counter-var="__a">
-               <integer value="starters[__a]" type="PokemonSpeciesID" bitcount="11" min="0" max="2047" default-value="0" />
+            <loop array="starters.species" start="0" count="3" counter-var="__a">
+               <integer value="starters.species[__a]" type="PokemonSpeciesID" bitcount="11" min="0" max="2047" default-value="0" />
             </loop>
+            <integer value="starters.forceGender" type="u8" bitcount="8" default-value="0" />
+            <integer value="starters.level" type="PokemonLevel" bitcount="7" min="0" max="100" default-value="5" />
          </instructions>
       </struct>
       <struct tag="CustomGameSavestate" c-alignment="4">
@@ -4106,7 +4115,7 @@
    <sectors>
       <sector>
          <stats>
-            <bitcounts total-packed="27221" />
+            <bitcounts total-packed="27236" />
          </stats>
          <instructions>
             <struct value="(*gSaveBlock2Ptr)" type="SaveBlock2" />

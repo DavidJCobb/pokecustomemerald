@@ -72,6 +72,12 @@ void ResetCustomGameOptions(void) {
    
    gCustomGameOptions.overworld_poison.interval = 4; // vanilla value; formerly hardcoded
    gCustomGameOptions.overworld_poison.damage   = 1; // vanilla value; formerly hardcoded
+   
+   gCustomGameOptions.starters.species[0] = 0;
+   gCustomGameOptions.starters.species[1] = 0;
+   gCustomGameOptions.starters.species[2] = 0;
+   gCustomGameOptions.starters.forceGender = CustomGame_PlayerStarterForceGender_Random;
+   gCustomGameOptions.starters.level = 5;
 }
 
 void ResetCustomGameSavestate(void) {
