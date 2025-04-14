@@ -32,6 +32,8 @@
 #include "lu/ui_helpers.h"
 #include "lu/vram_layout_helpers.h"
 
+#include "lu/pick_species_menu.h"
+
 /*//
 
    The current menu design is as follows:
@@ -106,6 +108,14 @@ enum {
    WIN_COUNT
 };
 
+enum {
+   MENUVIEW_OPENING,
+   MENUVIEW_OPEN,
+   MENUVIEW_IN_HELP,
+   MENUVIEW_IN_SUBSCREEN,
+   MENUVIEW_RETURNING_FROM_SUBSCREEN,
+};
+
 #define SOUND_EFFECT_MENU_SCROLL   SE_SELECT
 #define SOUND_EFFECT_SUBMENU_ENTER SE_SELECT
 #define SOUND_EFFECT_SUBMENU_EXIT  SE_SELECT
@@ -129,8 +139,9 @@ struct MenuStackFrame {
 
 struct MenuState {
    struct MenuStackFrame breadcrumbs[MAX_MENU_TRAVERSAL_DEPTH];
-   u8    cursor_pos;
-   bool8 is_in_help;
+   u8 task_id;
+   u8 cursor_pos;
+   u8 menu_view;
    struct {
       struct LuEnumPicker   enum_picker;
       struct LuKeybindStrip keybind_strip;
@@ -163,11 +174,17 @@ static void TryMoveMenuCursor(s8 by);
 // Task and drawing stuff:
 //
 
+static void TearDownVisuals(void);
+
 static void Task_CGOptionMenuFadeIn(u8 taskId);
 static void Task_CGOptionMenuProcessInput(u8 taskId);
+static void Task_CGOptionMenuWaitForSubscreen(u8 taskId);
 static void Task_CGOptionMenuSave(u8 taskId);
 static void Task_CGOptionMenuFadeOut(u8 taskId);
 static void HighlightCGOptionMenuItem();
+
+static void OpenSubscreen_PickSpeciesMenu(void);
+static void OnSubscreenClosed_PickSpeciesMenu(PokemonSpeciesID);
 
 static void TryDisplayHelp(const struct CGOptionMenuItem* item);
 
@@ -401,7 +418,7 @@ static void ResetMenuState(void) {
       sMenuState->breadcrumbs[i].menu_items = NULL;
    }
    sMenuState->cursor_pos = 0;
-   sMenuState->is_in_help = FALSE;
+   sMenuState->menu_view  = MENUVIEW_OPEN;
 }
 
 static const struct CGOptionMenuItem* GetCurrentMenuItemList(void) {
@@ -528,15 +545,10 @@ void CB2_InitCustomGameOptionMenu(void) {
          gMain.state++;
          break;
        case 2:
-         //
-         // Reset visual effect states and sprites, and forcibly terminate all running tasks. 
-         // Running tasks won't be given an opportunity to run any teardown or cleanup code, 
-         // e.g. freeing any memory allocations they've made, so it's important that the 
-         // Custom Game Options window only be run under controlled conditions. (The Options 
-         // window and some other Game Freak UI does this, too.)
-         //
          LuUI_ResetSpritesAndEffects();
-         ResetTasks();
+         if (sMenuState == NULL) {
+            ResetTasks();
+         }
          
          VRAM_BG_LoadTiles(VRAMTileLayout, blank_tile, BACKGROUND_LAYER_OPTIONS, sBlankBGTile);
          VRAM_BG_LoadTiles(VRAMTileLayout, selection_cursor_tiles, BACKGROUND_LAYER_OPTIONS, sMenuCursorBGTiles);
@@ -580,25 +592,29 @@ void CB2_InitCustomGameOptionMenu(void) {
          break;
        case 10:
          {
-            u8 taskId = CreateTask(Task_CGOptionMenuFadeIn, 0);
-            {
-               sMenuState = AllocZeroed(sizeof(struct MenuState));
-               ResetMenuState();
+            if (sMenuState == NULL) {
+               u8 taskId = CreateTask(Task_CGOptionMenuFadeIn, 0);
                {
-                  InitEnumPicker(&sMenuState->widgets.enum_picker, &sEnumPickerInit);
+                  sMenuState = AllocZeroed(sizeof(struct MenuState));
+                  sMenuState->task_id   = taskId;
+                  sMenuState->menu_view = MENUVIEW_OPENING;
+                  ResetMenuState();
                }
-               {
-                  InitKeybindStrip(&sMenuState->widgets.keybind_strip, &sKeybindStripInit);
-                  sMenuState->widgets.keybind_strip.entries     = sKeybindStripEntries;
-                  sMenuState->widgets.keybind_strip.entry_count = ARRAY_COUNT(sKeybindStripEntries);
-               }
-               {
-                  struct LuScrollbar* scrollbar = &sMenuState->widgets.scrollbar;
-                  InitScrollbarV(&sMenuState->widgets.scrollbar, &sScrollbarInit);
-                  scrollbar->max_visible_items = MAX_MENU_ITEMS_VISIBLE_AT_ONCE;
-               }
+               sTempOptions = gCustomGameOptions;
             }
-            sTempOptions = gCustomGameOptions;
+            {
+               InitEnumPicker(&sMenuState->widgets.enum_picker, &sEnumPickerInit);
+            }
+            {
+               InitKeybindStrip(&sMenuState->widgets.keybind_strip, &sKeybindStripInit);
+               sMenuState->widgets.keybind_strip.entries     = sKeybindStripEntries;
+               sMenuState->widgets.keybind_strip.entry_count = ARRAY_COUNT(sKeybindStripEntries);
+            }
+            {
+               struct LuScrollbar* scrollbar = &sMenuState->widgets.scrollbar;
+               InitScrollbarV(&sMenuState->widgets.scrollbar, &sScrollbarInit);
+               scrollbar->max_visible_items = MAX_MENU_ITEMS_VISIBLE_AT_ONCE;
+            }
             UpdateDisplayedMenuName();
             UpdateDisplayedMenuItems();
             UpdateDisplayedControls();
@@ -612,8 +628,18 @@ void CB2_InitCustomGameOptionMenu(void) {
          BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_BLACK);
          SetVBlankCallback(VBlankCB);
          SetMainCallback2(MainCB2);
+         if (sMenuState->menu_view == MENUVIEW_IN_SUBSCREEN) {
+            sMenuState->menu_view = MENUVIEW_RETURNING_FROM_SUBSCREEN;
+         }
          return;
    }
+}
+
+static void TearDownVisuals(void) {
+   DestroyEnumPicker(&sMenuState->widgets.enum_picker);
+   DestroyKeybindStrip(&sMenuState->widgets.keybind_strip);
+   DestroyScrollbarV(&sMenuState->widgets.scrollbar);
+   FreeAllWindowBuffers();
 }
 
 static void Task_CGOptionMenuFadeIn(u8 taskId) {
@@ -622,9 +648,9 @@ static void Task_CGOptionMenuFadeIn(u8 taskId) {
 }
 
 static void Task_CGOptionMenuProcessInput(u8 taskId) {
-   if (sMenuState->is_in_help) {
+   if (sMenuState->menu_view == MENUVIEW_IN_HELP) {
       if (JOY_NEW(B_BUTTON)) {
-         sMenuState->is_in_help = FALSE;
+         sMenuState->menu_view = MENUVIEW_OPEN;
          HideBg(BACKGROUND_LAYER_HELP);
          UpdateDisplayedControls();
          PlaySE(SOUND_EFFECT_HELP_EXIT);
@@ -659,9 +685,11 @@ static void Task_CGOptionMenuProcessInput(u8 taskId) {
       // TODO: For integral options, pop a number entry box (i.e. let the user type in a number).
       //
       
-      //
-      // TODO: For Pokemon species, show a special screen to select them.
-      //
+      if (item->value_type == VALUE_TYPE_POKEMON_SPECIES) {
+         OpenSubscreen_PickSpeciesMenu();
+         return;
+      }
+      
       return;
    }
    if (JOY_NEW(B_BUTTON)) {
@@ -678,19 +706,18 @@ static void Task_CGOptionMenuProcessInput(u8 taskId) {
    }
    
    // Up/Down: Move cursor, scrolling if necessary
-   if (JOY_NEW(DPAD_UP)) {
-      TryMoveMenuCursor(-1);
-      UpdateDisplayedMenuItems();
-      UpdateDisplayedControls();
-      HighlightCGOptionMenuItem();
-      return;
-   }
-   if (JOY_NEW(DPAD_DOWN)) {
-      TryMoveMenuCursor(1);
-      UpdateDisplayedMenuItems();
-      UpdateDisplayedControls();
-      HighlightCGOptionMenuItem();
-      return;
+   {
+      s8 by = JOY_NEW(DPAD_UP) ? -1 : 0;
+      if (!by) {
+         by = JOY_NEW(DPAD_DOWN) ? 1 : 0;
+      }
+      if (by) {
+         TryMoveMenuCursor(by);
+         UpdateDisplayedMenuItems();
+         UpdateDisplayedControls();
+         HighlightCGOptionMenuItem();
+         return;
+      }
    }
    
    // Left/Right: Cycle option value
@@ -720,6 +747,19 @@ static void Task_CGOptionMenuProcessInput(u8 taskId) {
    }
 }
 
+static void Task_CGOptionMenuWaitForSubscreen(u8 taskId) {
+   switch (sMenuState->menu_view) {
+      case MENUVIEW_IN_SUBSCREEN:
+         break;
+      case MENUVIEW_RETURNING_FROM_SUBSCREEN:
+         if (!gPaletteFade.active) {
+            sMenuState->menu_view = MENUVIEW_OPEN;
+            gTasks[taskId].func = Task_CGOptionMenuProcessInput;
+         }
+         break;
+   }
+}
+
 static void Task_CGOptionMenuSave(u8 taskId) {
    gCustomGameOptions = sTempOptions;
 
@@ -730,16 +770,58 @@ static void Task_CGOptionMenuSave(u8 taskId) {
 static void Task_CGOptionMenuFadeOut(u8 taskId) {
    if (!gPaletteFade.active) {
       DestroyTask(taskId);
-      DestroyEnumPicker(&sMenuState->widgets.enum_picker);
-      DestroyKeybindStrip(&sMenuState->widgets.keybind_strip);
-      DestroyScrollbarV(&sMenuState->widgets.scrollbar);
-      FreeAllWindowBuffers();
+      TearDownVisuals();
       Free(sMenuState);
       sMenuState = NULL;
       SetMainCallback2(gMain.savedCallback);
    }
 }
 
+static void Task_CGOptionMenuFadeOutToSubscreen_PickSpeciesMenu(u8 taskId) {
+   if (gPaletteFade.active) {
+      return;
+   }
+   TearDownVisuals();
+   
+   gTasks[taskId].func = Task_CGOptionMenuWaitForSubscreen;
+   
+   struct PickSpeciesMenuParams params = {
+      .callback    = OnSubscreenClosed_PickSpeciesMenu,
+      .header_text = NULL, // TODO: current option name
+      .zero_type   = PICKSPECIESMENU_ZEROTYPE_DEFAULT // TODO
+   };
+   ShowPickSpeciesMenu(&params);
+}
+static void OpenSubscreen_PickSpeciesMenu(void) {
+   sMenuState->menu_view = MENUVIEW_IN_SUBSCREEN;
+   BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+   gTasks[sMenuState->task_id].func = Task_CGOptionMenuFadeOutToSubscreen_PickSpeciesMenu;
+}
+static void OnSubscreenClosed_PickSpeciesMenu(PokemonSpeciesID sel) {
+   SetMainCallback2(CB2_InitCustomGameOptionMenu);
+   //
+   // Save the user's new selection.
+   //
+   if (sel == PICKSPECIESMENU_RESULT_CANCELED) {
+      return;
+   }
+   const struct CGOptionMenuItem* item;
+   const struct CGOptionMenuItem* items = GetCurrentMenuItemList();
+   if (items) {
+      item = &items[sMenuState->cursor_pos];
+      if (item) {
+         if (item->value_type != VALUE_TYPE_POKEMON_SPECIES) {
+            return;
+         }
+         if (sel == 0) {
+            if ((item->flags & (1 << MENUITEM_FLAG_POKEMON_SPECIES_ALLOW_0)) == 0) {
+               return;
+            }
+         }
+         SetOptionValue(item, sel);
+      }
+   }
+}
 
 static void TryDisplayHelp(const struct CGOptionMenuItem* item) {
    const u8* text = NULL;
@@ -752,7 +834,7 @@ static void TryDisplayHelp(const struct CGOptionMenuItem* item) {
       return;
    }
    
-   sMenuState->is_in_help = TRUE;
+   sMenuState->menu_view = MENUVIEW_IN_HELP;
    
    FillWindowPixelBuffer(WIN_HELP, PIXEL_FILL(1));
    
@@ -767,7 +849,6 @@ static void TryDisplayHelp(const struct CGOptionMenuItem* item) {
    UpdateDisplayedControls();
    ShowBg(BACKGROUND_LAYER_HELP);
 }
-
 
 static void HighlightCGOptionMenuItem() {
    const struct CGOptionMenuItem* item;
@@ -820,7 +901,10 @@ static void HighlightCGOptionMenuItem() {
       SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
       return;
    }
-   if ((item->flags & (1 << MENUITEM_FLAG_IS_SUBMENU)) == 0) {
+   if (
+      (item->flags & (1 << MENUITEM_FLAG_IS_SUBMENU)) == 0 &&
+      item->value_type != VALUE_TYPE_POKEMON_SPECIES
+   ) {
       SetEnumPickerVisible(&sMenuState->widgets.enum_picker, TRUE);
    } else {
       SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
@@ -1021,7 +1105,7 @@ static void RepaintScrollbar(void) {
 }
 static void UpdateDisplayedControls(void) {
    u8 enabled_entries = 0;
-   if (sMenuState->is_in_help) {
+   if (sMenuState->menu_view == MENUVIEW_IN_HELP) {
       enabled_entries |= 1 << 3; // Return to Menu
    } else {
       enabled_entries |= 1 << 0; // Pick
@@ -1035,7 +1119,10 @@ static void UpdateDisplayedControls(void) {
          item = &items[sMenuState->cursor_pos];
       
       if (item) {
-         if ((item->flags & (1 << MENUITEM_FLAG_IS_SUBMENU)) != 0) {
+         if (
+            (item->flags & (1 << MENUITEM_FLAG_IS_SUBMENU)) != 0 ||
+            item->value_type == VALUE_TYPE_POKEMON_SPECIES
+         ) {
             enabled_entries |= 1 << 2; // Enter Submenu
          } else {
             enabled_entries |= 1 << 1; // Change

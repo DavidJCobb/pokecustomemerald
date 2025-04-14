@@ -24,6 +24,9 @@
 #include "constants/songs.h"
 #include "constants/rgb.h"
 
+#include "lu/game_typedefs.h"
+#include "lu/custom_game_options.h"
+
 #define STARTER_MON_COUNT   3
 
 // Position of the sprite of the selected starter Pokémon
@@ -110,7 +113,7 @@ static const u8 sStarterLabelCoords[STARTER_MON_COUNT][2] =
     {8, 4},
 };
 
-static const u16 sStarterMon[STARTER_MON_COUNT] =
+static const PokemonSpeciesID sStarterMon[STARTER_MON_COUNT] =
 {
     SPECIES_TREECKO,
     SPECIES_TORCHIC,
@@ -348,10 +351,16 @@ static const struct SpriteTemplate sSpriteTemplate_StarterCircle =
 };
 
 // .text
-u16 GetStarterPokemon(u16 chosenStarterId)
+PokemonSpeciesID GetStarterPokemon(u16 chosenStarterId)
 {
     if (chosenStarterId > STARTER_MON_COUNT)
         chosenStarterId = 0;
+     
+    u16 species = gCustomGameOptions.starters[chosenStarterId];
+    if (species != 0) {
+        return species;
+    }
+     
     return sStarterMon[chosenStarterId];
 }
 

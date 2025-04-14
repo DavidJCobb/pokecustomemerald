@@ -103,6 +103,16 @@ extern const u8 gText_lu_CGOptionHelp_OverworldPoison_Interval[];
 extern const u8 gText_lu_CGOptionName_OverworldPoison_Damage[];
 extern const u8 gText_lu_CGOptionHelp_OverworldPoison_Damage[];
 
+extern const u8 gText_lu_CGOptionCategoryName_StarterSpecies[];
+extern const u8 gText_lu_CGOptionCategoryHelp_StarterSpecies[];
+
+extern const u8 gText_lu_CGOptionName_StarterSpecies_0[];
+extern const u8 gText_lu_CGOptionHelp_StarterSpecies_0[];
+extern const u8 gText_lu_CGOptionName_StarterSpecies_1[];
+extern const u8 gText_lu_CGOptionHelp_StarterSpecies_1[];
+extern const u8 gText_lu_CGOptionName_StarterSpecies_2[];
+extern const u8 gText_lu_CGOptionHelp_StarterSpecies_2[];
+
 extern const u8 gText_lu_CGOptionValues_common_Default[];
 extern const u8 gText_lu_CGOptionValues_common_Disabled[];
 extern const u8 gText_lu_CGOptionValues_common_Enabled[];

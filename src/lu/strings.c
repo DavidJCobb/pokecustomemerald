@@ -113,6 +113,16 @@ const u8 gText_lu_CGOptionHelp_OverworldPoison_Interval[] = _("Poisoned Pokémon
 const u8 gText_lu_CGOptionName_OverworldPoison_Damage[] = _("Damage dealt");
 const u8 gText_lu_CGOptionHelp_OverworldPoison_Damage[] = _("Poisoned Pokémon take damage after every few steps you take. You can change the amount of damage dealt at one time.\n\nDefault: Pokémon take 1 HP of damage at a time.");
 
+const u8 gText_lu_CGOptionCategoryName_StarterSpecies[] = _("Starter species");
+const u8 gText_lu_CGOptionCategoryHelp_StarterSpecies[] = _("Override the three starter Pokémon species that you can choose between at the beginning of the game.");
+//
+const u8 gText_lu_CGOptionName_StarterSpecies_0[] = _("Starter Species 1");
+const u8 gText_lu_CGOptionHelp_StarterSpecies_0[] = _("Override the lefthand starter option.\n\nDefault: Treecko");
+const u8 gText_lu_CGOptionName_StarterSpecies_1[] = _("Starter Species 2");
+const u8 gText_lu_CGOptionHelp_StarterSpecies_1[] = _("Override the middle starter option.\n\nDefault: Torchic");
+const u8 gText_lu_CGOptionName_StarterSpecies_2[] = _("Starter Species 3");
+const u8 gText_lu_CGOptionHelp_StarterSpecies_2[] = _("Override the righthand starter option.\n\nDefault: Mudkip");
+
 const u8 gText_lu_CGOptionValues_common_Default[] = _("Default");
 const u8 gText_lu_CGOptionValues_common_Disabled[] = _("Disabled");
 const u8 gText_lu_CGOptionValues_common_Enabled[]  = _("Enabled");

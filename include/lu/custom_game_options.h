@@ -66,6 +66,8 @@ extern struct CustomGameOptions {
       LU_BP_MINMAX(1, 2000) u16 damage;
    } overworld_poison;
    
+   LU_BP_DEFAULT(0) PokemonSpeciesID starters[3];
+   
 } gCustomGameOptions;
 
 // Track in-game progress related to custom game options. Intended to be serialized 

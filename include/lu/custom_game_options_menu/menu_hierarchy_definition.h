@@ -283,6 +283,37 @@ static const struct CGOptionMenuItem sOverworldPoisonOptions[] = {
    END_OF_LIST_SENTINEL,
 };
 
+static const struct CGOptionMenuItem sStarterSpeciesOptions[] = {
+   {  // Interval
+      .name        = gText_lu_CGOptionName_StarterSpecies_0,
+      .help_string = gText_lu_CGOptionHelp_StarterSpecies_0,
+      .flags       = (1 << MENUITEM_FLAG_0_MEANS_DEFAULT) | (1 << MENUITEM_FLAG_POKEMON_SPECIES_ALLOW_0),
+      .value_type = VALUE_TYPE_POKEMON_SPECIES,
+      .target = {
+         .as_u16 = &sTempOptions.starters[0]
+      }
+   },
+   {  // Interval
+      .name        = gText_lu_CGOptionName_StarterSpecies_1,
+      .help_string = gText_lu_CGOptionHelp_StarterSpecies_1,
+      .flags       = (1 << MENUITEM_FLAG_0_MEANS_DEFAULT) | (1 << MENUITEM_FLAG_POKEMON_SPECIES_ALLOW_0),
+      .value_type = VALUE_TYPE_POKEMON_SPECIES,
+      .target = {
+         .as_u16 = &sTempOptions.starters[1]
+      }
+   },
+   {  // Interval
+      .name        = gText_lu_CGOptionName_StarterSpecies_2,
+      .help_string = gText_lu_CGOptionHelp_StarterSpecies_2,
+      .flags       = (1 << MENUITEM_FLAG_0_MEANS_DEFAULT) | (1 << MENUITEM_FLAG_POKEMON_SPECIES_ALLOW_0),
+      .value_type = VALUE_TYPE_POKEMON_SPECIES,
+      .target = {
+         .as_u16 = &sTempOptions.starters[2]
+      }
+   },
+   END_OF_LIST_SENTINEL,
+};
+
 static const struct CGOptionMenuItem sTopLevelMenu[] = {
    {  // Start with running shoes
       .name        = gText_lu_CGOptionName_StartWithRunningShoes,
@@ -336,6 +367,15 @@ static const struct CGOptionMenuItem sTopLevelMenu[] = {
       .value_type = VALUE_TYPE_NONE,
       .target = {
          .submenu = sOverworldPoisonOptions
+      }
+   },
+   {  // SUBMENU: Starter species
+      .name        = gText_lu_CGOptionCategoryName_StarterSpecies,
+      .help_string = gText_lu_CGOptionCategoryHelp_StarterSpecies,
+      .flags       = (1 << MENUITEM_FLAG_IS_SUBMENU),
+      .value_type = VALUE_TYPE_NONE,
+      .target = {
+         .submenu = sStarterSpeciesOptions
       }
    },
    END_OF_LIST_SENTINEL,

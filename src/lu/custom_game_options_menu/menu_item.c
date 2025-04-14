@@ -77,7 +77,6 @@ const u8* GetOptionValueName(const struct CGOptionMenuItem* item, u16 value) {
       if (species == 0) {
          return gText_lu_CGOptionValues_common_None;
       }
-      --species;
       
       if (species >= NUM_SPECIES) {
          return gSpeciesNames[0];

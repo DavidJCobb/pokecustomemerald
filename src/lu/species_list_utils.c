@@ -46,44 +46,7 @@ void AllocFilteredSpeciesList(
 
 //
 
-#define XOR_SWAP(x, y) do { x = y ^ x; y = x ^ y; x = y ^ x; } while (0)
-
-static u16 PartitionSpeciesList(
-   struct SpeciesList* species_list,
-   u16 lo,
-   u16 hi
-) {
-   PokemonSpeciesID pivot = species_list->speciesIDs[hi];
-   
-   u16 i = lo;
-   for(u16 j = lo; j < hi; ++j) {
-      if (species_list->speciesIDs[j] <= pivot) {
-         XOR_SWAP(
-            species_list->speciesIDs[i],
-            species_list->speciesIDs[j]
-         );
-         ++i;
-      }
-   }
-   XOR_SWAP(
-      species_list->speciesIDs[i],
-      species_list->speciesIDs[hi]
-   );
-   return i;
-}
-static void QuicksortSpeciesList(
-   struct SpeciesList* species_list,
-   u16 lo,
-   u16 hi
-) {
-   if (lo >= hi) {
-      return;
-   }
-   u16 pivot = PartitionSpeciesList(species_list, lo, hi);
-   
-   QuicksortSpeciesList(species_list, lo, pivot - 1);
-   QuicksortSpeciesList(species_list, pivot + 1, hi);
-}
+#define APPLY_SHRINK_SORT_SHRINK_FACTOR(x) (x / 4 * 3)
 
 void SortSpeciesList(
    struct SpeciesList* species_list,
@@ -94,17 +57,35 @@ void SortSpeciesList(
    } else if (species_list->count == 2) {
       PokemonSpeciesID a = species_list->speciesIDs[0];
       PokemonSpeciesID b = species_list->speciesIDs[1];
-      if (a > b) {
-         XOR_SWAP(
-            species_list->speciesIDs[0],
-            species_list->speciesIDs[1]
-         );
+      if (!comparatorLess(a, b)) {
+         species_list->speciesIDs[0] = b;
+         species_list->speciesIDs[1] = a;
       }
       return;
    }
-   QuicksortSpeciesList(
-      species_list,
-      0,
-      species_list->count - 1
-   );
+   //
+   // Comb sort.
+   //
+   u32   gap    = species_list->count;
+   bool8 sorted = FALSE;
+   if (gap >= 9) {
+      gap = 11;
+   }
+   while (!sorted) {
+      gap = APPLY_SHRINK_SORT_SHRINK_FACTOR(gap);
+      if (gap <= 1) {
+         gap    = 1;
+         sorted = TRUE; // if we don't swap anything this time, we're done
+      }
+      
+      for(int i = 0; i + gap < species_list->count; ++i) {
+         PokemonSpeciesID x = species_list->speciesIDs[i];
+         PokemonSpeciesID y = species_list->speciesIDs[i + gap];
+         if (!comparatorLess(x, y)) {
+            species_list->speciesIDs[i]       = y;
+            species_list->speciesIDs[i + gap] = x;
+            sorted = FALSE;
+         }
+      }
+   }
 }

@@ -37,6 +37,8 @@
 #include "lu/pick_species_menu.strings.h"
 #include "lu/species_list_utils.h"
 
+#include "gba/isagbprint.h"
+
 enum {
    LISTING_POS_FIRST_LETTER,
    LISTING_POS_TYPE_1,
@@ -57,8 +59,8 @@ enum {
    FIRST_LETTER_COUNT
 };
 enum {
-   TYPE_CRITERION_ANY  = NUMBER_OF_MON_TYPES + 1,
-   TYPE_CRITERION_NONE = NUMBER_OF_MON_TYPES + 2,
+   TYPE_CRITERION_ANY  = NUMBER_OF_MON_TYPES,
+   TYPE_CRITERION_NONE = NUMBER_OF_MON_TYPES + 1,
    TYPE_CRITERION_VALUE_COUNT
 };
 enum {
@@ -116,6 +118,9 @@ enum {
 #define SCROLLBAR_PALETTE_INDEX_TRACK 14
 #define SCROLLBAR_PALETTE_INDEX_THUMB 15
 
+#define SELECTION_CURSOR_TILE_W 2
+#define SELECTION_CURSOR_TILE_H 2
+
 #define BACKGROUND_LAYER_NORMAL 0
 
 #define BACKGROUND_PALETTE_ID_MENU 0
@@ -128,14 +133,15 @@ enum {
 #define WIN_HEADER_TILE_WIDTH    DISPLAY_TILE_WIDTH
 #define WIN_HEADER_TILE_HEIGHT   TEXT_ROW_HEIGHT_IN_TILES
 
-#define WIN_FORM_TILE_X      2
+#define WIN_FORM_TILE_X      SELECTION_CURSOR_TILE_W
 #define WIN_FORM_TILE_Y      (WIN_HEADER_TILE_HEIGHT + 1)
-#define WIN_FORM_TILE_WIDTH  (DISPLAY_TILE_WIDTH / 2)
+#define WIN_FORM_TILE_WIDTH  15
 #define WIN_FORM_TILE_HEIGHT (DISPLAY_TILE_HEIGHT - WIN_FORM_TILE_Y - KEYBIND_STRIP_TILE_HEIGHT)
 
-#define FORM_CRITERION_VALUE_X 50
+#define FORM_CRITERION_VALUE_X 80 // relative to containing window
+#define FORM_CRITERION_VALUE_W 70
 
-#define WIN_LISTING_TILE_X      (WIN_FORM_TILE_X + WIN_FORM_TILE_WIDTH)
+#define WIN_LISTING_TILE_X      (WIN_FORM_TILE_X + WIN_FORM_TILE_WIDTH + SELECTION_CURSOR_TILE_W)
 #define WIN_LISTING_TILE_Y      WIN_FORM_TILE_Y
 #define WIN_LISTING_TILE_WIDTH  (DISPLAY_TILE_WIDTH - WIN_LISTING_TILE_X - 1)
 #define WIN_LISTING_TILE_HEIGHT WIN_FORM_TILE_HEIGHT
@@ -148,7 +154,7 @@ enum {
 typedef struct {
    VRAMTile transparent_tile;
    VRAMTile blank_tile;
-   VRAMTile selection_cursor_tiles[4];
+   VRAMTile selection_cursor_tiles[SELECTION_CURSOR_TILE_W * SELECTION_CURSOR_TILE_H];
    VRAMTile user_window_frame[9];
    VRAMTile scrollbar_tiles[SCROLLBAR_TILE_COUNT];
    
@@ -163,14 +169,14 @@ STATIC_ASSERT(sizeof(VRAMTileLayout) <= BG_VRAM_SIZE, sStaticAssertion01_VramUsa
 
 static const struct LuEnumPickerInitParams sEnumPickerInit = {
    .base_pos = {
-      .x = (WIN_LISTING_TILE_X * TILE_WIDTH) - 8,
+      .x = (WIN_FORM_TILE_X * TILE_WIDTH) + FORM_CRITERION_VALUE_X - 8,
       .y = (WIN_LISTING_TILE_Y * TILE_HEIGHT),
    },
    .sprite_tags = {
       .tile    = 4096,
       .palette = 4096,
    },
-   .width = WIN_LISTING_TILE_WIDTH * TILE_WIDTH + 8,
+   .width = FORM_CRITERION_VALUE_W,
 };
 static const struct LuKeybindStripEntry sKeybindStripEntries[] = {
    {
@@ -286,8 +292,12 @@ static void PaintFilterCriteriaLabels(void);
 static void PaintFilterCriteriaValues(void);
 static void PaintCursor(void);
 static void PaintListingContents(void);
+static void UpdateKeybindStrip(void);
 
 static void MoveCursor(s8 by);
+
+static u16 GetListingScrollPosition(void);
+
 static void SetFocusedPane(enum PaneEnum);
 
 static void OnFilterChanged(void);
@@ -315,7 +325,7 @@ static void CB2_InitPickSpeciesMenu(void) {
          break;
        case 2:
          LuUI_ResetSpritesAndEffects();
-         //ResetTasks();
+         //ResetTasks(); // we're called from a task-based menu
          
          VRAM_BG_LoadTiles(VRAMTileLayout, blank_tile, BACKGROUND_LAYER_NORMAL, sBlankBGTile);
          VRAM_BG_LoadTiles(VRAMTileLayout, selection_cursor_tiles, BACKGROUND_LAYER_NORMAL, sMenuCursorBGTiles);
@@ -376,7 +386,7 @@ static void CB2_InitPickSpeciesMenu(void) {
             PaintMenuHeader();
             PaintFilterCriteriaLabels();
             PaintFilterCriteriaValues();
-            PaintCursor();
+            SetFocusedPane(PANE_FORM);
 
             CopyWindowToVram(WIN_FORM, COPYWIN_FULL);
             CopyWindowToVram(WIN_LISTING, COPYWIN_FULL);
@@ -417,9 +427,10 @@ static void Task_MenuProcessInput(u8 taskId) {
    }
    if (sMenuState->cursor_is_in_results) {
       if (JOY_NEW(A_BUTTON)) {
-         //
-         // TODO: select current species
-         //
+         if (sMenuState->listing.contents.count > 0) {
+            sMenuState->selection = sMenuState->listing.contents.speciesIDs[sMenuState->cursor_pos];
+         }
+         gTasks[taskId].func = Task_MenuFadeOut;
          return;
       }
       if (JOY_NEW(B_BUTTON)) {
@@ -459,10 +470,22 @@ static void Task_MenuProcessInput(u8 taskId) {
                            *target = TYPE_CRITERION_VALUE_COUNT - 1;
                         } else {
                            --(*target);
+                           if (*target == TYPE_MYSTERY) {
+                              --(*target);
+                           }
+                        }
+                        if (!is_second && *target == TYPE_CRITERION_NONE) {
+                           *target = TYPE_CRITERION_ANY;
                         }
                      } else {
                         ++(*target);
+                        if (*target == TYPE_MYSTERY) {
+                           ++(*target);
+                        }
                         if (*target == TYPE_CRITERION_VALUE_COUNT) {
+                           *target = 0;
+                        }
+                        if (!is_second && *target == TYPE_CRITERION_NONE) {
                            *target = 0;
                         }
                      }
@@ -578,6 +601,14 @@ static void PaintFilterCriteriaLabels(void) {
    );
 }
 static void PaintFilterCriteriaValues(void) {
+   FillWindowPixelRect(
+      WIN_FORM,
+      PIXEL_FILL(1),
+      FORM_CRITERION_VALUE_X,
+      0,
+      FORM_CRITERION_VALUE_W,
+      LISTING_POS_SWITCH_FOCUS_TO_RESULTS * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)
+   );
    //
    // First Letter:
    //
@@ -586,21 +617,21 @@ static void PaintFilterCriteriaValues(void) {
          WIN_FORM,
          FONT_NORMAL,
          FORM_CRITERION_VALUE_X, // x
-         (0 * (TILE_HEIGHT * 2)), // y
+         (0 * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)), // y
          sTextColor_OptionValues,
          TEXT_SKIP_DRAW,
          gText_lu_PickSpeciesMenu_FirstLetter_Any
       );
    } else {
       char str[2];
-      str[0] = CHAR_A + sMenuState->filter_params.first_letter;
+      str[0] = CHAR_A + sMenuState->filter_params.first_letter - FIRST_LETTER_A;
       str[1] = EOS;
       
       AddTextPrinterParameterized3(
          WIN_FORM,
          FONT_NORMAL,
          FORM_CRITERION_VALUE_X, // x
-         (0 * (TILE_HEIGHT * 2)), // y
+         (0 * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)), // y
          sTextColor_OptionValues,
          TEXT_SKIP_DRAW,
          str
@@ -623,7 +654,7 @@ static void PaintFilterCriteriaValues(void) {
          WIN_FORM,
          FONT_NORMAL,
          FORM_CRITERION_VALUE_X, // x
-         ((1 + i) * (TILE_HEIGHT * 2)), // y
+         ((1 + i) * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)), // y
          sTextColor_OptionValues,
          TEXT_SKIP_DRAW,
          text
@@ -649,28 +680,60 @@ static void PaintFilterCriteriaValues(void) {
          WIN_FORM,
          FONT_NORMAL,
          FORM_CRITERION_VALUE_X, // x
-         (3 * (TILE_HEIGHT * 2)), // y
+         (3 * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)), // y
          sTextColor_OptionValues,
          TEXT_SKIP_DRAW,
          text
       );
    }
+   CopyWindowToVram(WIN_FORM, COPYWIN_GFX);
 }
 static void PaintCursor(void) {
-   //
-   // TODO: Blank out the cursor column in the form
-   //
-   // TODO: Blank out the cursor column in the listing
-   //
+   FillBgTilemapBufferRect(
+      BACKGROUND_LAYER_NORMAL,
+      VRAM_BG_TileID(VRAMTileLayout, blank_tile),
+      WIN_FORM_TILE_X - SELECTION_CURSOR_TILE_W,
+      WIN_FORM_TILE_Y,
+      SELECTION_CURSOR_TILE_W, // width to paint over
+      WIN_FORM_TILE_HEIGHT,
+      BACKGROUND_PALETTE_ID_TEXT
+   );
+   FillBgTilemapBufferRect(
+      BACKGROUND_LAYER_NORMAL,
+      VRAM_BG_TileID(VRAMTileLayout, blank_tile),
+      WIN_LISTING_TILE_X - SELECTION_CURSOR_TILE_W,
+      WIN_LISTING_TILE_Y,
+      SELECTION_CURSOR_TILE_W, // width to paint over
+      WIN_LISTING_TILE_HEIGHT,
+      BACKGROUND_PALETTE_ID_TEXT
+   );
+   
+   u8 base_x;
    if (sMenuState->cursor_is_in_results) {
-      //
-      // TODO: Paint the cursor in the listing
-      //
+      base_x = WIN_LISTING_TILE_X - SELECTION_CURSOR_TILE_W;
    } else {
-      //
-      // TODO: Paint the cursor in the form
-      //
+      base_x = 0;
    }
+   u16 pos = sMenuState->cursor_pos - GetListingScrollPosition();
+   {
+      u8 i;
+      u8 x;
+      u8 y;
+      for(i = 0; i < VRAM_BG_TileCount(VRAMTileLayout, selection_cursor_tiles); ++i) {
+         x = i % SELECTION_CURSOR_TILE_W;
+         y = i / SELECTION_CURSOR_TILE_W;
+         FillBgTilemapBufferRect(
+            BACKGROUND_LAYER_NORMAL,
+            VRAM_BG_TileID(VRAMTileLayout, selection_cursor_tiles[0]) + i,
+            base_x + x,
+            WIN_FORM_TILE_Y + (pos * TEXT_ROW_HEIGHT_IN_TILES) + y,
+            1,
+            1,
+            BACKGROUND_PALETTE_ID_TEXT
+         );
+      }
+   }
+   CopyBgTilemapBufferToVram(BACKGROUND_LAYER_NORMAL);
 }
 static void PaintListingItem(u8 display_pos, PokemonSpeciesID species) {
    const u8* text = gSpeciesNames[species];
@@ -684,32 +747,21 @@ static void PaintListingItem(u8 display_pos, PokemonSpeciesID species) {
    AddTextPrinterParameterized3(
       WIN_LISTING,
       FONT_NORMAL,
-      0,       // x
-      (display_pos * 16) + 1, // y
+      0, // x
+      (display_pos * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)) + 1, // y
       sTextColor_OptionNames,
       TEXT_SKIP_DRAW,
       text
    );
 }
 static void PaintListingContents(void) {
-   u8 pos   = sMenuState->cursor_pos;
+   u8 pos   = GetListingScrollPosition();
    u8 count = sMenuState->listing.contents.count;
-   if (!sMenuState->cursor_is_in_results) {
-      pos = 0;
-   }
    {
       struct LuScrollbar* scrollbar = &sMenuState->widgets.scrollbar;
       scrollbar->scroll_pos = pos;
       scrollbar->item_count = count;
       RepaintScrollbarV(scrollbar);
-   }
-   if (pos <= MENU_ITEM_HALFWAY_ROW || count <= MAX_MENU_ITEMS_VISIBLE_AT_ONCE) {
-      pos = 0;
-   } else {
-      pos -= MENU_ITEM_HALFWAY_ROW;
-      if (pos + MAX_MENU_ITEMS_VISIBLE_AT_ONCE > count) {
-         pos = count - MAX_MENU_ITEMS_VISIBLE_AT_ONCE;
-      }
    }
    
    FillWindowPixelBuffer(WIN_LISTING, PIXEL_FILL(1));
@@ -719,6 +771,20 @@ static void PaintListingContents(void) {
       PaintListingItem(i, sMenuState->listing.contents.speciesIDs[i + pos]);
    }
    CopyWindowToVram(WIN_LISTING, COPYWIN_GFX);
+}
+static void UpdateKeybindStrip(void) {
+   u8 enabled_entries = (1 << 0) | (1 << 4);
+   if (sMenuState->cursor_is_in_results) {
+      enabled_entries |= 1 << 3; // Choose Species
+   } else {
+      if (sMenuState->cursor_pos == LISTING_POS_SWITCH_FOCUS_TO_RESULTS) {
+         enabled_entries |= 1 << 2; // View Search Results
+      } else {
+         enabled_entries |= 1 << 1; // Change
+      }
+   }
+   sMenuState->widgets.keybind_strip.enabled_entries = enabled_entries;
+   RepaintKeybindStrip(&sMenuState->widgets.keybind_strip);
 }
 
 static void MoveCursor(s8 by) {
@@ -739,13 +805,13 @@ static void MoveCursor(s8 by) {
       if (sMenuState->cursor_pos == 0) {
          sMenuState->cursor_pos = max;
       } else {
-         ++sMenuState->cursor_pos;
+         --sMenuState->cursor_pos;
       }
    } else {
       if (sMenuState->cursor_pos == max) {
          sMenuState->cursor_pos = 0;
       } else {
-         --sMenuState->cursor_pos;
+         ++sMenuState->cursor_pos;
       }
    }
    if (sMenuState->cursor_is_in_results) {
@@ -755,10 +821,32 @@ static void MoveCursor(s8 by) {
          SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
       } else {
          SetEnumPickerVisible(&sMenuState->widgets.enum_picker, TRUE);
+         SetEnumPickerRow(&sMenuState->widgets.enum_picker, sMenuState->cursor_pos);
       }
+   }
+   if (sMenuState->cursor_is_in_results) {
+      PaintListingContents();
+   } else {
+      UpdateKeybindStrip();
    }
    PaintCursor();
    PlaySE(SE_SELECT);
+}
+static u16 GetListingScrollPosition(void) {
+   u16 pos   = sMenuState->cursor_pos;
+   u16 count = sMenuState->listing.contents.count;
+   if (!sMenuState->cursor_is_in_results) {
+      pos = 0;
+   }
+   if (pos <= MENU_ITEM_HALFWAY_ROW || count <= MAX_MENU_ITEMS_VISIBLE_AT_ONCE) {
+      pos = 0;
+   } else {
+      pos -= MENU_ITEM_HALFWAY_ROW;
+      if (pos + MAX_MENU_ITEMS_VISIBLE_AT_ONCE > count) {
+         pos = count - MAX_MENU_ITEMS_VISIBLE_AT_ONCE;
+      }
+   }
+   return pos;
 }
 
 static void SetFocusedPane(enum PaneEnum pane) {
@@ -772,6 +860,7 @@ static void SetFocusedPane(enum PaneEnum pane) {
       SetEnumPickerRow(&sMenuState->widgets.enum_picker, 0);
    }
    PaintCursor();
+   UpdateKeybindStrip();
    //
    // TODO: indicate where focus is at (darken the unfocused pane?)
    //
@@ -785,23 +874,28 @@ static bool8 FilterSpecies(PokemonSpeciesID species) {
       return FALSE;
    }
    if (sMenuState->filter_params.first_letter) {
-      u8 ch = CHAR_A + sMenuState->filter_params.first_letter;
+      u8 ch = CHAR_A + sMenuState->filter_params.first_letter - FIRST_LETTER_A;
       if (gSpeciesNames[species][0] != ch) {
          return FALSE;
       }
    }
    {  // Types
-      for(int i = 0; i < 2; ++i) {
-         u8 type = sMenuState->filter_params.types[i];
-         if (type == TYPE_CRITERION_ANY) {
-            continue;
+      if (sMenuState->filter_params.types[0] != TYPE_CRITERION_ANY) {
+         if (gSpeciesInfo[species].types[0] != sMenuState->filter_params.types[0])
+            return FALSE;
+      }
+      if (sMenuState->filter_params.types[1] == TYPE_CRITERION_NONE) {
+         u8 type = sMenuState->filter_params.types[1];
+         if (type != TYPE_NONE && type != sMenuState->filter_params.types[0]) {
+            //
+            // Monotypes in vanilla are encoded as e.g. [TYPE_WATER, TYPE_WATER] 
+            // rather than [TYPE_WATER, TYPE_NONE] as you might expect.
+            //
+            return FALSE;
          }
-         if (type == TYPE_CRITERION_NONE) {
-            if (gSpeciesInfo[species].types[i] != TYPE_NONE)
-               return FALSE;
-         } else {
-            if (gSpeciesInfo[species].types[i] != type)
-               return FALSE;
+      } else if (sMenuState->filter_params.types[1] != TYPE_CRITERION_ANY) {
+         if (gSpeciesInfo[species].types[1] != sMenuState->filter_params.types[1]) {
+            return FALSE;
          }
       }
    }
@@ -828,24 +922,46 @@ static bool8 FilterSpecies(PokemonSpeciesID species) {
    }
    return TRUE;
 }
-static bool8 SortSpecies(PokemonSpeciesID a, PokemonSpeciesID b) {
+static bool8 SortSpecies(PokemonSpeciesID a, PokemonSpeciesID b) { // returns a < b
+
+   // Always sort species ID 0 at the top.
    if (a == 0) {
       return TRUE;
    } else if (b == 0) {
       return FALSE;
    }
-   u8 x = gSpeciesNames[a][0];
-   u8 y = gSpeciesNames[b][0];
-   return x < y;
+   
+   // Alphabetical sort.
+   for(int i = 0; i < POKEMON_NAME_LENGTH; ++i) {
+      u8 x = gSpeciesNames[a][i];
+      u8 y = gSpeciesNames[b][i];
+      
+      // Shorter names first.
+      if (x == EOS) {
+         return TRUE;
+      } else if (y == EOS) {
+         return FALSE;
+      }
+      
+      if (x != y)
+         return x < y;
+   }
+   //
+   // Names are equal.
+   //
+   return TRUE;
 }
 static void OnFilterChanged(void) {
    AllocFilteredSpeciesList(
       &sMenuState->listing.contents,
       FilterSpecies
    );
+   DebugPrintf("[OnFilterChanged] Species list allocated.");
    SortSpeciesList(
       &sMenuState->listing.contents,
       SortSpecies
    );
+   DebugPrintf("[OnFilterChanged] Species list sorted.");
    PaintListingContents();
+   DebugPrintf("[OnFilterChanged] Species list painted.");
 }
