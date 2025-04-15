@@ -23,6 +23,29 @@
 #include "constants/rgb.h"
 #include "constants/songs.h"
 
+#include "bg.h"
+#include "lu/vram_layout_helpers.h"
+
+// Never instantiated. Just a marginally less hideous way to manage all this 
+// compared to preprocessor macros. Unit of measurement is 4bpp tile IDs.
+typedef struct {
+   VRAMTile256Color pokemon_logo_tiles[256];
+   
+   VRAMTilemap pokemon_logo_tilemap;
+   VRAMTilemap back_tilemap;
+   VRAMTilemap front_tilemap;
+   VRAMTilemap ashfall_tilemap;
+   
+   VRAMTile ALIGNED(BG_CHAR_SIZE) back_tiles[0xF0];
+   VRAMTile front_tiles[0x214];
+   VRAMTile ashfall;
+} VRAMTileLayout;
+
+_Static_assert(sizeof(VRAMTileLayout) <= BG_VRAM_SIZE, "VRAM layout is too large.");
+_Static_assert(offsetof(VRAMTileLayout, pokemon_logo_tilemap) % BG_SCREEN_SIZE == 0, "Invalid offset of tilemap for logo layer.");
+_Static_assert(offsetof(VRAMTileLayout, back_tilemap) % BG_SCREEN_SIZE == 0, "Invalid offset of tilemap for back layer.");
+_Static_assert(offsetof(VRAMTileLayout, front_tilemap) % BG_SCREEN_SIZE == 0, "Invalid offset of tilemap for front layer.");
+
 enum {
     TAG_VERSION = 1000,
     TAG_PRESS_START_COPYRIGHT,
@@ -60,12 +83,66 @@ static void SpriteCB_PokemonLogoShine(struct Sprite *sprite);
 // const rom data
 static const u16 sUnusedUnknownPal[] = INCBIN_U16("graphics/title_screen/unused.gbapal");
 
+/*//
 static const u32 sTitleScreenRayquazaGfx[] = INCBIN_U32("graphics/title_screen/rayquaza.4bpp.lz");
 static const u32 sTitleScreenRayquazaTilemap[] = INCBIN_U32("graphics/title_screen/rayquaza.bin.lz");
+//*/
 static const u32 sTitleScreenLogoShineGfx[] = INCBIN_U32("graphics/title_screen/logo_shine.4bpp.lz");
+/*//
 static const u32 sTitleScreenCloudsGfx[] = INCBIN_U32("graphics/title_screen/clouds.4bpp.lz");
+//*/
 
+static const u32 sTitleScreenAshfallBgGfx[] = INCBIN_U32("graphics/lu/title_screen/ash_bg_layer_tiles.4bpp.lz");
+static const u32 sTitleScreenAshfallBgTilemap[] = INCBIN_U32("graphics/lu/title_screen/ash_bg_layer_tiles.bin.lz");
+static const u32 sTitleScreenArtBgFrontGfx[] = INCBIN_U32("graphics/lu/title_screen/art_front_tiles.4bpp.lz");
+static const u32 sTitleScreenArtBgFrontTilemap[] = INCBIN_U32("graphics/lu/title_screen/art_front_tiles.bin.lz");
+static const u32 sTitleScreenArtBgBackGfx[] = INCBIN_U32("graphics/lu/title_screen/art_back_tiles.4bpp.lz");
+static const u32 sTitleScreenArtBgBackTilemap[] = INCBIN_U32("graphics/lu/title_screen/art_back_tiles.bin.lz");
 
+static const u16 sPokemonLogoPalette[] = INCBIN_U16("graphics/title_screen/pokemon_logo.gbapal");
+static const u16 sTitleScreenBgArtPalettes[] = INCBIN_U16(
+   "graphics/lu/title_screen/art_back.gbapal",
+   "graphics/lu/title_screen/art_front.gbapal"
+);
+
+static const struct BgTemplate sBgTemplates[] = {
+   {  // Pokemon logo
+      .bg = 2, // only BG2 can be a bitmap
+      .charBaseIndex = 0,
+      .mapBaseIndex  = VRAM_BG_MapBaseIndex(VRAMTileLayout, pokemon_logo_tilemap),
+      .screenSize    = 1, // Affine 256x256px
+      .paletteMode   = 1, // 256-color
+      .priority      = 0,
+      .baseTile      = 0,
+   },
+   {  // Back-layer art (treeline, mountains, and sky)
+      .bg = 1,
+      .charBaseIndex = VRAM_BG_CharBaseIndex(VRAMTileLayout, back_tiles),
+      .mapBaseIndex  = VRAM_BG_MapBaseIndex(VRAMTileLayout, back_tilemap),
+      .screenSize    = 0, // Text 256x256px
+      .paletteMode   = 0, // 16-color
+      .priority      = 3,
+      .baseTile      = 0, // baseTile only works with LoadBgTiles, not for loading compressed tile(map)s
+   },
+   {  // Front-layer art (Spindas and grass)
+      .bg = 0,
+      .charBaseIndex = VRAM_BG_CharBaseIndex(VRAMTileLayout, back_tiles),
+      .mapBaseIndex  = VRAM_BG_MapBaseIndex(VRAMTileLayout, front_tilemap),
+      .screenSize    = 0, // Text 256x256px
+      .paletteMode   = 0, // 16-color
+      .priority      = 2,
+      .baseTile      = 0, // baseTile only works with LoadBgTiles, not for loading compressed tile(map)s
+   },
+   {  // Ashfall BG layer
+      .bg = 3,
+      .charBaseIndex = VRAM_BG_CharBaseIndex(VRAMTileLayout, ashfall),
+      .mapBaseIndex  = VRAM_BG_MapBaseIndex(VRAMTileLayout, ashfall_tilemap),
+      .screenSize    = 0, // Text 256x256px
+      .paletteMode   = 0, // 16-color
+      .priority      = 1,
+      .baseTile      = 0, // baseTile only works with LoadBgTiles, not for loading compressed tile(map)s
+   },
+};
 
 // Used to blend "Emerald Version" as it passes over over the Pokémon banner.
 // Also used by the intro to blend the Game Freak name/logo in and out as they appear and disappear
@@ -596,15 +673,42 @@ void CB2_InitTitleScreen(void)
         break;
     case 1:
         // bg2
-        LZ77UnCompVram(gTitleScreenPokemonLogoGfx, (void *)(BG_CHAR_ADDR(0)));
-        LZ77UnCompVram(gTitleScreenPokemonLogoTilemap, (void *)(BG_SCREEN_ADDR(9)));
-        LoadPalette(gTitleScreenBgPalettes, BG_PLTT_ID(0), 15 * PLTT_SIZE_4BPP);
+        LZ77UnCompVram(
+            gTitleScreenPokemonLogoGfx,
+            (void*) (BG_VRAM + offsetof(VRAMTileLayout, pokemon_logo_tiles))
+        );
+        LZ77UnCompVram(
+            gTitleScreenPokemonLogoTilemap,
+            (void*) (BG_VRAM + offsetof(VRAMTileLayout, pokemon_logo_tilemap))
+        );
+        LoadPalette(sPokemonLogoPalette, BG_PLTT_ID(0), sizeof(sPokemonLogoPalette));
+        LoadPalette(sTitleScreenBgArtPalettes, BG_PLTT_ID(0xE), 2 * PLTT_SIZE_4BPP);
         // bg3
-        LZ77UnCompVram(sTitleScreenRayquazaGfx, (void *)(BG_CHAR_ADDR(2)));
-        LZ77UnCompVram(sTitleScreenRayquazaTilemap, (void *)(BG_SCREEN_ADDR(26)));
+        LZ77UnCompVram(
+            sTitleScreenArtBgBackGfx,
+            (void*) (BG_VRAM + offsetof(VRAMTileLayout, back_tiles))
+        );
+        LZ77UnCompVram(
+            sTitleScreenArtBgBackTilemap,
+            (void*) (BG_VRAM + offsetof(VRAMTileLayout, back_tilemap))
+        );
+        LZ77UnCompVram(
+            sTitleScreenArtBgFrontGfx,
+            (void*) (BG_VRAM + offsetof(VRAMTileLayout, front_tiles))
+        );
+        LZ77UnCompVram(
+            sTitleScreenArtBgFrontTilemap,
+            (void*) (BG_VRAM + offsetof(VRAMTileLayout, front_tilemap))
+        );
         // bg1
-        LZ77UnCompVram(sTitleScreenCloudsGfx, (void *)(BG_CHAR_ADDR(3)));
-        LZ77UnCompVram(gTitleScreenCloudsTilemap, (void *)(BG_SCREEN_ADDR(27)));
+        LZ77UnCompVram(
+            sTitleScreenAshfallBgGfx,
+            (void*) (BG_VRAM + offsetof(VRAMTileLayout, ashfall))
+        );
+        LZ77UnCompVram(
+            sTitleScreenAshfallBgTilemap,
+            (void*) (BG_VRAM + offsetof(VRAMTileLayout, ashfall_tilemap))
+        );
         ScanlineEffect_Stop();
         ResetTasks();
         ResetSpriteData();
@@ -629,16 +733,12 @@ void CB2_InitTitleScreen(void)
         break;
     }
     case 3:
-        BeginNormalPaletteFade(PALETTES_ALL, 1, 16, 0, RGB_WHITEALPHA);
+        //BeginNormalPaletteFade(PALETTES_ALL, 1, 16, 0, RGB_WHITEALPHA);
         SetVBlankCallback(VBlankCB);
         gMain.state = 4;
         break;
     case 4:
-        PanFadeAndZoomScreen(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, 0x100, 0);
-        SetGpuReg(REG_OFFSET_BG2X_L, -29 * 256);
-        SetGpuReg(REG_OFFSET_BG2X_H, -1);
-        SetGpuReg(REG_OFFSET_BG2Y_L, -32 * 256);
-        SetGpuReg(REG_OFFSET_BG2Y_H, -1);
+        //PanFadeAndZoomScreen(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, 0x100, 0);
         SetGpuReg(REG_OFFSET_WIN0H, 0);
         SetGpuReg(REG_OFFSET_WIN0V, 0);
         SetGpuReg(REG_OFFSET_WIN1H, 0);
@@ -648,9 +748,26 @@ void CB2_InitTitleScreen(void)
         SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG2 | BLDCNT_EFFECT_LIGHTEN);
         SetGpuReg(REG_OFFSET_BLDALPHA, 0);
         SetGpuReg(REG_OFFSET_BLDY, 12);
+        /*//
         SetGpuReg(REG_OFFSET_BG0CNT, BGCNT_PRIORITY(3) | BGCNT_CHARBASE(2) | BGCNT_SCREENBASE(26) | BGCNT_16COLOR | BGCNT_TXT256x256);
         SetGpuReg(REG_OFFSET_BG1CNT, BGCNT_PRIORITY(2) | BGCNT_CHARBASE(3) | BGCNT_SCREENBASE(27) | BGCNT_16COLOR | BGCNT_TXT256x256);
         SetGpuReg(REG_OFFSET_BG2CNT, BGCNT_PRIORITY(1) | BGCNT_CHARBASE(0) | BGCNT_SCREENBASE(9) | BGCNT_256COLOR | BGCNT_AFF256x256);
+        //*/
+InitBgsFromTemplates(DISPCNT_MODE_1, sBgTemplates, ARRAY_COUNT(sBgTemplates));
+ShowBg(0);
+ShowBg(1);
+ShowBg(2);
+ShowBg(3);
+SetBgAffine( // Pokemon logo
+   2, // only BG2 can be a bitmap
+   -29 * 256, // srcCenterX
+   -32 * 256, // srcCenterY
+   0, // dispCenterX
+   0, // dispCenterY
+   256, // scaleX (256 = 100%)
+   256, // scaleY (256 = 100%)
+   0  // rotationAngle
+);
         EnableInterrupts(INTR_FLAG_VBLANK);
         SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_1
                                     | DISPCNT_OBJ_1D_MAP
@@ -665,7 +782,7 @@ void CB2_InitTitleScreen(void)
         if (!UpdatePaletteFade())
         {
             StartPokemonLogoShine(SHINE_MODE_SINGLE_NO_BG_COLOR);
-            ScanlineEffect_InitWave(0, DISPLAY_HEIGHT, 4, 4, 0, SCANLINE_EFFECT_REG_BG1HOFS, TRUE);
+            //ScanlineEffect_InitWave(0, DISPLAY_HEIGHT, 4, 4, 0, SCANLINE_EFFECT_REG_BG1HOFS, TRUE);
             SetMainCallback2(MainCB2);
         }
         break;
@@ -856,6 +973,7 @@ static void CB2_GoToBerryFixScreen(void)
 
 static void UpdateLegendaryMarkingColor(u8 frameNum)
 {
+return;
     if ((frameNum % 4) == 0) // Change color every 4th frame
     {
         s32 intensity = Cos(frameNum, 128) + 128;

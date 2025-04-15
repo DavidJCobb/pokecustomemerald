@@ -8,16 +8,21 @@ typedef struct {
 } ALIGNED(TILE_SIZE_4BPP) VRAMTile;
 
 typedef struct {
+   u8 bytes[TILE_SIZE_8BPP];
+} ALIGNED(TILE_SIZE_4BPP) VRAMTile256Color;
+
+typedef struct {
    u8 bytes[BG_SCREEN_SIZE];
 } ALIGNED(BG_SCREEN_SIZE) VRAMTilemap;
 
+#define VRAM_BG_CharBaseIndex(layout, member)   (offsetof(layout, member) / BG_CHAR_SIZE)
 #define VRAM_BG_MapBaseIndex(layout, member)   (offsetof(layout, member) / BG_SCREEN_SIZE)
 
 #define VRAM_BG_TileID(layout, member)   (offsetof(layout, member) / TILE_SIZE_4BPP)
 
 #define VRAM_BG_TileCount(layout, member)   (sizeof((( layout *)NULL)-> member ) / TILE_SIZE_4BPP)
 
-#define VRAM_BG_CharBaseIndexToTileID(charBaseIndex)   (charBaseIndex * 512)
+#define VRAM_BG_CharBaseIndexToTileID(charBaseIndex)   (charBaseIndex * (BG_CHAR_SIZE / TILE_SIZE_4BPP))
 
 // TODO: BROKEN: ALIGNED(...) only permits powers of 2, so e.g. (512 * 3) would fail.
 #define VRAM_BG_AT_CHAR_BASE_INDEX(charBaseIndex)   ALIGNED(sizeof(VRAMTile) * VRAM_BG_CharBaseIndexToTileID(charBaseIndex))

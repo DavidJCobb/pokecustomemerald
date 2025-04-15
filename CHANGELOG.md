@@ -28,6 +28,10 @@
     * Run indoors
     * Bike indoors
     * Poison damage and interval
+  * Starter Pokemon
+    * Change the three available species
+    * Change the initial level of the player's starter
+    * Force a gender for the player's starter
     
 ### Pacing
 
