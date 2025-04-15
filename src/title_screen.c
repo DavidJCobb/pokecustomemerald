@@ -37,7 +37,7 @@ typedef struct {
    VRAMTilemap ashfall_tilemap;
    
    VRAMTile ALIGNED(BG_CHAR_SIZE) back_tiles[0xF0];
-   VRAMTile front_tiles[0x214];
+   VRAMTile front_tiles[0x229];
    VRAMTile ashfall;
 } VRAMTileLayout;
 
@@ -101,8 +101,8 @@ static const u32 sTitleScreenArtBgBackTilemap[] = INCBIN_U32("graphics/lu/title_
 
 static const u16 sPokemonLogoPalette[] = INCBIN_U16("graphics/title_screen/pokemon_logo.gbapal");
 static const u16 sTitleScreenBgArtPalettes[] = INCBIN_U16(
-   "graphics/lu/title_screen/art_back.gbapal",
-   "graphics/lu/title_screen/art_front.gbapal"
+   "graphics/lu/title_screen/art_back_tiles.gbapal",
+   "graphics/lu/title_screen/art_front_tiles.gbapal"
 );
 
 static const struct BgTemplate sBgTemplates[] = {
@@ -133,6 +133,13 @@ static const struct BgTemplate sBgTemplates[] = {
       .priority      = 2,
       .baseTile      = 0, // baseTile only works with LoadBgTiles, not for loading compressed tile(map)s
    },
+   //
+   // TODO: If BG layer 2 is an affine layer (which it is), then BG layer 3 can only 
+   //       be an affine layer or disabled. Affine is fine for our purposes -- we can 
+   //       look into adjusting its translation and scale that way -- but for now, we 
+   //       have BG3 disabled. Research `DISPCNT_MODE_1` for info on how to control 
+   //       which layers are affine, and Ctrl + F for where it's used below.
+   //
    {  // Ashfall BG layer
       .bg = 3,
       .charBaseIndex = VRAM_BG_CharBaseIndex(VRAMTileLayout, ashfall),
@@ -487,8 +494,8 @@ static void SpriteCB_PressStartCopyrightBanner(struct Sprite *sprite)
 {
     if (sprite->sAnimate == TRUE)
     {
-        // Alternate between hidden and shown every 16th frame
-        if (++sprite->sTimer & 16)
+        // Alternate between hidden and shown every 32th frame
+        if (++sprite->sTimer & 32)
             sprite->invisible = FALSE;
         else
             sprite->invisible = TRUE;
@@ -586,7 +593,7 @@ static void SpriteCB_PokemonLogoShine(struct Sprite *sprite)
     else
     {
         // Sprite has moved fully offscreen
-        gPlttBufferFaded[0] = RGB_BLACK;
+        gPlttBufferFaded[0] = RGB_WHITE;
         DestroySprite(sprite);
     }
 }
@@ -733,12 +740,12 @@ void CB2_InitTitleScreen(void)
         break;
     }
     case 3:
-        //BeginNormalPaletteFade(PALETTES_ALL, 1, 16, 0, RGB_WHITEALPHA);
+        BeginNormalPaletteFade(PALETTES_ALL, 1, 16, 0, RGB_WHITEALPHA);
         SetVBlankCallback(VBlankCB);
         gMain.state = 4;
         break;
     case 4:
-        //PanFadeAndZoomScreen(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, 0x100, 0);
+        PanFadeAndZoomScreen(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, 0x100, 0);
         SetGpuReg(REG_OFFSET_WIN0H, 0);
         SetGpuReg(REG_OFFSET_WIN0V, 0);
         SetGpuReg(REG_OFFSET_WIN1H, 0);
@@ -748,11 +755,6 @@ void CB2_InitTitleScreen(void)
         SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG2 | BLDCNT_EFFECT_LIGHTEN);
         SetGpuReg(REG_OFFSET_BLDALPHA, 0);
         SetGpuReg(REG_OFFSET_BLDY, 12);
-        /*//
-        SetGpuReg(REG_OFFSET_BG0CNT, BGCNT_PRIORITY(3) | BGCNT_CHARBASE(2) | BGCNT_SCREENBASE(26) | BGCNT_16COLOR | BGCNT_TXT256x256);
-        SetGpuReg(REG_OFFSET_BG1CNT, BGCNT_PRIORITY(2) | BGCNT_CHARBASE(3) | BGCNT_SCREENBASE(27) | BGCNT_16COLOR | BGCNT_TXT256x256);
-        SetGpuReg(REG_OFFSET_BG2CNT, BGCNT_PRIORITY(1) | BGCNT_CHARBASE(0) | BGCNT_SCREENBASE(9) | BGCNT_256COLOR | BGCNT_AFF256x256);
-        //*/
 InitBgsFromTemplates(DISPCNT_MODE_1, sBgTemplates, ARRAY_COUNT(sBgTemplates));
 ShowBg(0);
 ShowBg(1);
@@ -864,7 +866,7 @@ static void Task_TitleScreenPhase2(u8 taskId)
     else
     {
         gTasks[taskId].tSkipToNext = TRUE;
-        SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG1 | BLDCNT_EFFECT_BLEND | BLDCNT_TGT2_BG0 | BLDCNT_TGT2_BD);
+        SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT2_BG1 | BLDCNT_EFFECT_BLEND | BLDCNT_TGT2_BG0 | BLDCNT_TGT2_BD);
         SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(6, 15));
         SetGpuReg(REG_OFFSET_BLDY, 0);
         SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_1
@@ -926,7 +928,8 @@ static void Task_TitleScreenPhase3(u8 taskId)
         if (++gTasks[taskId].tCounter & 1)
         {
             gTasks[taskId].tBg1Y++;
-            gBattle_BG1_Y = gTasks[taskId].tBg1Y / 2;
+            //gBattle_BG1_Y = gTasks[taskId].tBg1Y / 2;
+            gBattle_BG1_Y = 0;
             gBattle_BG1_X = 0;
         }
         UpdateLegendaryMarkingColor(gTasks[taskId].tCounter);
