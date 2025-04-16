@@ -24,7 +24,10 @@
 #include "constants/songs.h"
 
 #include "bg.h"
+#include "lu/graphics_registers.h"
+#include "lu/ui_helpers.h"
 #include "lu/vram_layout_helpers.h"
+#include "gba/isagbprint.h"
 
 // Never instantiated. Just a marginally less hideous way to manage all this 
 // compared to preprocessor macros. Unit of measurement is 4bpp tile IDs.
@@ -595,6 +598,7 @@ static void SpriteCB_PokemonLogoShine(struct Sprite *sprite)
         // Sprite has moved fully offscreen
         gPlttBufferFaded[0] = RGB_WHITE;
         DestroySprite(sprite);
+        DebugPrintf("[Title Screen] [Pokemon Logo Shine, Normal] Done.");
     }
 }
 
@@ -602,8 +606,10 @@ static void SpriteCB_PokemonLogoShine_Fast(struct Sprite *sprite)
 {
     if (sprite->x < DISPLAY_WIDTH + 32)
         sprite->x += SHINE_SPEED * 2;
-    else
+    else {
         DestroySprite(sprite);
+        DebugPrintf("[Title Screen] [Pokemon Logo Shine, Fast] Done.");
+    }
 }
 
 static void StartPokemonLogoShine(u8 mode)
@@ -651,6 +657,50 @@ static void VBlankCB(void)
     SetGpuReg(REG_OFFSET_BG1VOFS, gBattle_BG1_Y);
 }
 
+static const struct ColorEffectParams sInitialColorEffect = {
+   .srcLayers  = COLOR_EFFECT_LAYER_BG2,
+   .effect     = COLOR_EFFECT_BRIGHTNESS_INCREASE,
+   .dstLayers  = COLOR_EFFECT_LAYER_NONE,
+   .alpha      = { 0 },
+   .brightness = {
+      .coefficient = 12,
+   },
+};
+static const struct ScreenWindowParams sInitialScreenWindows = {
+   .bounds = { 0 },
+   .mask = {
+      .win_0 = {
+         .layers = SCREEN_WINDOW_MASK_LAYER_BG_ALL | SCREEN_WINDOW_MASK_LAYER_OBJ,
+         .enable_color_effect = FALSE,
+      },
+      .win_outside = {
+         .layers = SCREEN_WINDOW_MASK_LAYER_BG_ALL | SCREEN_WINDOW_MASK_LAYER_OBJ,
+         .enable_color_effect = FALSE,
+      },
+   },
+};
+
+static const struct ColorEffectParams sPhase2ColorEffect = {
+   .srcLayers  = COLOR_EFFECT_LAYER_OBJ,
+   .effect     = COLOR_EFFECT_ALPHA_BLEND,
+   .dstLayers  = COLOR_EFFECT_LAYER_ALL,
+   .alpha      = {
+      .srcCoefficient = 16,
+      .dstCoefficient =  0,
+   },
+   .brightness = { 0 },
+};
+static const struct ColorEffectParams sPhase3ColorEffect = {
+   .srcLayers  = COLOR_EFFECT_LAYER_NONE,
+   .effect     = COLOR_EFFECT_ALPHA_BLEND,
+   .dstLayers  = COLOR_EFFECT_LAYER_BG0 | COLOR_EFFECT_LAYER_BG1 | COLOR_EFFECT_LAYER_BACKDROP,
+   .alpha      = {
+      .srcCoefficient =  6,
+      .dstCoefficient = 15,
+   },
+   .brightness = { 0 },
+};
+
 void CB2_InitTitleScreen(void)
 {
     switch (gMain.state)
@@ -658,24 +708,10 @@ void CB2_InitTitleScreen(void)
     default:
     case 0:
         SetVBlankCallback(NULL);
-        SetGpuReg(REG_OFFSET_BLDCNT, 0);
-        SetGpuReg(REG_OFFSET_BLDALPHA, 0);
-        SetGpuReg(REG_OFFSET_BLDY, 0);
-        *((u16 *)PLTT) = RGB_WHITE;
-        SetGpuReg(REG_OFFSET_DISPCNT, 0);
-        SetGpuReg(REG_OFFSET_BG2CNT, 0);
-        SetGpuReg(REG_OFFSET_BG1CNT, 0);
-        SetGpuReg(REG_OFFSET_BG0CNT, 0);
-        SetGpuReg(REG_OFFSET_BG2HOFS, 0);
-        SetGpuReg(REG_OFFSET_BG2VOFS, 0);
-        SetGpuReg(REG_OFFSET_BG1HOFS, 0);
-        SetGpuReg(REG_OFFSET_BG1VOFS, 0);
-        SetGpuReg(REG_OFFSET_BG0HOFS, 0);
-        SetGpuReg(REG_OFFSET_BG0VOFS, 0);
-        DmaFill16(3, 0, (void *)VRAM, VRAM_SIZE);
-        DmaFill32(3, 0, (void *)OAM, OAM_SIZE);
-        DmaFill16(3, 0, (void *)(PLTT + 2), PLTT_SIZE - 2);
+        ResetBlendRegisters();
+        LuUI_ResetBackgroundsAndVRAM();
         ResetPaletteFade();
+        gPlttBufferFaded[0] = RGB_WHITE;
         gMain.state = 1;
         break;
     case 1:
@@ -731,6 +767,7 @@ void CB2_InitTitleScreen(void)
     case 2:
     {
         u8 taskId = CreateTask(Task_TitleScreenPhase1, 0);
+        DebugPrintf("[Title Screen] Creating task at phase 1.");
 
         gTasks[taskId].tCounter = 256;
         gTasks[taskId].tSkipToNext = FALSE;
@@ -746,37 +783,23 @@ void CB2_InitTitleScreen(void)
         break;
     case 4:
         PanFadeAndZoomScreen(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, 0x100, 0);
-        SetGpuReg(REG_OFFSET_WIN0H, 0);
-        SetGpuReg(REG_OFFSET_WIN0V, 0);
-        SetGpuReg(REG_OFFSET_WIN1H, 0);
-        SetGpuReg(REG_OFFSET_WIN1V, 0);
-        SetGpuReg(REG_OFFSET_WININ, WININ_WIN0_BG_ALL | WININ_WIN0_OBJ | WININ_WIN1_BG_ALL | WININ_WIN1_OBJ);
-        SetGpuReg(REG_OFFSET_WINOUT, WINOUT_WIN01_BG_ALL | WINOUT_WIN01_OBJ | WINOUT_WINOBJ_ALL);
-        SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG2 | BLDCNT_EFFECT_LIGHTEN);
-        SetGpuReg(REG_OFFSET_BLDALPHA, 0);
-        SetGpuReg(REG_OFFSET_BLDY, 12);
-InitBgsFromTemplates(DISPCNT_MODE_1, sBgTemplates, ARRAY_COUNT(sBgTemplates));
-ShowBg(0);
-ShowBg(1);
-ShowBg(2);
-ShowBg(3);
-SetBgAffine( // Pokemon logo
-   2, // only BG2 can be a bitmap
-   -29 * 256, // srcCenterX
-   -32 * 256, // srcCenterY
-   0, // dispCenterX
-   0, // dispCenterY
-   256, // scaleX (256 = 100%)
-   256, // scaleY (256 = 100%)
-   0  // rotationAngle
-);
+        SetScreenWindowParams(&sInitialScreenWindows);
+        SetBlendRegisters(&sInitialColorEffect);
+        InitBgsFromTemplates(DISPCNT_MODE_1, sBgTemplates, ARRAY_COUNT(sBgTemplates));
+        ShowBg(2);
+        SetBgAffine( // Pokemon logo
+           2, // only BG2 can be a bitmap
+           -29 * 256, // srcCenterX
+           -32 * 256, // srcCenterY
+           0, // dispCenterX
+           0, // dispCenterY
+           256, // scaleX (256 = 100%)
+           256, // scaleY (256 = 100%)
+           0  // rotationAngle
+        );
         EnableInterrupts(INTR_FLAG_VBLANK);
-        SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_1
-                                    | DISPCNT_OBJ_1D_MAP
-                                    | DISPCNT_BG2_ON
-                                    | DISPCNT_OBJ_ON
-                                    | DISPCNT_WIN0_ON
-                                    | DISPCNT_OBJWIN_ON);
+        SetGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_OBJ_ON | DISPCNT_OBJ_1D_MAP);
+        SetScreenWindowsEnabled(SCREEN_WINDOW_0 | SCREEN_WINDOW_OBJ);
         m4aSongNumStart(MUS_TITLE);
         gMain.state = 5;
         break;
@@ -798,6 +821,7 @@ static void MainCB2(void)
     BuildOamBuffer();
     UpdatePaletteFade();
 }
+
 
 // Shine the Pokémon logo two more times, and fade in the version banner
 static void Task_TitleScreenPhase1(u8 taskId)
@@ -823,12 +847,9 @@ static void Task_TitleScreenPhase1(u8 taskId)
     {
         u8 spriteId;
 
-        SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_1 | DISPCNT_OBJ_1D_MAP | DISPCNT_BG2_ON | DISPCNT_OBJ_ON);
-        SetGpuReg(REG_OFFSET_WININ, 0);
-        SetGpuReg(REG_OFFSET_WINOUT, 0);
-        SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_OBJ | BLDCNT_EFFECT_BLEND | BLDCNT_TGT2_ALL);
-        SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(16, 0));
-        SetGpuReg(REG_OFFSET_BLDY, 0);
+        SetScreenWindowsEnabled(0);
+        ResetScreenWindows();
+        SetBlendRegisters(&sPhase2ColorEffect);
 
         // Create left side of version banner
         spriteId = CreateSprite(&sVersionBannerLeftSpriteTemplate, VERSION_BANNER_LEFT_X, VERSION_BANNER_Y, 0);
@@ -841,6 +862,7 @@ static void Task_TitleScreenPhase1(u8 taskId)
 
         gTasks[taskId].tCounter = 144;
         gTasks[taskId].func = Task_TitleScreenPhase2;
+        DebugPrintf("[Title Screen] Advancing to phase 2.");
     }
 }
 
@@ -866,19 +888,23 @@ static void Task_TitleScreenPhase2(u8 taskId)
     else
     {
         gTasks[taskId].tSkipToNext = TRUE;
-        SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT2_BG1 | BLDCNT_EFFECT_BLEND | BLDCNT_TGT2_BG0 | BLDCNT_TGT2_BD);
-        SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(6, 15));
-        SetGpuReg(REG_OFFSET_BLDY, 0);
-        SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_1
-                                    | DISPCNT_OBJ_1D_MAP
-                                    | DISPCNT_BG0_ON
-                                    | DISPCNT_BG1_ON
-                                    | DISPCNT_BG2_ON
-                                    | DISPCNT_OBJ_ON);
+        SetBlendRegisters(&sPhase3ColorEffect);
+        ShowBg(0);
+        ShowBg(1);
+        ShowBg(2);
         CreatePressStartBanner(START_BANNER_X, 108);
         CreateCopyrightBanner(START_BANNER_X, 148);
         gTasks[taskId].tBg1Y = 0;
         gTasks[taskId].func = Task_TitleScreenPhase3;
+        UnfadePlttBuffer( (1 << 14) | (1 << 15) );
+        BeginNormalPaletteFade(
+           (1 << 14) | (1 << 15),
+           -1,
+           16,
+           0,
+           RGB_WHITE
+        );
+        DebugPrintf("[Title Screen] Advancing to phase 3.");
     }
 
     if (!(gTasks[taskId].tCounter & 3) && gTasks[taskId].tPointless != 0)
@@ -895,7 +921,7 @@ static void Task_TitleScreenPhase2(u8 taskId)
     gTasks[taskId].data[6] = 6;  // Unused
 }
 
-// Show Rayquaza silhouette and process main title screen input
+// Show background art and process main title screen input
 static void Task_TitleScreenPhase3(u8 taskId)
 {
     if (JOY_NEW(A_BUTTON) || JOY_NEW(START_BUTTON))
@@ -932,7 +958,6 @@ static void Task_TitleScreenPhase3(u8 taskId)
             gBattle_BG1_Y = 0;
             gBattle_BG1_X = 0;
         }
-        UpdateLegendaryMarkingColor(gTasks[taskId].tCounter);
         if ((gMPlayInfo_BGM.status & 0xFFFF) == 0)
         {
             BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_WHITEALPHA);
@@ -972,19 +997,4 @@ static void CB2_GoToBerryFixScreen(void)
         m4aMPlayAllStop();
         SetMainCallback2(CB2_InitBerryFixProgram);
     }
-}
-
-static void UpdateLegendaryMarkingColor(u8 frameNum)
-{
-return;
-    if ((frameNum % 4) == 0) // Change color every 4th frame
-    {
-        s32 intensity = Cos(frameNum, 128) + 128;
-        s32 r = 31 - ((intensity * 32 - intensity) / 256);
-        s32 g = 31 - (intensity * 22 / 256);
-        s32 b = 12;
-
-        u16 color = RGB(r, g, b);
-        LoadPalette(&color, BG_PLTT_ID(14) + 15, sizeof(color));
-   }
 }
