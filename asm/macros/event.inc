@@ -1757,6 +1757,16 @@
    waitmessage
    waitbuttonpress
    .endm
+   
+   @ The same as the `msgbox <text> MSGBOX_YESNO` command, but with automatic word-wrapping. 
+   @ That command works by calling one of the standard scripts (callstd), which basically keeps 
+   @ ROM size down despite it being used in several places. Here, for now, we're just inlining 
+   @ everything.
+   .macro lu_msgbox_yesno_wordwrapped text:req
+   lu_message_wordwrapped \text
+   waitmessage
+	yesnobox 20, 8
+   .endm
 
 
 

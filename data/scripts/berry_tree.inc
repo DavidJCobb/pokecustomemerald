@@ -103,7 +103,12 @@ BerryTree_EventScript_CheckBerryFullyGrown::
 	lock
 	faceplayer
 	special ObjectEventInteractionGetBerryCountString
-	msgbox BerryTree_Text_WantToPick, MSGBOX_YESNO
+	goto_if_eq VAR_0x8006, 1, BerryTree_EventScript_CheckBerryFullyGrown_AskToPickSingle
+	lu_msgbox_yesno_wordwrapped BerryTree_Text_WantToPickPlural
+   goto BerryTree_EventScript_CheckBerryFullyGrown_HandleAskedToPick
+BerryTree_EventScript_CheckBerryFullyGrown_AskToPickSingle:
+	lu_msgbox_yesno_wordwrapped BerryTree_Text_WantToPickSingle
+BerryTree_EventScript_CheckBerryFullyGrown_HandleAskedToPick:
 	goto_if_eq VAR_RESULT, YES, BerryTree_EventScript_PickBerry
 	goto_if_eq VAR_RESULT, NO, BerryTree_EventScript_CancelPickingBerry
 
@@ -112,7 +117,12 @@ BerryTree_EventScript_PickBerry::
 	goto_if_eq VAR_0x8004, 0, BerryTree_EventScript_BerryPocketFull
 	special IncrementDailyPickedBerries
 	special ObjectEventInteractionRemoveBerryTree
-	message BerryTree_Text_PickedTheBerry
+	goto_if_eq VAR_0x8006, 1, BerryTree_EventScript_PickBerry_AskToPickSingle
+	lu_message_wordwrapped BerryTree_Text_PickedTheBerryPlural
+   goto BerryTree_EventScript_PickBerry_AfterMessage
+BerryTree_EventScript_PickBerry_AskToPickSingle:
+	lu_message_wordwrapped BerryTree_Text_PickedTheBerrySingle
+BerryTree_EventScript_PickBerry_AfterMessage:
 	playfanfare MUS_OBTAIN_BERRY
 	waitmessage
 	waitfanfare
@@ -215,17 +225,19 @@ BerryTree_Text_CareAdverbPoor:
 BerryTree_Text_CareAdverbGood:
 	.string "prettily$"
 
-BerryTree_Text_WantToPick:
-	.string "You found {STR_VAR_2} {STR_VAR_1}!\p"
-	.string "Do you want to pick the\n"
-	.string "{STR_VAR_1}?$"
+BerryTree_Text_WantToPickSingle:
+	.string "You found a {STR_VAR_1}! Pick it from the tree?$"
 
-BerryTree_Text_PickedTheBerry:
-	.string "{PLAYER} picked the {STR_VAR_2} {STR_VAR_1}.$"
+BerryTree_Text_WantToPickPlural:
+	.string "You found {STR_VAR_2} {STR_VAR_1}! Pick them from the tree?$"
+
+BerryTree_Text_PickedTheBerrySingle:
+	.string "{PLAYER} picked the {STR_VAR_1}, and put it in the BAG's BERRIES POCKET.$"
+
+BerryTree_Text_PickedTheBerryPlural:
+	.string "{PLAYER} picked the {STR_VAR_2} {STR_VAR_1}, and put them in the BAG's BERRIES POCKET.$"
 
 BerryTree_Text_PutAwayBerry:
-	.string "{PLAYER} put away the {STR_VAR_1}\n"
-	.string "in the BAG's BERRIES POCKET.\p"
 	.string "The soil returned to its soft and\n"
 	.string "loamy state.$"
 

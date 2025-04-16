@@ -269,7 +269,6 @@ This will require thorough investigation of the battle script engine as well as 
 ### Text
 
 * A "Very Fast" text speed option
-* Coalesced text relating to berry trees
 
 ## Savedata
 
