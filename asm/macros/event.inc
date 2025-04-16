@@ -1965,6 +1965,12 @@
 	dofieldeffect FLDEFF_SPARKLE
 	.endm
 
+	@ Does a PokeCenter nurse heal effect, given the nurse's OW ID.
+	.macro dofieldeffectnurseheal ow:req
+	setfieldeffectargument 0, \ow
+	dofieldeffect FLDEFF_POKECENTER_HEAL
+	.endm
+
 	@ Prints a braille message, waits for an A or B press, then closes the message.
 	.macro braillemsgbox text:req
 	braillemessage \text

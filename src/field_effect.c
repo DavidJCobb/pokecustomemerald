@@ -994,12 +994,17 @@ void MultiplyPaletteRGBComponents(u16 i, u8 r, u8 g, u8 b)
 #define tMonitorY        data[5]
 #define tBallSpriteId    data[6]
 #define tMonitorSpriteId data[7]
+#define tNurseEventID    data[8]
+#define tNurseStepTimer  data[9]
+#define tNurseFacingDown data[10]
+#define tNurseFaceBackTimer data[11]
 #define tStartHofFlash   data[15]
 
 // Sprite data for SpriteCB_PokeballGlowEffect
 #define sState      data[0]
 #define sTimer      data[1]
 #define sCounter    data[2]
+#define sInitialNumMons data[4]
 #define sPlayHealSe data[5]
 #define sNumMons    data[6]
 #define sSpriteId   data[7]
@@ -1019,6 +1024,9 @@ bool8 FldEff_PokecenterHeal(void)
     task->tFirstBallY = 36;
     task->tMonitorX = 124;
     task->tMonitorY = 24;
+    task->tNurseEventID = gFieldEffectArguments[0];
+    task->tNurseStepTimer  = 0;
+    task->tNurseFacingDown = FALSE;
     return FALSE;
 }
 
@@ -1036,13 +1044,63 @@ static void PokecenterHealEffect_Init(struct Task *task)
     task->tMonitorSpriteId = CreatePokecenterMonitorSprite(task->tMonitorX, task->tMonitorY);
 }
 
-static void PokecenterHealEffect_WaitForBallPlacement(struct Task *task)
-{
-    if (gSprites[task->tBallSpriteId].sState > 1)
-    {
-        gSprites[task->tMonitorSpriteId].sState++;
-        task->tState++;
-    }
+// We want the PokeCenter nurse to insert Poke Balls two at a time. 
+// We therefore shorten the delay on every other ball, as if she's 
+// got a Poke Ball in each hand and is inserting them at very nearly 
+// the same time.
+#define POKECENTER_HEAL_DELAY_ON_PRIMARY_BALL 25
+#define POKECENTER_HEAL_DELAY_ON_OFFHAND_BALL 10
+#define POKECENTER_HEAL_DELAY_AFTER_LAST_BALL 32
+#define POKECENTER_HEAL_DELAY_BETWEEN_CHANGE_DIR 9
+
+#include "script_movement.h"
+#include "gba/isagbprint.h"
+
+static void PokecenterHealEffect_WaitForBallPlacement(struct Task *task) {
+   struct ObjectEvent* nurse = &gObjectEvents[task->tNurseEventID];
+   
+   bool8 faced_nurse_this_frame = FALSE;
+   
+   task->tNurseStepTimer++;
+   if (gSprites[task->tBallSpriteId].sState > 1) {
+      gSprites[task->tMonitorSpriteId].sState++;
+      task->tState++;
+   } else {
+      //
+      // We want to animate the nurse turning back and forth between the 
+      // machine and the player, as if she's taking Poke Balls from the 
+      // player two at a time, and inserting them into the machine two at 
+      // a time.
+      //
+      switch (task->tNurseStepTimer) {
+         case POKECENTER_HEAL_DELAY_ON_OFFHAND_BALL:
+         case POKECENTER_HEAL_DELAY_ON_PRIMARY_BALL + (POKECENTER_HEAL_DELAY_ON_OFFHAND_BALL * 2):
+            //
+            // The nurse should face down after every pair of Poke Balls 
+            // she places into the machine, to take more from the player.
+            //
+            ObjectEventSetHeldMovement(nurse, MOVEMENT_ACTION_WALK_IN_PLACE_FASTER_DOWN);
+            task->tNurseFacingDown = TRUE;
+            faced_nurse_this_frame = TRUE;
+            break;
+      }
+   }
+   if (task->tNurseFacingDown) {
+      ObjectEventClearHeldMovementIfFinished(nurse);
+      if (!ObjectEventIsHeldMovementActive(nurse)) {
+         //
+         // Once the nurse finishes facing down, we should face her 
+         // left again, back toward the machine she'll be placing the 
+         // Poke Balls into. Do this with a slight delay, so the change 
+         // in direction looks natural.
+         //
+         if (++task->tNurseFaceBackTimer >= POKECENTER_HEAL_DELAY_BETWEEN_CHANGE_DIR) {
+            task->tNurseFaceBackTimer = 0;
+            ObjectEventSetHeldMovement(nurse, MOVEMENT_ACTION_WALK_IN_PLACE_FASTER_LEFT);
+            task->tNurseFacingDown = FALSE;
+         }
+      }
+   }
 }
 
 static void PokecenterHealEffect_WaitForBallFlashing(struct Task *task)
@@ -1133,6 +1191,7 @@ static u8 CreateGlowingPokeballsEffect(s16 numMons, s16 x, s16 y, bool16 playHea
     sprite->y2 = y;
     sprite->sPlayHealSe = playHealSe;
     sprite->sNumMons = numMons;
+    sprite->sInitialNumMons = numMons;
     sprite->sSpriteId = spriteId;
     return spriteId;
 }
@@ -1158,7 +1217,18 @@ static void PokeballGlowEffect_PlaceBalls(struct Sprite *sprite)
     #endif
     if (sprite->sTimer == 0 || (--sprite->sTimer) == 0)
     {
-        sprite->sTimer = 25;
+        sprite->sTimer = POKECENTER_HEAL_DELAY_ON_PRIMARY_BALL;
+        
+        if (sprite->sInitialNumMons % 2 == sprite->sNumMons % 2) {
+           //
+           // Reduce the timer on every other Poke Ball, to imply that the nurse is 
+           // taking them from the player two at a time and inserting them into the 
+           // machine two at a time. Someone who's very well-practiced at this could 
+           // plausibly do that, and it means the pacing of PokeCenter heals is faster.
+           //
+           sprite->sTimer = POKECENTER_HEAL_DELAY_ON_OFFHAND_BALL;
+        }
+        
         spriteId = CreateSpriteAtEnd(&sSpriteTemplate_PokeballGlow, sPokeballCoordOffsets[sprite->sCounter].x + sprite->x2, sPokeballCoordOffsets[sprite->sCounter].y + sprite->y2, 0);
         gSprites[spriteId].oam.priority = 2;
         gSprites[spriteId].sEffectSpriteId = sprite->sSpriteId;
@@ -1168,7 +1238,7 @@ static void PokeballGlowEffect_PlaceBalls(struct Sprite *sprite)
     }
     if (sprite->sNumMons == 0)
     {
-        sprite->sTimer = 32;
+        sprite->sTimer = POKECENTER_HEAL_DELAY_AFTER_LAST_BALL;
         sprite->sState++;
     }
 }
