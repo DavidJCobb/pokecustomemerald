@@ -33,7 +33,6 @@ typedef struct {
 #define VRAM_BG_TilesAreAddressableFromTileset(charBaseIndex, layout, member)   (VRAM_BG_TileID(layout, member) >= (charBaseIndex * 512) && VRAM_BG_TileID(layout, member) + VRAM_BG_TileCount(layout, member) < 1024)
 
 #if MODERN
-   // modern version is untested
    #define VRAM_BG_LoadTiles(layout, member, bg, source) \
       do { \
          _Static_assert(sizeof(source) == sizeof((( layout *)NULL)-> member ), "size of tile source data doesn't match size allotted in your VRAM layout"); \
@@ -144,5 +143,21 @@ typedef struct {
       LoadUserWindowBorderGfxOnBg(0, VRAM_BG_TileID(VRAMTileLayout, user_window_frame), BG_PLTT_ID(7));
 
 */
+
+// Assumes you've defined your VRAM layout as `typedef struct { ... } VRAMTileLayout`.
+#define VRAM_LoadCompressedBGData(src, member) \
+   do { LZ77UnCompVram(src, (void*) (BG_VRAM + offsetof(VRAMTileLayout, member)) ); } while (0)
+
+#define VRAM_LoadBGTiles(member, layer, src) \
+   VRAM_BG_LoadTiles(VRAMTileLayout, member, layer, src)
+
+#define VRAM_LoadBGPalette(src, dst_index) \
+   do { LoadPalette(src, BG_PLTT_ID(dst_index), PLTT_SIZE_4BPP); } while (0)
+      
+#define VRAM_LoadBGPaletteData(src, first_palette_index) \
+   do { \
+      _Static_assert((first_palette_index * 16 * sizeof(uint16_t)) + sizeof(src) <= BG_PLTT_SIZE, "Insufficient room for this palette data."); \
+      LoadPalette(src, BG_PLTT_ID(first_palette_index), sizeof(src)); \
+   } while (0)
 
 #endif

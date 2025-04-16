@@ -539,8 +539,7 @@ void CB2_InitCustomGameOptionMenu(void) {
          ShowBg(BACKGROUND_LAYER_OPTIONS);
          //HideBg(BACKGROUND_LAYER_HELP); // done by `LuUI_ResetBackgroundsAndVRAM`
          
-         // Enable sprite layer:
-         SetGpuReg(REG_OFFSET_DISPCNT, GetGpuReg(REG_OFFSET_DISPCNT) | DISPCNT_OBJ_ON);
+         SetGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_OBJ_ON); // enable sprite layer
          
          gMain.state++;
          break;
@@ -550,8 +549,8 @@ void CB2_InitCustomGameOptionMenu(void) {
             ResetTasks();
          }
          
-         VRAM_BG_LoadTiles(VRAMTileLayout, blank_tile, BACKGROUND_LAYER_OPTIONS, sBlankBGTile);
-         VRAM_BG_LoadTiles(VRAMTileLayout, selection_cursor_tiles, BACKGROUND_LAYER_OPTIONS, sMenuCursorBGTiles);
+         VRAM_LoadBGTiles(blank_tile, BACKGROUND_LAYER_OPTIONS, sBlankBGTile);
+         VRAM_LoadBGTiles(selection_cursor_tiles, BACKGROUND_LAYER_OPTIONS, sMenuCursorBGTiles);
          
          gMain.state++;
          break;
@@ -564,12 +563,12 @@ void CB2_InitCustomGameOptionMenu(void) {
          gMain.state++;
          break;
        case 4:
-         LoadPalette(sOptionMenuBg_Pal, BG_PLTT_ID(BACKGROUND_PALETTE_ID_MENU), sizeof(sOptionMenuBg_Pal));
+         VRAM_LoadBGPaletteData(sOptionMenuBg_Pal, BACKGROUND_PALETTE_ID_MENU);
          gMain.state++;
          break;
        case 5:
-         LoadPalette(sOptionsListingPalette, BG_PLTT_ID(BACKGROUND_PALETTE_ID_TEXT), sizeof(sOptionsListingPalette));
-         LoadPalette(GetTextWindowPalette(2), BG_PLTT_ID(BACKGROUND_PALETTE_ID_CONTROLS), PLTT_SIZE_4BPP);
+         VRAM_LoadBGPaletteData(sOptionsListingPalette, BACKGROUND_PALETTE_ID_TEXT);
+         VRAM_LoadBGPalette(GetTextWindowPalette(2), BACKGROUND_PALETTE_ID_CONTROLS);
          gMain.state++;
          break;
        case 6:

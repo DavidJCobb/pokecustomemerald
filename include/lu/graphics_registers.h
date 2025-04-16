@@ -7,19 +7,19 @@
 struct ColorEffectParams {
    union {
       struct {
-         u8 srcLayers : 6;
-         u8 effect    : 2;
-         u8 dstLayers : 6;
-         u8 unused    : 2;
+         u8 target1Layers : 6;
+         u8 effect        : 2;
+         u8 target2Layers : 6;
+         u8 unused        : 2;
       };
       u16 bldcnt;
    };
    union {
       struct {
-         u8 srcCoefficient : 5; // [0, 16]
-         u8 unused_a       : 3;
-         u8 dstCoefficient : 5; // [0, 16]
-         u8 unused_b       : 3;
+         u8 target1Coefficient : 5; // [0, 16]
+         u8 unused_a           : 3;
+         u8 target2Coefficient : 5; // [0, 16]
+         u8 unused_b           : 3;
       } alpha;
       u16 bldalpha;
    };
