@@ -33,8 +33,8 @@ extern void SetScreenWindowParams(const struct ScreenWindowParams* src) {
 extern void SetScreenWindowsEnabled(u8 windows, bool8 enabled) {
    const u8 all_windows = (SCREEN_WINDOW_0 | SCREEN_WINDOW_1 | SCREEN_WINDOW_OBJ);
    
-   u8 to_set   =  windows & all_windows;
-   u8 to_clear = ~windows & all_windows;
+   u16 to_set   =  (windows & all_windows) << 13;
+   u16 to_clear = (~windows & all_windows) << 13;
    if (to_set) {
       SetGpuRegBits(REG_OFFSET_DISPCNT, to_set);
    }
