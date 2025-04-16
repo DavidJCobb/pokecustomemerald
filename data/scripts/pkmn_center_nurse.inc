@@ -4,7 +4,7 @@ Common_EventScript_PkmnCenterNurse::
 	setvar VAR_0x8004, 0
 	specialvar VAR_RESULT, CountPlayerTrainerStars
 	goto_if_eq VAR_RESULT, 4, EventScript_PkmnCenterNurse_GoldCard
-	msgbox gText_WouldYouLikeToRestYourPkmn, MSGBOX_YESNO
+	lu_msgbox_yesno_wordwrapped gText_WouldYouLikeToRestYourPkmn
 	goto_if_eq VAR_RESULT, YES, EventScript_PkmnCenterNurse_HealPkmn
 	goto_if_eq VAR_RESULT, NO, EventScript_PkmnCenterNurse_Goodbye
 	end
@@ -54,7 +54,7 @@ EventScript_PkmnCenterNurse_CheckTrainerHillAndUnionRoom::
 @ VAR_0x8004 is 1 when player has Gold Card
 EventScript_PkmnCenterNurse_ReturnPkmn::
 	goto_if_eq VAR_0x8004, 1, EventScript_PkmnCenterNurse_ReturnPkmn2
-	message gText_RestoredPkmnToFullHealth
+	lu_message_wordwrapped gText_RestoredPkmnToFullHealth
 	waitmessage
 	applymovement VAR_0x800B, Movement_PkmnCenterNurse_Bow
 	waitmovement 0
@@ -71,7 +71,7 @@ EventScript_PkmnCenterNurse_ReturnPkmn2::
 
 EventScript_PkmnCenterNurse_PlayerWaitingInUnionRoom::
 	goto_if_set FLAG_NURSE_UNION_ROOM_REMINDER, EventScript_PkmnCenterNurse_ReturnPkmn
-	msgbox gText_RestoredPkmnToFullHealth, MSGBOX_DEFAULT
+	lu_msgbox_default_wordwrapped gText_RestoredPkmnToFullHealth
 	setflag FLAG_NURSE_UNION_ROOM_REMINDER
 	message CableClub_Text_PlayerIsWaiting
 	waitmessage
@@ -94,7 +94,7 @@ EventScript_PkmnCenterNurse_ExplainPokerus::
 EventScript_PkmnCenterNurse_GoldCard::
 	goto_if_set FLAG_NURSE_MENTIONS_GOLD_CARD, EventScript_PkmnCenterNurse_AskForUsual
 	setflag FLAG_NURSE_MENTIONS_GOLD_CARD
-	msgbox gText_WelcomeCutShort, MSGBOX_DEFAULT
+	lu_msgbox_default_wordwrapped gText_WelcomeCutShort
 	playse SE_PIN
 	applymovement VAR_0x800B, Common_Movement_ExclamationMark
 	waitmovement 0

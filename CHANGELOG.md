@@ -49,6 +49,8 @@
 
 * Substantially reduced the delay before Professor Birch appears in the New Game intro.
 
+* Changed the pacing of the Pokemon Center healing animation. The nurse takes Poke Balls from the player and inserts them into the machine two at a time.
+
 #### Battles
 
 * Removed the grey flashes at the start of all battle transitions, to waste less time when going from the overworld to a battle.
