@@ -38,14 +38,6 @@ EWRAM_DATA s32 gFieldEffectArguments[8] = {0};
 
 // Static type declarations
 
-static void Task_PokecenterHeal(u8 taskId);
-static void PokecenterHealEffect_Init(struct Task *);
-static void PokecenterHealEffect_WaitForBallPlacement(struct Task *);
-static void PokecenterHealEffect_WaitForBallFlashing(struct Task *);
-static void PokecenterHealEffect_WaitForSoundAndEnd(struct Task *);
-static u8 CreatePokecenterMonitorSprite(s16, s16);
-static void SpriteCB_PokecenterMonitor(struct Sprite *);
-
 static void Task_HallOfFameRecord(u8 taskId);
 static void HallOfFameRecordEffect_Init(struct Task *);
 static void HallOfFameRecordEffect_WaitForBallPlacement(struct Task *);
@@ -248,8 +240,6 @@ static const u16 sNewGameBirch_Pal[16] = INCBIN_U16("graphics/birch_speech/birch
 
 static const u32 sPokeballGlow_Gfx[] = INCBIN_U32("graphics/field_effects/pics/pokeball_glow.4bpp");
 static const u16 sPokeballGlow_Pal[16] = INCBIN_U16("graphics/field_effects/palettes/pokeball_glow.gbapal");
-static const u32 sPokecenterMonitor0_Gfx[] = INCBIN_U32("graphics/field_effects/pics/pokecenter_monitor/0.4bpp");
-static const u32 sPokecenterMonitor1_Gfx[] = INCBIN_U32("graphics/field_effects/pics/pokecenter_monitor/1.4bpp");
 static const u32 sHofMonitorBig_Gfx[] = INCBIN_U32("graphics/field_effects/pics/hof_monitor_big.4bpp");
 static const u8 sHofMonitorSmall_Gfx[] = INCBIN_U8("graphics/field_effects/pics/hof_monitor_small.4bpp");
 static const u16 sHofMonitor_Pal[16] = INCBIN_U16("graphics/field_effects/palettes/hof_monitor.gbapal");
@@ -389,12 +379,6 @@ static const struct SpriteFrameImage sPicTable_PokeballGlow[] =
     obj_frame_tiles(sPokeballGlow_Gfx)
 };
 
-static const struct SpriteFrameImage sPicTable_PokecenterMonitor[] =
-{
-    obj_frame_tiles(sPokecenterMonitor0_Gfx),
-    obj_frame_tiles(sPokecenterMonitor1_Gfx)
-};
-
 static const struct SpriteFrameImage sPicTable_HofMonitorBig[] =
 {
     obj_frame_tiles(sHofMonitorBig_Gfx)
@@ -404,49 +388,6 @@ static const struct SpriteFrameImage sPicTable_HofMonitorSmall[] =
 {
     {.data = sHofMonitorSmall_Gfx, .size = 0x200} // the macro breaks down here
 };
-
-/*
-[0_][] <-1    24x16
-[2 ][] <-3
-   ^-- Origin
-*/
-static const struct Subsprite sSubsprites_PokecenterMonitor[] =
-{
-    {
-        .x = -12,
-        .y =  -8,
-        .shape = SPRITE_SHAPE(16x8),
-        .size = SPRITE_SIZE(16x8),
-        .tileOffset = 0,
-        .priority = 2
-    },
-    {
-        .x =  4,
-        .y = -8,
-        .shape = SPRITE_SHAPE(8x8),
-        .size = SPRITE_SIZE(8x8),
-        .tileOffset = 2,
-        .priority = 2
-    },
-    {
-        .x = -12,
-        .y =   0,
-        .shape = SPRITE_SHAPE(16x8),
-        .size = SPRITE_SIZE(16x8),
-        .tileOffset = 3,
-        .priority = 2
-    },
-    {
-        .x = 4,
-        .y = 0,
-        .shape = SPRITE_SHAPE(8x8),
-        .size = SPRITE_SIZE(8x8),
-        .tileOffset = 5,
-        .priority = 2
-    }
-};
-
-static const struct SubspriteTable sSubspriteTable_PokecenterMonitor = subsprite_table(sSubsprites_PokecenterMonitor);
 
 /*
 [0_____][1_____]    24x16
@@ -533,17 +474,6 @@ static const struct SpriteTemplate sSpriteTemplate_PokeballGlow =
     .callback = SpriteCB_PokeballGlow
 };
 
-static const struct SpriteTemplate sSpriteTemplate_PokecenterMonitor =
-{
-    .tileTag = TAG_NONE,
-    .paletteTag = FLDEFF_PAL_TAG_GENERAL_0,
-    .oam = &sOam_16x16,
-    .anims = sAnims_Flicker,
-    .images = sPicTable_PokecenterMonitor,
-    .affineAnims = gDummySpriteAffineAnimTable,
-    .callback = SpriteCB_PokecenterMonitor
-};
-
 static const struct SpriteTemplate sSpriteTemplate_HofMonitorBig =
 {
     .tileTag = TAG_NONE,
@@ -564,14 +494,6 @@ static const struct SpriteTemplate sSpriteTemplate_HofMonitorSmall =
     .images = sPicTable_HofMonitorSmall,
     .affineAnims = gDummySpriteAffineAnimTable,
     .callback = SpriteCB_HallOfFameMonitor
-};
-
-static void (*const sPokecenterHealEffectFuncs[])(struct Task *) =
-{
-    PokecenterHealEffect_Init,
-    PokecenterHealEffect_WaitForBallPlacement,
-    PokecenterHealEffect_WaitForBallFlashing,
-    PokecenterHealEffect_WaitForSoundAndEnd
 };
 
 static void (*const sHallOfFameRecordEffectFuncs[])(struct Task *) =
@@ -985,7 +907,7 @@ void MultiplyPaletteRGBComponents(u16 i, u8 r, u8 g, u8 b)
     gPlttBufferFaded[i] = color;
 }
 
-// Task data for Task_PokecenterHeal and Task_HallOfFameRecord
+// Task data for Task_HallOfFameRecord
 #define tState           data[0]
 #define tNumMons         data[1]
 #define tFirstBallX      data[2]
@@ -994,17 +916,12 @@ void MultiplyPaletteRGBComponents(u16 i, u8 r, u8 g, u8 b)
 #define tMonitorY        data[5]
 #define tBallSpriteId    data[6]
 #define tMonitorSpriteId data[7]
-#define tNurseEventID    data[8]
-#define tNurseStepTimer  data[9]
-#define tNurseFacingDown data[10]
-#define tNurseFaceBackTimer data[11]
 #define tStartHofFlash   data[15]
 
 // Sprite data for SpriteCB_PokeballGlowEffect
 #define sState      data[0]
 #define sTimer      data[1]
 #define sCounter    data[2]
-#define sInitialNumMons data[4]
 #define sPlayHealSe data[5]
 #define sNumMons    data[6]
 #define sSpriteId   data[7]
@@ -1012,114 +929,8 @@ void MultiplyPaletteRGBComponents(u16 i, u8 r, u8 g, u8 b)
 // Sprite data for SpriteCB_PokeballGlow
 #define sEffectSpriteId data[0]
 
-bool8 FldEff_PokecenterHeal(void)
-{
-    u8 nPokemon;
-    struct Task *task;
-
-    nPokemon = CalculatePlayerPartyCount();
-    task = &gTasks[CreateTask(Task_PokecenterHeal, 0xff)];
-    task->tNumMons = nPokemon;
-    task->tFirstBallX = 93;
-    task->tFirstBallY = 36;
-    task->tMonitorX = 124;
-    task->tMonitorY = 24;
-    task->tNurseEventID = gFieldEffectArguments[0];
-    task->tNurseStepTimer  = 0;
-    task->tNurseFacingDown = FALSE;
-    return FALSE;
-}
-
-static void Task_PokecenterHeal(u8 taskId)
-{
-    struct Task *task;
-    task = &gTasks[taskId];
-    sPokecenterHealEffectFuncs[task->tState](task);
-}
-
-static void PokecenterHealEffect_Init(struct Task *task)
-{
-    task->tState++;
-    task->tBallSpriteId = CreateGlowingPokeballsEffect(task->tNumMons, task->tFirstBallX, task->tFirstBallY, TRUE);
-    task->tMonitorSpriteId = CreatePokecenterMonitorSprite(task->tMonitorX, task->tMonitorY);
-}
-
-// We want the PokeCenter nurse to insert Poke Balls two at a time. 
-// We therefore shorten the delay on every other ball, as if she's 
-// got a Poke Ball in each hand and is inserting them at very nearly 
-// the same time.
-#define POKECENTER_HEAL_DELAY_ON_PRIMARY_BALL 25
-#define POKECENTER_HEAL_DELAY_ON_OFFHAND_BALL 10
-#define POKECENTER_HEAL_DELAY_AFTER_LAST_BALL 32
-#define POKECENTER_HEAL_DELAY_BETWEEN_CHANGE_DIR 9
-
 #include "script_movement.h"
 #include "gba/isagbprint.h"
-
-static void PokecenterHealEffect_WaitForBallPlacement(struct Task *task) {
-   struct ObjectEvent* nurse = &gObjectEvents[task->tNurseEventID];
-   
-   bool8 faced_nurse_this_frame = FALSE;
-   
-   task->tNurseStepTimer++;
-   if (gSprites[task->tBallSpriteId].sState > 1) {
-      gSprites[task->tMonitorSpriteId].sState++;
-      task->tState++;
-   } else {
-      //
-      // We want to animate the nurse turning back and forth between the 
-      // machine and the player, as if she's taking Poke Balls from the 
-      // player two at a time, and inserting them into the machine two at 
-      // a time.
-      //
-      switch (task->tNurseStepTimer) {
-         case POKECENTER_HEAL_DELAY_ON_OFFHAND_BALL:
-         case POKECENTER_HEAL_DELAY_ON_PRIMARY_BALL + (POKECENTER_HEAL_DELAY_ON_OFFHAND_BALL * 2):
-            //
-            // The nurse should face down after every pair of Poke Balls 
-            // she places into the machine, to take more from the player.
-            //
-            ObjectEventSetHeldMovement(nurse, MOVEMENT_ACTION_WALK_IN_PLACE_FASTER_DOWN);
-            task->tNurseFacingDown = TRUE;
-            faced_nurse_this_frame = TRUE;
-            break;
-      }
-   }
-   if (task->tNurseFacingDown) {
-      ObjectEventClearHeldMovementIfFinished(nurse);
-      if (!ObjectEventIsHeldMovementActive(nurse)) {
-         //
-         // Once the nurse finishes facing down, we should face her 
-         // left again, back toward the machine she'll be placing the 
-         // Poke Balls into. Do this with a slight delay, so the change 
-         // in direction looks natural.
-         //
-         if (++task->tNurseFaceBackTimer >= POKECENTER_HEAL_DELAY_BETWEEN_CHANGE_DIR) {
-            task->tNurseFaceBackTimer = 0;
-            ObjectEventSetHeldMovement(nurse, MOVEMENT_ACTION_WALK_IN_PLACE_FASTER_LEFT);
-            task->tNurseFacingDown = FALSE;
-         }
-      }
-   }
-}
-
-static void PokecenterHealEffect_WaitForBallFlashing(struct Task *task)
-{
-    if (gSprites[task->tBallSpriteId].sState > 4)
-    {
-        task->tState++;
-    }
-}
-
-static void PokecenterHealEffect_WaitForSoundAndEnd(struct Task *task)
-{
-    if (gSprites[task->tBallSpriteId].sState > 6)
-    {
-        DestroySprite(&gSprites[task->tBallSpriteId]);
-        FieldEffectActiveListRemove(FLDEFF_POKECENTER_HEAL);
-        DestroyTask(FindTaskIdByFunc(Task_PokecenterHeal));
-    }
-}
 
 bool8 FldEff_HallOfFameRecord(void)
 {
@@ -1191,7 +1002,6 @@ static u8 CreateGlowingPokeballsEffect(s16 numMons, s16 x, s16 y, bool16 playHea
     sprite->y2 = y;
     sprite->sPlayHealSe = playHealSe;
     sprite->sNumMons = numMons;
-    sprite->sInitialNumMons = numMons;
     sprite->sSpriteId = spriteId;
     return spriteId;
 }
@@ -1217,17 +1027,7 @@ static void PokeballGlowEffect_PlaceBalls(struct Sprite *sprite)
     #endif
     if (sprite->sTimer == 0 || (--sprite->sTimer) == 0)
     {
-        sprite->sTimer = POKECENTER_HEAL_DELAY_ON_PRIMARY_BALL;
-        
-        if (sprite->sInitialNumMons % 2 == sprite->sNumMons % 2) {
-           //
-           // Reduce the timer on every other Poke Ball, to imply that the nurse is 
-           // taking them from the player two at a time and inserting them into the 
-           // machine two at a time. Someone who's very well-practiced at this could 
-           // plausibly do that, and it means the pacing of PokeCenter heals is faster.
-           //
-           sprite->sTimer = POKECENTER_HEAL_DELAY_ON_OFFHAND_BALL;
-        }
+        sprite->sTimer = 25;
         
         spriteId = CreateSpriteAtEnd(&sSpriteTemplate_PokeballGlow, sPokeballCoordOffsets[sprite->sCounter].x + sprite->x2, sPokeballCoordOffsets[sprite->sCounter].y + sprite->y2, 0);
         gSprites[spriteId].oam.priority = 2;
@@ -1238,7 +1038,7 @@ static void PokeballGlowEffect_PlaceBalls(struct Sprite *sprite)
     }
     if (sprite->sNumMons == 0)
     {
-        sprite->sTimer = POKECENTER_HEAL_DELAY_AFTER_LAST_BALL;
+        sprite->sTimer = 32;
         sprite->sState++;
     }
 }
@@ -1336,32 +1136,6 @@ static void PokeballGlowEffect_Idle(struct Sprite *sprite)
 static void SpriteCB_PokeballGlow(struct Sprite *sprite)
 {
     if (gSprites[sprite->sEffectSpriteId].sState > 4)
-    {
-        FieldEffectFreeGraphicsResources(sprite);
-    }
-}
-
-static u8 CreatePokecenterMonitorSprite(s16 x, s16 y)
-{
-    u8 spriteId;
-    struct Sprite *sprite;
-    spriteId = CreateSpriteAtEnd(&sSpriteTemplate_PokecenterMonitor, x, y, 0);
-    sprite = &gSprites[spriteId];
-    sprite->oam.priority = 2;
-    sprite->invisible = TRUE;
-    SetSubspriteTables(sprite, &sSubspriteTable_PokecenterMonitor);
-    return spriteId;
-}
-
-static void SpriteCB_PokecenterMonitor(struct Sprite *sprite)
-{
-    if (sprite->data[0] != 0)
-    {
-        sprite->data[0] = 0;
-        sprite->invisible = FALSE;
-        StartSpriteAnim(sprite, 1);
-    }
-    if (sprite->animEnded)
     {
         FieldEffectFreeGraphicsResources(sprite);
     }
