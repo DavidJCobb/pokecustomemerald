@@ -23,33 +23,121 @@
 
 ## Custom Game Options
 
+* Change the flow for starting a new game.
+  * Enhanced
+    * All optional QOL changes are enabled.
+  * Vanilla+
+    * All optional QOL changes are disabled.
+  * Nuzlocke
+    * All optional QOL changes are enabled, unless they make the game aesier. Nuzlocke options are also enabled, using Graveyard boxes. The encounter limit (first obtained) and dupes clause are both neabled, as are shiny exceptions, and gifts count as encounters.
+    * The player is shown all to-be-used options and given an opportunity to tweak them.
+  * Custom Game
+    * Open the full CGO menu.
+* Make it so that the ability to adjust custom game options during a playthrough is, itself, a custom game option.
+  * Don't allow opening the CGO menu via Options if Options is opened via the main menu.
+  * Don't allow opening the CGO menu via Options if CGO options can't be adjusted during a playthrough.
+
+* Battling
+  * Cap player party levels
+    * Constant maximum
+      * "The player cannot train any Pokemon past this level. Pokemon obtained above this level will be reduced to this level."
+      * *Obtained Pokemon have their level reduced* after *their met level is set.*
+    * Dynamic maximum (None/Furthest Wild/Next Gym Leader)
+      * Furthest Wild: "The player cannot train any Pokemon past the level of the strongest wild Pokemon in any location they've traveled to before."
+      * Next Gym Leader: "The player cannot train any Pokemon beyond the level of the strongest Pokemon on the next Gym Leader's team. Once all Gym Leaders are defeated, Rival and Champion battles determine the cap."
+  * Cap player party size
+    * *If capped to size 1, we have to allow the player to always enter Double Battles, so that Tate & Liza isn't a softlock.*
+  * Double Battles (Normal/Permissive/Forced/Disabled)
+    * Normal: "You can enter Double Battles if you have at least two Pokemon, or if other options have limited your party size to one Pokemon."
+      * *We have to let the player enter Double Battles if they cap their party size to 1, so that Tate & Liza isn't a softlock.*
+    * Permissive: "You can always enter Double Battles, even if you only have one Pokemon on hand."
+    * Forced: "All battles are Double Battles, except for specialized battles at the Battle Tower and Battle Frontier. You can enter Double Battles even if you only have one Pokemon on hand."
+    * Disabled: "All battles are Single Battles, except for specialized battles at the Battle Tower and Battle Frontier."
+      * Includes Multi Battles with NPC allies i.e. Steven.
+  * Scale secondary status effect chances
+    * "Scale the likelihood that damaging moves will also apply a status effect to their target."
+* Eggs
+  * Scale egg laying time
+  * Scale egg hatch time
+* Events
+  * Rebattling legendary encounters (Allow/Disallow)
+    * Set fallback locations for Lati@s? Or just make it so it never stops roaming until caught?
+  * Eon Ticket (Enable/Disable)
+  * Mirage Island
+    * Scale probability
+    * Check boxed Pokemon (Enabled/Disabled)
 * Infinite Rare Candies from game start
 * Infinite stat vitamins from game start
-* Mono-type and dual-type runs
-  * Enabled (Yes/No)
-  * Type 1
-  * Type 2
-    * None
-    * Any
-  * Dual-Type Behavior (Require Both Types/Require Either Type)
-  * Pokemon with the wrong type (Always Disallow/Allow Half-Matches/Force Half-Matches/Always Force)
-    * "Control whether and how you can use Pokemon whose types don't match the ones listed here."
-    * Always Disallow: "You cannot use Pokemon unless their types exactly match the types chosen here."
-    * Allow Half-Matches: "If you choose two types, and a Pokemon has only one of them, then you can use that Pokemon."
-    * Force Half-Matches: "If you choose two types, and a Pokemon has only one of them, then its other type will be replaced with the other type (though only when you use it)."
-    * Always Force: "You can use any Pokemon species. Their types will be replaced with the types you choose here (though only when you use them)."
-  * Player moves of other types (Unchanged/Force to Type 1/Force to Type 2)
 * Nuzlocke
   * Slain Pokemon behavior (Graveyard/Delete)
+    * Graveyard: "Boxes in the PC will be repurposed as Graveyards. When one of your Pokemon faints, it will be transferred to a Graveyard. As more Pokemon faint, more boxes will become Graveyards; when no further space remains, fainted Pokemon will be deleted."
+    * Delete: "When one of your Pokemon faints, it will be deleted. If you lose a battle, a Pokemon will be automatically withdrawn from the PC to prevent your party from being empty."
   * Encounter Limit (per area)
     * Enable/Disable
+    * Applies to... (First Wild Battle/First Obtained)
+      * First Wild Battle: "The first wild battle you end up in will count toward the encounter limit: catch the first Wild Pokemon you see in an area, or catch nothing at all."
+        * *For obvious reasons, the effect of this option needs to be delayed until the player obtains any Poke Ball. Ergo we need some way to track whether the player has ever had a Poke Ball.*
+      * First Obtained: "The first Pokemon you catch or obtain in an area will count toward the encounter limit."
     * Gift Pokemon behavior (Free/Limits/Disable All Gifts)
+      * Free: "Gift Pokemon don't count toward encounter limits."
+      * Limits: "Gift Pokemon count as your encounter for the area. If you already caught a Pokemon from that area, you cannot receive the gift."
+      * Disable All Gifts: "You will not be allowed to receive Gift Pokemon."
     * Shiny Exception (None/Replace Prior/Always Allow)
+      * None: "Shiny Pokemon are not an exception to the encounter limit."
+      * Replace Prior: "If you encounter a Shiny Pokemon in an area where you've already obtained a Pokemon, you may catch the shiny and replace the other Pokemon. The replaced Pokemon will be treated as if it has fainted."
+      * Always Allow: "Shiny Pokemon will not count toward the encounter limit."
   * Dupes Clause (Enable/Disable)
+    * "If enabled, you cannot catch more than one of a given Pokemon species."
     * Dupes Clause Shiny Exception (None/Replace Prior/Always Allow)
+      * Replace Prior: "If you encounter a Shiny Pokemon after having already obtained a Pokemon of the same species, you may catch the shiny and replace the other Pokemon. The replaced Pokemon will be treated as if it has fainted."
   * Deactivation (Never/After Champion/After Rayquaza/After All Legendaries)
+* Pokemon types
+  * Control player types
+    * Enabled (Yes/No)
+    * Limit legal species by type
+      * "Limit the species that the player can use in battle, by type. If the player doesn't have any legal Pokemon on hand, they instantly lose any battle that they wind up in."
+      * *One checkbox per type.*
+    * Override Pokemon types
+      * "Override the types of all Pokemon fielded by the player."
+      * Type 1
+      * Type 2
+        * None
+        * Any
+    * Limit legal moves by type
+      * "Limit the moves that the player's Pokemon are allowed to learn."
+      * *One checkbox per type.*
+      * *When the player obtains a Pokemon, delete any non-matching moves, and disallow learning any illegal moves (manually or via the Daycare). Arrange it so that if none of the Pokemon's moves are legal, it re-learns any forgotten moves that may be legal; if there are no such moves, the Pokemon uses Struggle until it learns a legal move.*
+    * Override move types
+      * "Override the types of all moves used by the player."
+      * *One option per type: map from a source type to a desired type, with a "Use Default" option. Have a "Default" option up top, set to "Unchanged" initially, so that if the player wants to e.g. force all moves to Fire, they don't need to change a dozen and a half separate enums.*
+  * Control enemy types
+    * Enabled (Yes/No)
+    * Override Pokemon types
+    * Limit legal moves by type
+    * Override move types
 * Replace the three starters.
   * Dynamically alter the rival's starter to match the replacements.
+* Shop prices
+  * Scale buy prices
+  * Scale sell prices
+* Single-species run
+  * "Limit the player to using Pokemon of a single species. This setting overrides any options pertaining to starter Pokemon."
+  * Enabled (Yes/No)
+  * Player species
+  * Allow Evolutions (Yes/No)
+    * "Control whether the player is allowed to evolve members of the target species, and whether the player is allowed to obtain eggs that hatch into pre-evolutions of the target species."
+    * *If set to No, then the Daycare will never produce eggs that hatch even into a pre-evo.*
+  * Obtaining Pokemon (Limit Catches/Polymorph/Give At Milestones)
+    * Limit All Obtained: "The player can only catch members of the target species."
+      * *The Daycare will never produce eggs that hatch into any other species.*
+    * Polymorph: "All Pokemon caught or obtained by the player transform into the target species."
+    * Give At Milestones: "The player is given a member of the target species after each Gym Badge, up to 6."
+* Trade Evolutions (Unchanged/Stones/Level Ups)
+  * "Replace trade evolutions with other evolution methods."
+  * Stones: "All Pokemon that ordinarily evolve via trading will instead be able to evolve using evolution stones."
+  * Level Ups: "All Pokemon that ordinarily evolve via trading will instead be able to evolve by leveling up."
+* Wild encounters
+  * Scale encounter rate
 
 ### Custom game option behavior
 
@@ -181,6 +269,7 @@ This will require thorough investigation of the battle script engine as well as 
 ### Text
 
 * A "Very Fast" text speed option
+* Coalesced text relating to berry trees
 
 ## Savedata
 

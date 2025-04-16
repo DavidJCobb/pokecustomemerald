@@ -16,9 +16,11 @@
     * Item use by player
       * Vanilla
       * No backfield healing, except revives
-      * No backfield healing at all
+      * No backfield healing at all[^no-backfield-inspo]
       * No revives
-    * Wager options (money gain/loss)
+    * Wager options
+      * Scale money gain on victory
+      * Alter money loss on defeat (classic/modern)
   * Catching Pokemon
     * Catch rate flat increase
     * Catch rate scaling
@@ -27,12 +29,16 @@
     * Start game with running shoes
     * Run indoors
     * Bike indoors
-    * Poison damage and interval
+    * Poison damage and step interval
   * Starter Pokemon
     * Change the three available species
     * Change the initial level of the player's starter
     * Force a gender for the player's starter
-    
+
+* Implemented a custom title screen.
+
+[^no-backfield-inspo]: The option to limit backfield healing was inspired by [a collaboration between Pokémon Challenges and SmallAnt](https://www.youtube.com/watch?v=_3VwGkml-nk) wherein the latter ran a Nuzlocke while the former gained control of all NPC trainers and tried to stop him. Unlike a typical NPC trainer, PChal could sacrifice weaker Pokémon to withdraw his heavy hitters and heal them in safety, and he was ruthless in taking advantage of this, allowing him to effectively wall SmallAnt using Norman's Slaking.
+
 ### Pacing
 
 * Coalesced all item pick-up text. The vanilla game uses two textboxes: one to tell you what you picked up, and another to tell you what bag pocket you put it in. We combine these into one textbox.
