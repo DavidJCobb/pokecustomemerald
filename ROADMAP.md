@@ -174,12 +174,25 @@
 * Investigate separating item IDs into per-bag-pocket ID ranges. This is something we'll want a compiler plug-in to do, but it'd allow bitpacking the player's inventory (which is stored per-pocket) within savedata even more tightly.
   * Depending on how far we can take this, it may also enable expanding the list of Poke Balls without needing all ball item IDs to be consecutive. This would make it considerably easier to add Poke Balls. However, that'll depend on things like redoing how the "mon data" for Poke Balls is stored, among other things.
 
+### RTC
+
+Investigate the feasibility of adding real-world date/time tracking to the game.
+
+GBA cartridge RTC chips can store a date and time. Pokemon RSE just has the player enter the current time of day, and treats that as an offset from the RTC-side date and time, without paying any attention to the date and time in any absolute sense. However, other games take other approaches: *Boktai: The Sun Is in Your Hand* has the player enter the date, time, and time zone when they start a playthrough, and it writes these to the RTC and tracks them persistently thereafter.
+
+If we were to allow the player to set the date and time, we could potentially implement real-world seasons and holidays alongside a day/night cycle. We could also store the dates on which Pokemon are caught, the date on which the player starts the game, the date on which the player beats the Elite Four, and other dates that Gen IV onward track. We could let the player change their date, time, and time zone as is possible in the DS games (i.e. disable daily events for 24 hours to prevent cheesing).
+
+Time zones are simple enough: don't bother implementing real-world named zones; just have the player input their offset from UTC. Date and time handling is likely to be more challenging without OS support, e.g. accounting for leap years, leap seconds, February, and whatever else. Allowing the player to change the current date could offer user-side remedies for anything that's too complex or too variable for us to deal with.
+
+One potential wrinkle: emulators support the RTC. How do they manage the date and time stored therein?
+
 ### Scripting (overworld)
 
 * Investigate making multiple-choice menus scriptable, such that the script can decide the quantity and text of the selectable options.
 
 ## Features
 
+* Allow the player to rename Pokemon from the party and PC menus.
 * Ball Capsules
   * Gen IV only stored up to 12 designs, and let you assign these to a Pokemon as desired. It wasn't "one design for every Pokemon," so it might actually be viable to implement.
 * Overworld follower Pokemon
@@ -370,7 +383,18 @@ This will require thorough investigation of the battle script engine as well as 
   * Instead of "Power" and "Accuracy," show "Appeal" and "Jam," each stat as one row of eight hearts rather than two rows per stat and four hearts per row.
 * Add a page for "Ribbons," and remove the equivalent page from the PokeNav.
 
-### Vanilla bug fixes
+### Trainer Card
+
+* Aim for a more FR/LG-like design.
+  * Lighten the area behind the ID number, for legibility.
+  * Reduce space above the player's name, to better vertically align things and to potentially make room for another text row.
+  * Consider moving the trainer ID to the back of the card, and then, on the front of the card, having the player's name where the ID used to be, without a prefix. This would allow another row of text on the front of the card (not sure what to do with that yet, though).
+    * If we get RTC date/time working, we should show the start date of the player's adventure here.
+  * Show the Pokemon team icons along the bottom of the back of the card.
+* Consider allowing the player to customize the logo behind the player (e.g. full Poke Ball as in RSE; partial Poke Ball as in FR/LG; star; circle; crescent moon).
+  * Actually, how far can we take this? Could Halo 3-style Emblems be possible?
+
+## Vanilla bug fixes
 
 #### Battle
 
