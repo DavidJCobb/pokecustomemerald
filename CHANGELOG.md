@@ -37,6 +37,10 @@
 
 * Implemented a custom title screen.
 
+* When a Repel runs out and the player has more Repels of the same type in their inventory, they'll be told how many they have left, and offered the option to quickly use another.
+
+* The player can now voluntarily forfeit trainer battles, even outside of the Battle Frontier and Trainer Hill (where the vanilla game would allow forfeiting). Battles that allow forfeiting will show a "GIVE UP" option instead of "RUN." Clicking this option always pops a confirmation prompt (as it did in the vanilla game).
+
 [^no-backfield-inspo]: The option to limit backfield healing was inspired by [a collaboration between Pokémon Challenges and SmallAnt](https://www.youtube.com/watch?v=_3VwGkml-nk) wherein the latter ran a Nuzlocke while the former gained control of all NPC trainers and tried to stop him. Unlike a typical NPC trainer, PChal could sacrifice weaker Pokémon to withdraw his heavy hitters and heal them in safety, and he was ruthless in taking advantage of this, allowing him to effectively wall SmallAnt using Norman's Slaking.
 
 ### Pacing
