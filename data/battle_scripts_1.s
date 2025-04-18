@@ -2949,9 +2949,10 @@ BattleScript_LocalBattleLost::
 	jumpifbattletype BATTLE_TYPE_EREADER_TRAINER, BattleScript_LocalBattleLostEnd
 	jumpifhalfword CMP_EQUAL, gTrainerBattleOpponent_A, TRAINER_SECRET_BASE, BattleScript_LocalBattleLostEnd
 BattleScript_LocalBattleLostPrintWhiteOut::
-	printstring STRINGID_PLAYERWHITEOUT
+	printstring STRINGID_PLAYERWHITEOUT  @ "Player is out of usable Pokemon!"
 	waitmessage B_WAIT_TIME_LONG
-	printstring STRINGID_PLAYERWHITEOUT2
+BattleScript_LocalBattleLostPrintWhiteOutSecondHalfOnly::
+	printstring STRINGID_PLAYERWHITEOUT2 @ "Player whited out!"
 	waitmessage B_WAIT_TIME_LONG
 BattleScript_LocalBattleLostEnd::
 	end2
@@ -4553,6 +4554,11 @@ BattleScript_PrintPlayerForfeited::
 	printstring STRINGID_FORFEITEDMATCH
 	waitmessage B_WAIT_TIME_LONG
 	end2
+
+BattleScript_PlayerForfeitedNonBattleFacilityBattle::
+	printstring STRINGID_FORFEITEDMATCH
+	waitmessage B_WAIT_TIME_LONG
+   goto BattleScript_LocalBattleLostPrintWhiteOutSecondHalfOnly
 
 BattleScript_PrintPlayerForfeitedLinkBattle::
 	printstring STRINGID_FORFEITEDMATCH

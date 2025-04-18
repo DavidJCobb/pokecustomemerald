@@ -164,6 +164,11 @@
 
 ## Engine
 
+### Battles
+
+* Pokemon Custom Emerald allows the player to voluntarily forfeit trainer battles. Don't allow the player to forfeit story-critical trainer battles (i.e. any battle against a villain).
+  * I've added a `CurrentBattleAllowsForfeiting()` function in `battles/battle_allows_forfeiting.c`. Whatever flag I add to indicate these battles can be checked for in there.
+
 ### Items
 
 * Investigate separating item IDs into per-bag-pocket ID ranges. This is something we'll want a compiler plug-in to do, but it'd allow bitpacking the player's inventory (which is stored per-pocket) within savedata even more tightly.

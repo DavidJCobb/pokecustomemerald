@@ -37,6 +37,8 @@
 #include "constants/trainers.h"
 #include "constants/rgb.h"
 
+#include "battle/battle_allows_forfeiting.h"
+
 static void PlayerHandleGetMonData(void);
 static void PlayerHandleSetMonData(void);
 static void PlayerHandleSetRawMonData(void);
@@ -2579,7 +2581,11 @@ static void PlayerHandleChooseAction(void)
 
     gBattlerControllerFuncs[gActiveBattler] = HandleChooseActionAfterDma3;
     BattleTv_ClearExplosionFaintCause();
-    BattlePutTextOnWindow(gText_BattleMenu, B_WIN_ACTION_MENU);
+    if (CurrentBattleAllowsForfeiting()) {
+        BattlePutTextOnWindow(gText_BattleMenuWithForfeit, B_WIN_ACTION_MENU);
+    } else {
+        BattlePutTextOnWindow(gText_BattleMenu, B_WIN_ACTION_MENU);
+    }
 
     for (i = 0; i < 4; i++)
         ActionSelectionDestroyCursorAt(i);

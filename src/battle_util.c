@@ -36,6 +36,8 @@
 #include "constants/species.h"
 #include "constants/weather.h"
 
+#include "battle/battle_allows_forfeiting.h"
+
 /*
 NOTE: The data and functions in this file up until (but not including) sSoundMovesTable
 are actually part of battle_main.c. They needed to be moved to this file in order to
@@ -445,7 +447,7 @@ bool8 TryRunFromBattle(u8 battler)
             effect++;
         }
     }
-    else if (gBattleTypeFlags & (BATTLE_TYPE_FRONTIER | BATTLE_TYPE_TRAINER_HILL) && gBattleTypeFlags & BATTLE_TYPE_TRAINER)
+    else if (CurrentBattleAllowsForfeiting())
     {
         effect++;
     }

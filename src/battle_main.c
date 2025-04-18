@@ -62,6 +62,7 @@
 #include "constants/trainers.h"
 #include "cable_club.h"
 
+#include "battle/battle_allows_forfeiting.h"
 #include "lu/custom_game_options.h"
 
 extern const struct BgTemplate gBattleBgTemplates[];
@@ -4325,9 +4326,7 @@ static void HandleTurnActionSelectionState(void)
                     return;
                 }
 
-                if (gBattleTypeFlags & BATTLE_TYPE_TRAINER
-                    && gBattleTypeFlags & (BATTLE_TYPE_FRONTIER | BATTLE_TYPE_TRAINER_HILL)
-                    && gBattleBufferB[gActiveBattler][1] == B_ACTION_RUN)
+                if (CurrentBattleAllowsForfeiting() && gBattleBufferB[gActiveBattler][1] == B_ACTION_RUN)
                 {
                     gSelectionBattleScripts[gActiveBattler] = BattleScript_AskIfWantsToForfeitMatch;
                     gBattleCommunication[gActiveBattler] = STATE_SELECTION_SCRIPT_MAY_RUN;
@@ -5065,16 +5064,24 @@ static void HandleEndTurn_RanFromBattle(void)
 {
     gCurrentActionFuncId = 0;
 
-    if (gBattleTypeFlags & BATTLE_TYPE_FRONTIER && gBattleTypeFlags & BATTLE_TYPE_TRAINER)
+    if (CurrentBattleAllowsForfeiting())
     {
         gBattlescriptCurrInstr = BattleScript_PrintPlayerForfeited;
         gBattleOutcome = B_OUTCOME_FORFEITED;
-        gSaveBlock2Ptr->frontier.disableRecordBattle = TRUE;
-    }
-    else if (gBattleTypeFlags & BATTLE_TYPE_TRAINER_HILL)
-    {
-        gBattlescriptCurrInstr = BattleScript_PrintPlayerForfeited;
-        gBattleOutcome = B_OUTCOME_FORFEITED;
+        if (gBattleTypeFlags & BATTLE_TYPE_FRONTIER) {
+            gSaveBlock2Ptr->frontier.disableRecordBattle = TRUE;
+        } else if ((gBattleTypeFlags & (BATTLE_TYPE_FRONTIER | BATTLE_TYPE_TRAINER_HILL)) == 0) {
+           //
+           // The vanilla game allows you to forfeit battles in battle facilities. 
+           // If the player forfeits other trainer battles (e.g. because we add 
+           // the option to do that), then it should count as a conventional loss 
+           // and trigger the relevant behaviors.
+           //
+           gBattlescriptCurrInstr = BattleScript_PlayerForfeitedNonBattleFacilityBattle;
+           gBattleOutcome  = B_OUTCOME_LOST;
+           gBattleMainFunc = HandleEndTurn_BattleLost;
+           return;
+        }
     }
     else
     {
