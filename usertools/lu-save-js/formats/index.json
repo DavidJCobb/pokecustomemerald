@@ -23,6 +23,9 @@
          ]
       },
       {
+         "files": [
+            "vars.dat"
+         ],
          "shared": {
             "flags-0.dat": 1,
             "flags-1.dat": 1,
@@ -39,8 +42,7 @@
             "moves.dat": 1,
             "natures.dat": 1,
             "species.dat": 1,
-            "trainers.dat": 1,
-            "vars.dat": 1
+            "trainers.dat": 1
          }
       }
    ],

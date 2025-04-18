@@ -155,6 +155,35 @@ bool8 CheckBagHasItem(u16 itemId, u16 count)
     return FALSE;
 }
 
+static u16 GetPyramidBagItemCount(u16 itemId) {
+   u16* items      = gSaveBlock2Ptr->frontier.pyramidBag.itemId[gSaveBlock2Ptr->frontier.lvlMode];
+   u8*  quantities = gSaveBlock2Ptr->frontier.pyramidBag.quantity[gSaveBlock2Ptr->frontier.lvlMode];
+   
+   u16 total = 0;
+   for(u8 i = 0; i < PYRAMID_BAG_ITEMS_COUNT; ++i) {
+      if (items[i] != itemId)
+         continue;
+      total += quantities[i];
+   }
+   return total;
+}
+u16 GetBagItemCount(u16 itemId) {
+   if (ItemId_GetPocket(itemId) == 0)
+      return 0;
+   if (InBattlePyramid() || FlagGet(FLAG_STORING_ITEMS_IN_PYRAMID_BAG) == TRUE)
+      return GetPyramidBagItemCount(itemId);
+   
+   u8  pocket = ItemId_GetPocket(itemId) - 1;
+   u16 total  = 0;
+   for(u8 i = 0; i < gBagPockets[pocket].capacity; ++i) {
+      if (gBagPockets[pocket].itemSlots[i].itemId != itemId)
+         continue;
+      u16 quantity = GetBagItemQuantity(&gBagPockets[pocket].itemSlots[i].quantity);
+      total += quantity;
+   }
+   return total;
+}
+
 bool8 HasAtLeastOneBerry(void)
 {
     u16 i;

@@ -95,7 +95,10 @@
 #define VAR_POKELOT_RND1                                 0x404B
 #define VAR_POKELOT_RND2                                 0x404C
 #define VAR_POKELOT_PRIZE_PLACE                          0x404D
-#define VAR_UNUSED_0x404E                                0x404E // Unused Var
+
+// Unused in vanilla; repurposed.
+#define VAR_REPEL_ITEM_TYPE                              0x404E
+
 #define VAR_LOTAD_SIZE_RECORD                            0x404F
 #define VAR_LITTLEROOT_TOWN_STATE                        0x4050
 #define VAR_OLDALE_TOWN_STATE                            0x4051

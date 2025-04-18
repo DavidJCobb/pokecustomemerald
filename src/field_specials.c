@@ -4268,3 +4268,14 @@ u8 Script_TryGainNewFanFromCounter(void)
 {
     return TryGainNewFanFromCounter(gSpecialVar_0x8004);
 }
+
+#include "item.h" // ItemId_GetHoldEffectParam, RemoveBagItem
+
+// This should generally function semi-consistenly with `Task_UseRepel` in 
+// item_use.c, though that function is designed for use within the Bag menu.
+void UseAnotherRepel(void) {
+   u16 itemType = VarGet(VAR_REPEL_ITEM_TYPE);
+   RemoveBagItem(itemType, 1);
+   VarSet(VAR_REPEL_STEP_COUNT, ItemId_GetHoldEffectParam(itemType));
+   PlaySE(SE_REPEL);
+}

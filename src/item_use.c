@@ -864,11 +864,14 @@ static void Task_StartUseRepel(u8 taskId)
     }
 }
 
+// This should generally function semi-consistenly with `UseAnotherRepel` in 
+// field_species.c, though that function is designed to run in the overworld.
 static void Task_UseRepel(u8 taskId)
 {
     if (!IsSEPlaying())
     {
         VarSet(VAR_REPEL_STEP_COUNT, ItemId_GetHoldEffectParam(gSpecialVar_ItemId));
+        VarSet(VAR_REPEL_ITEM_TYPE,  gSpecialVar_ItemId);
         RemoveUsedItem();
         if (!InBattlePyramid())
             DisplayItemMessage(taskId, FONT_NORMAL, gStringVar4, CloseItemMessage);

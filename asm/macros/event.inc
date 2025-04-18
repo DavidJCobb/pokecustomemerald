@@ -1767,6 +1767,13 @@
    waitmessage
 	yesnobox 20, 8
    .endm
+   
+   @ Get the count of the item in the given variable.
+   .macro lu_getitemcount item_id_var:req
+   .byte SCR_OP_LU_EXTENDED
+   .byte 0x02
+   .2byte \item_id_var
+   .endm
 
 
 

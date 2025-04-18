@@ -2307,10 +2307,12 @@ bool8 ScrCmd_warpwhitefade(struct ScriptContext *ctx)
 }
 
 #include "lu/string_wrap.h"
+#include "gba/isagbprint.h"
 
 enum {
    Lu_Subinstruction_NoOp = 0,
    Lu_Subinstruction_MessageWrapped = 1, // <pointer:message>
+   Lu_Subinstruction_GetItemCount   = 2, // <item-id>
 };
 
 bool8 ScrCmd_LuExt(struct ScriptContext* ctx) {
@@ -2329,6 +2331,13 @@ bool8 ScrCmd_LuExt(struct ScriptContext* ctx) {
             lu_PrepStringWrap_Normal();
             lu_StringWrap(gStringVar4);
             ShowFieldMessageFromBuffer();
+         }
+         break;
+      case Lu_Subinstruction_GetItemCount:
+         {
+            const u16 item_type = VarGet(ScriptReadHalfword(ctx));
+            AGB_ASSERT(item_type < ITEMS_COUNT);
+            gSpecialVar_Result = GetBagItemCount(item_type);
          }
          break;
    }

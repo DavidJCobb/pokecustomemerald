@@ -66,8 +66,8 @@
   * Mirage Island
     * Scale probability
     * Check boxed Pokemon (Enabled/Disabled)
-* Infinite Rare Candies from game start
-* Infinite stat vitamins from game start
+* Infinite Rare Candies from game start, OR an item that lets the player pick a level to advance a Pokemon to.
+* Infinite stat vitamins from game start, OR an item that lets the player pick a number of EVs to apply/remove to a Pokemon.
 * Nuzlocke
   * Slain Pokemon behavior (Graveyard/Delete)
     * Graveyard: "Boxes in the PC will be repurposed as Graveyards. When one of your Pokemon faints, it will be transferred to a Graveyard. As more Pokemon faint, more boxes will become Graveyards; when no further space remains, fainted Pokemon will be deleted."
@@ -137,7 +137,21 @@
   * Stones: "All Pokemon that ordinarily evolve via trading will instead be able to evolve using evolution stones."
   * Level Ups: "All Pokemon that ordinarily evolve via trading will instead be able to evolve by leveling up."
 * Wild encounters
-  * Scale encounter rate
+  * Scale encounter rates
+    * *Implementation: see `WildEncounterCheck` in `wild_encounter.c`.*
+    * Walking
+    * Running
+    * Biking
+    * Biking only scales while moving (Enabled/Disabled) (default: Disabled)
+      * "Control whether the biking multiplier applies cumulatively to things that happen while you're on a bike, such as Rock Smash."
+      * *Battle odds are reduced while on a bike in vanilla, since otherwise, travel would be unbearable. However, the vanilla game applies the bike scaling in the "compute wild odds" function, without caring why the function was called. This means that if you're completely stationary on a bike and use Rock Smash, you still get a reduction in battle odds.*
+    * Fishing
+    * Surfing
+    * Rock Smash
+    * White Flute multiplier (150%)
+    * Black Flute multiplier (50%)
+    * Cleanse Tag multiplier (2/3)
+  * *Move Pokemon-catching options into here.*
 
 ### Custom game option behavior
 
@@ -314,7 +328,6 @@ This will require thorough investigation of the battle script engine as well as 
 * Topbar
   * Implement as a feature, but disable or make optional for QoL.
   * This could show the current the health of the player's party lead, and the player's Run toggle state. For hacks with day/night cycles, it could show the current in-game time. We'd want the classic 6x6px font, so the topbar can be just a single tile high.
-* When a Repel wears off, prompt the user to use another, if they have another of the same type. Display the quantity remaining as well.
 
 #### Dialogue
 
