@@ -1,3 +1,4 @@
+import SaveFile from "./savedata-classes/save-file.js";
 import SaveFormat from "./savedata-classes/save-format.js";
 import SaveFormatIndex from "./savedata-classes/save-format-index.js"
 import { TranslationOperation } from "./savedata-classes/data-format-translator.js";
@@ -134,7 +135,7 @@ SaveFormatIndex.load().then(function() {
       });
       modal.querySelector("button[data-action='activate']").addEventListener("click", async function() {
          let src_node = tab_view.selectedTabBody;
-         if (!src_node || !(src_node instanceof SaveFileElement))
+         if (!src_node)
             return;
          let src_file = src_node.saveFile;
          if (!src_file)

@@ -1,9 +1,10 @@
 .set ITEMID, VAR_0x8000
 .set AMOUNT, VAR_0x8001
+.set SUCCESSFULLY_ADDED_ITEM, VAR_0x8007
 
 Std_ObtainItem::
 	additem ITEMID, AMOUNT
-	copyvar VAR_0x8007, VAR_RESULT
+	copyvar SUCCESSFULLY_ADDED_ITEM, VAR_RESULT
 	call EventScript_ObtainItemMessage
 	return
 
@@ -11,8 +12,8 @@ EventScript_ObtainItemMessage::
 	bufferitemnameplural STR_VAR_2, ITEMID, AMOUNT
 	checkitemtype ITEMID
 	call EventScript_BufferPocketNameAndTryFanfare
-	call_if_eq VAR_0x8007, TRUE, EventScript_ObtainedItem
-	call_if_eq VAR_0x8007, FALSE, EventScript_NoRoomForItem
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, TRUE, EventScript_ObtainedItem
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, FALSE, EventScript_NoRoomForItem
 	return
 
 EventScript_BufferPocketNameAndTryFanfare::
@@ -26,27 +27,27 @@ EventScript_BufferPocketNameAndTryFanfare::
 
 EventScript_BufferItemsPocket::
 	bufferstdstring STR_VAR_3, STDSTRING_ITEMS
-	call_if_eq VAR_0x8007, TRUE, EventScript_PlayFanfareObtainedItem
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, TRUE, EventScript_PlayFanfareObtainedItem
 	return
 
 EventScript_BufferKeyItemsPocket::
 	bufferstdstring STR_VAR_3, STDSTRING_KEYITEMS
-	call_if_eq VAR_0x8007, TRUE, EventScript_PlayFanfareObtainedItem
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, TRUE, EventScript_PlayFanfareObtainedItem
 	return
 
 EventScript_BufferPokeballsPocket::
 	bufferstdstring STR_VAR_3, STDSTRING_POKEBALLS
-	call_if_eq VAR_0x8007, TRUE, EventScript_PlayFanfareObtainedItem
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, TRUE, EventScript_PlayFanfareObtainedItem
 	return
 
 EventScript_BufferTMHMsPocket::
 	bufferstdstring STR_VAR_3, STDSTRING_TMHMS
-	call_if_eq VAR_0x8007, TRUE, EventScript_PlayFanfareObtainedTMHM
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, TRUE, EventScript_PlayFanfareObtainedTMHM
 	return
 
 EventScript_BufferBerriesPocket::
 	bufferstdstring STR_VAR_3, STDSTRING_BERRIES
-	call_if_eq VAR_0x8007, TRUE, EventScript_PlayFanfareObtainedItem
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, TRUE, EventScript_PlayFanfareObtainedItem
 	return
 
 EventScript_ObtainedItem::
@@ -72,14 +73,14 @@ EventScript_PlayFanfareObtainedTMHM::
 
 Std_ObtainDecoration::
 	adddecoration ITEMID
-	copyvar VAR_0x8007, VAR_RESULT
+	copyvar SUCCESSFULLY_ADDED_ITEM, VAR_RESULT
 	call EventScript_ObtainDecorationMessage
 	return
 
 EventScript_ObtainDecorationMessage::
 	bufferdecorationname STR_VAR_2, ITEMID
-	call_if_eq VAR_0x8007, TRUE, EventScript_ObtainedDecor
-	call_if_eq VAR_0x8007, FALSE, EventScript_NoRoomForDecor
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, TRUE, EventScript_ObtainedDecor
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, FALSE, EventScript_NoRoomForDecor
 	return
 
 EventScript_ObtainedDecor::
@@ -110,15 +111,15 @@ Std_FindItem::
 	lock
 	faceplayer
 	waitse
-	copyvar VAR_0x8004, ITEMID
-	copyvar VAR_0x8005, AMOUNT
+	copyvar VAR_0x8004, ITEMID @ argument to checkitemspace
+	copyvar VAR_0x8005, AMOUNT @ argument to checkitemspace
 	checkitemspace ITEMID, AMOUNT
-	copyvar VAR_0x8007, VAR_RESULT
+	copyvar SUCCESSFULLY_ADDED_ITEM, VAR_RESULT
 	bufferitemnameplural STR_VAR_2, ITEMID, AMOUNT
 	checkitemtype ITEMID
 	call EventScript_BufferPocketNameAndTryFanfare
-	call_if_eq VAR_0x8007, TRUE, EventScript_PickUpItem
-	call_if_eq VAR_0x8007, FALSE, EventScript_NoRoomToPickUpItem
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, TRUE, EventScript_PickUpItem
+	call_if_eq SUCCESSFULLY_ADDED_ITEM, FALSE, EventScript_NoRoomToPickUpItem
 	release
 	return
 
@@ -175,29 +176,32 @@ EventScript_NoRoomToPickUpItem::
 
 @@@@@@@@ FINDING A HIDDEN ITEM @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
+.set HIDDENITEM_FLAG,    VAR_0x8004 @ Have we found this hidden item yet?
+.set HIDDENITEM_TYPE,    VAR_0x8005 @ What ItemIDGlobal is this?
+.set HIDDENITEM_IS_TMHM, VAR_0x8008
+
 EventScript_HiddenItemScript::
 	lockall
 	waitse
-	additem VAR_0x8005
-	copyvar VAR_0x8007, VAR_RESULT
-	bufferitemnameplural STR_VAR_2, VAR_0x8005, 1
-	checkitemtype VAR_0x8005
+	additem HIDDENITEM_TYPE
+	copyvar SUCCESSFULLY_ADDED_ITEM, VAR_RESULT
+	bufferitemnameplural STR_VAR_2, HIDDENITEM_TYPE, 1
+   goto_if_eq SUCCESSFULLY_ADDED_ITEM, FALSE, EventScript_NoRoomForHiddenItem
+	checkitemtype HIDDENITEM_TYPE
 	call EventScript_BufferPocketNameAndTryFanfare
-	call_if_eq VAR_RESULT, TRUE, EventScript_FoundHiddenTMHM
-	call_if_eq VAR_RESULT, FALSE, EventScript_FoundHiddenItem
-	goto EventScript_PutHiddenItemInPocket
-	end
-
-EventScript_PickUpHiddenItem::
-	copyvar VAR_0x8008, VAR_0x8004
-	copyvar VAR_0x8004, VAR_0x8005
+   @
+	copyvar HIDDENITEM_IS_TMHM, HIDDENITEM_FLAG    @ protect variable
+	copyvar HIDDENITEM_FLAG,    HIDDENITEM_TYPE    @ argument to BufferTMHMMoveName
 	specialvar VAR_RESULT, BufferTMHMMoveName
-	goto_if_eq VAR_RESULT, TRUE, EventScript_FoundHiddenTMHM
-	goto_if_eq VAR_RESULT, FALSE, EventScript_FoundHiddenItem
-	end
+	copyvar HIDDENITEM_FLAG,    HIDDENITEM_IS_TMHM @ restore variable
+	copyvar HIDDENITEM_IS_TMHM, VAR_RESULT
+   @
+	call_if_eq HIDDENITEM_IS_TMHM, TRUE, EventScript_FoundHiddenTMHM
+	call_if_eq HIDDENITEM_IS_TMHM, FALSE, EventScript_FoundHiddenItem
+	goto EventScript_PutHiddenItemInPocket
 
 EventScript_FoundHiddenTMHM::
-	bufferitemnameplural STR_VAR_1, VAR_0x8004, 1
+	bufferitemnameplural STR_VAR_1, HIDDENITEM_TYPE, 1
 	lu_message_wordwrapped gText_lu_FoundAndPocketedOneTMHM
 	return
 
@@ -206,11 +210,11 @@ EventScript_FoundHiddenItem::
 	return
 
 EventScript_PutHiddenItemInPocket::
-	waitmessage
 	waitfanfare
-	copyvar VAR_0x8004, VAR_0x8008
+	waitmessage
+	waitbuttonpress
 	special TryPutTreasureInvestigatorsOnAir
-	special SetHiddenItemFlag
+	special SetHiddenItemFlag @ Reads HIDDENITEM_FLAG as its argument.
 	releaseall
 	end
 

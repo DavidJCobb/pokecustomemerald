@@ -164,6 +164,7 @@
 * Ball Capsules
   * Gen IV only stored up to 12 designs, and let you assign these to a Pokemon as desired. It wasn't "one design for every Pokemon," so it might actually be viable to implement.
 * Overworld follower Pokemon
+* The ability to independently adjust the volume of sound effects versus music.
 
 ### Battles
 
@@ -290,7 +291,7 @@ This will require thorough investigation of the battle script engine as well as 
     * **`/(.{5,})(ution)/`:**" "revo-lution" but not "so-lution"; prefix must be 5+ chars long
 * Decapitalization
   * Replace capitalization with coloration where appropriate
-  * Investigate adding format codes (e.g. for species names, move names, etc.)
+  * Investigate adding format codes (e.g. for species names, move names, common strings like POKeMON and TRAINERS, etc.)
 * Investigate support for more text formatting
   * Bold
   * Italics

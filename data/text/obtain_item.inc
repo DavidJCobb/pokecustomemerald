@@ -42,6 +42,7 @@ gText_lu_FoundAndBaggedOneItem::
    @
    @ This one seems to be used for the Battle Pyramid.
 
+@ For TMs and HMs, the item name is STR_VAR_1 and the move name is STR_VAR_2.
 gText_lu_FoundAndPocketedOneTMHM::
 	.string "{PLAYER} found {STR_VAR_1} {STR_VAR_2}, and put it in the {STR_VAR_3} POCKET.$"
 
@@ -49,4 +50,4 @@ gText_lu_FoundAndBaggedOneTMHM::
 	.string "{PLAYER} found {STR_VAR_1} {STR_VAR_2}, and put it in the BAG.$"
 
 gText_lu_FoundOneItemButBagFull::
-	.string "{PLAYER} found one {STR_VAR_2}, but the BAG is full…$"
+	.string "{PLAYER} found a {STR_VAR_2}, but the BAG is full…$"
