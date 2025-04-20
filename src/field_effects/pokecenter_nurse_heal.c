@@ -9,6 +9,7 @@
 #include "fldeff.h"
 #include "overworld.h"
 #include "palette.h"
+#include "pokemon.h"
 #include "script_movement.h"
 #include "sound.h"
 #include "sprite.h"
@@ -110,6 +111,12 @@ static const union AnimCmd *const sAnims_Flicker[] = {
    sAnim_Flicker
 };
 
+enum {
+   TASK_STAGE_SETUP,
+   TASK_STAGE_PLACE_POKEMON,
+   TASK_STAGE_BLINKY,
+   TASK_STAGE_FINISH,
+};
 
 // Task data for Task_PokecenterHeal
 #define tState            data[0]
@@ -117,10 +124,11 @@ static const union AnimCmd *const sAnims_Flicker[] = {
 #define tBallSpriteId     data[2]
 #define tMonitorSpriteId  data[3]
 #define tNurseEventID     data[4]
-#define tNurseStepTimer   data[5]
-#define tNurseStep        data[6]
-#define tNurseFacingDown  data[7]
-#define tSpawnedBallCount data[8]
+#define tNurseAction      data[5]
+#define tNurseActionTimer data[6]
+#define tSpawnedBallCount data[7]
+#define tNurseActionStart data[8]
+#define tNurseFacingMachine data[9]
 
 // Sprite data for SpriteCB_PokeballGlowEffect
 #define sState       data[0]
@@ -131,18 +139,6 @@ static const union AnimCmd *const sAnims_Flicker[] = {
 
 // Sprite data for SpriteCB_PokeballGlow
 #define sEffectSpriteId data[0]
-
-enum {
-   NURSE_STEP_INSERT_BALL_0,
-   NURSE_STEP_INSERT_BALL_1,
-   NURSE_TAKE_BALLS_2,
-   NURSE_STEP_INSERT_BALL_2,
-   NURSE_STEP_INSERT_BALL_3,
-   NURSE_TAKE_BALLS_4,
-   NURSE_STEP_INSERT_BALL_4,
-   NURSE_STEP_INSERT_BALL_5,
-   NURSE_STEP_DONE,
-};
 
 static void Task_PokecenterHeal(u8 taskId);
 static u8 CreateGlowingPokeballsEffect(void);
@@ -155,132 +151,145 @@ bool8 FldEff_PokecenterHeal(void) {
    LoadSpritePalette(&gSpritePalette_GeneralFieldEffect0);
    UpdateSpritePaletteWithWeather(IndexOfSpritePaletteTag(gSpritePalette_GeneralFieldEffect0.tag));
    
-   u8 nPokemon;
    struct Task *task;
 
-   nPokemon = CalculatePlayerPartyCount();
    DebugPrintf("[PokeCenter Nurse Field Effect] Spinning up task...");
    task = &gTasks[CreateTask(Task_PokecenterHeal, 0xff)];
-   task->tNumMons = nPokemon;
+   {
+      u8 count = 0;
+      for(int i = 0; i < PARTY_SIZE; ++i) {
+         const struct Pokemon* mon = &gPlayerParty[i];
+         if (GetMonData(mon, MON_DATA_SPECIES) == SPECIES_NONE)
+            continue;
+         if (GetMonData(mon, MON_DATA_IS_EGG))
+            continue;
+         ++count;
+      }
+      task->tNumMons = count;
+   }
    task->tNurseEventID = gFieldEffectArguments[0];
-   task->tNurseStepTimer  = 0;
-   task->tNurseFacingDown = FALSE;
-   task->tSpawnedBallCount = 0;
    return FALSE;
 }
 
-static void NurseSetFacingPlayer(struct Task* task, bool8 face_player) {
-   struct ObjectEvent* nurse = &gObjectEvents[task->tNurseEventID];
-   if (face_player) {
-      DebugPrintf("[PokeCenter Nurse Field Effect] Facing the player...");
-      ObjectEventSetHeldMovement(nurse, MOVEMENT_ACTION_WALK_IN_PLACE_FASTER_DOWN);
-   } else {
-      DebugPrintf("[PokeCenter Nurse Field Effect] Facing the machine...");
-      ObjectEventSetHeldMovement(nurse, MOVEMENT_ACTION_WALK_IN_PLACE_FASTER_LEFT);
-   }
-   task->tNurseFacingDown = face_player;
-}
+// returns TRUE if complete.
+static void Action_FaceMachine_Start(struct Task*);
+static bool8 Action_FaceMachine_ExtraWait(struct Task*);
+static void Action_PlacePokemon(struct Task*);
+static void Action_TakePokemon_Start(struct Task*);
+static bool8 Action_TakePokemon_ExtraWait(struct Task*);
 
-enum {
-   NURSE_ACTION_NONE,
-   NURSE_ACTION_SPAWN_BALL,
-   NURSE_ACTION_FACE_PLAYER,
+struct Action {
+   void(*on_start)(struct Task*);
+   bool8(*extra_wait)(struct Task*); // if non-NULL, return FALSE while waiting and TRUE when done
+   void(*on_end)(struct Task*);
+   u8 duration; // must be at least 1
 };
-static u8 AdvanceNurseStep(struct Task* task) { // returns completed action
-   switch (task->tNurseStep) {
-      case NURSE_STEP_INSERT_BALL_0:
-      case NURSE_STEP_INSERT_BALL_2:
-      case NURSE_STEP_INSERT_BALL_4:
-         task->tNurseStepTimer = POKECENTER_HEAL_DELAY_ON_OFFHAND_BALL;
-         return NURSE_ACTION_SPAWN_BALL;
-      case NURSE_STEP_INSERT_BALL_1:
-      case NURSE_STEP_INSERT_BALL_3:
-      case NURSE_STEP_INSERT_BALL_5:
-         task->tNurseStepTimer = POKECENTER_HEAL_DELAY_BETWEEN_CHANGE_DIR;
-         return NURSE_ACTION_SPAWN_BALL;
-      case NURSE_TAKE_BALLS_2:
-      case NURSE_TAKE_BALLS_4:
-         task->tNurseStepTimer = POKECENTER_HEAL_DELAY_ON_PRIMARY_BALL;
-         return NURSE_ACTION_FACE_PLAYER;
-   }
-   return NURSE_ACTION_NONE;
-}
+
+// Individual actions taken by the nurse.
+static const struct Action sActions[] = {
+   {  // Facing the machine.
+      .on_start   = Action_FaceMachine_Start,
+      .extra_wait = Action_FaceMachine_ExtraWait,
+      .on_end     = NULL,
+      .duration   = 1,
+   },
+   {  // Placing a Poke Ball with the dominant hand.
+      .on_end   = Action_PlacePokemon,
+      .duration = 25,
+   },
+   {  // Placing a Poke Ball with the offhand.
+      .on_end   = Action_PlacePokemon,
+      .duration = 9,
+   },
+   {  // Facing the player, to take two more Poke Balls.
+      .on_start   = Action_TakePokemon_Start,
+      .extra_wait = Action_TakePokemon_ExtraWait,
+      .on_end     = NULL,
+      .duration   = 12,
+   },
+};
 
 static void Task_PokecenterHeal(u8 taskId) {
    struct Task* task = &gTasks[taskId];
    switch (task->tState) {
-      case 0:
+      case TASK_STAGE_SETUP:
          task->tBallSpriteId    = CreateGlowingPokeballsEffect();
          task->tMonitorSpriteId = CreatePokecenterMonitorSprite(MONITOR_X, MONITOR_Y);
-         DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Advancing to state 1...");
+         
          ++task->tState;
+         task->tNurseAction        = 0;
+         task->tNurseActionStart   = TRUE;
+         task->tNurseActionTimer   = sActions[0].duration;
+         task->tNurseFacingMachine = FALSE;
+         DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Advancing to state %u...", task->tState);
          break;
-      case 1:
-         //
-         // Handle ball placement and nurse steps.
-         //
+      case TASK_STAGE_PLACE_POKEMON:
          {
-            struct ObjectEvent* nurse = &gObjectEvents[task->tNurseEventID];
-            if (task->tNurseFacingDown) {
-               ObjectEventClearHeldMovementIfFinished(nurse);
-               if (!ObjectEventIsHeldMovementActive(nurse)) {
+            const struct Action* action = &sActions[task->tNurseAction];
+            if (task->tNurseActionStart) {
+               task->tNurseActionStart = FALSE;
+               if (action->on_start)
+                  (action->on_start)(task);
+               --task->tNurseActionTimer;
+            } else if (task->tNurseActionTimer > 1) {
+               bool8 advance = TRUE;
+               if (action->extra_wait) {
                   //
-                  // Once the nurse finishes facing down, we should 
-                  // face her left again, back toward the machine 
-                  // she'll be placing the Poke Balls into. Do this 
-                  // with a slight delay, so the change in direction 
-                  // looks natural.
+                  // Some actions wait to wait on an external process before their 
+                  // timers start ticking down. This includes actions for changing 
+                  // the nurse's facing direction.
                   //
-                  if (--task->tNurseStepTimer == 0) {
-                     NurseSetFacingPlayer(task, FALSE);
-                     ++task->tNurseStep;
-                     DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Advancing to nurse step %u...", task->tNurseStep);
-                  } else {
-                     return;
-                  }
+                  advance = (action->extra_wait)(task);
+               }
+               if (advance) {
+                  --task->tNurseActionTimer;
                }
             } else {
-               if (task->tNurseStepTimer)
-                  --task->tNurseStepTimer;
-            }
-            if (task->tNurseStepTimer == 0) {
-               DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Nurse step timer has elapsed.");
-               
-               u8 this_action = AdvanceNurseStep(task);
-               if (this_action == NURSE_ACTION_SPAWN_BALL) {
-                  DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Spawning a ball...");
-                  struct Sprite* sprite = &gSprites[task->tBallSpriteId];
-                  CreatePokeballSprite(task->tSpawnedBallCount, sprite->sSpriteId);
-                  ++task->tSpawnedBallCount;
-                  PlaySE(SE_BALL);
-                  if (task->tSpawnedBallCount == task->tNumMons) {
-                     DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Spawned the last ball.");
-                     task->tNurseStep = NURSE_STEP_DONE;
+               if (action->on_end)
+                  (action->on_end)(task);
+               //
+               // Advance to the next action.
+               //
+               task->tNurseAction      = (task->tNurseAction + 1) % ARRAY_COUNT(sActions);
+               task->tNurseActionStart = TRUE;
+               task->tNurseActionTimer = sActions[task->tNurseAction].duration;
+               if (task->tSpawnedBallCount >= task->tNumMons) {
+                  //
+                  // All Poke Balls have been loaded into the machine.
+                  //
+                  if (!task->tNurseFacingMachine) {
+                     //
+                     // Ensure that the nurse is facing the machine once she actually 
+                     // starts operating it and healing the player's party: jump back 
+                     // to the "face machine" action. We'll return here afterward and 
+                     // then take the "is facing machine" branch.
+                     //
+                     task->tNurseAction      = 0;
+                     task->tNurseActionTimer = sActions[task->tNurseAction].duration;
+                  } else {
+                     //
+                     // All Poke Balls have been loaded into the machine. Delay the 
+                     // start of the healing animation, and then advance to it.
+                     //
+                     ++task->tState;
+                     ++gSprites[task->tBallSpriteId].sState;
+                     gSprites[task->tBallSpriteId].sTimer = 24;
+                     DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Advancing to state %u...", task->tState);
                   }
-               } else if (this_action == NURSE_ACTION_FACE_PLAYER) {
-                  NurseSetFacingPlayer(task, TRUE);
-               }
-               ++task->tNurseStep;
-               DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Advancing to nurse step %u...", task->tNurseStep);
-               if (task->tNurseStep >= NURSE_STEP_DONE) {
-                  DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Advancing to state 2...");
-                  task->tState++;
-                  gSprites[task->tBallSpriteId].sState++;
-                  gSprites[task->tBallSpriteId].sTimer = POKECENTER_HEAL_DELAY_AFTER_LAST_BALL;
                }
             }
          }
          break;
-      case 2:
+      case TASK_STAGE_BLINKY:
          //
          // Handle ball flashing.
          //
          if (gSprites[task->tBallSpriteId].sState > 4) {
-            DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Advancing to state 3...");
             task->tState++;
+            DebugPrintf("[PokeCenter Nurse Field Effect] [Task] Advancing to state %u...", task->tState);
          }
          break;
-      case 3:
+      case TASK_STAGE_FINISH:
          //
          // Wait for sound and end.
          //
@@ -292,6 +301,39 @@ static void Task_PokecenterHeal(u8 taskId) {
          }
          break;
    }
+   
+}
+
+static struct ObjectEvent* GetNurse(struct Task* task) {
+   return &gObjectEvents[task->tNurseEventID];
+}
+
+static void Action_FaceMachine_Start(struct Task* task) {
+   DebugPrintf("[PokeCenter Nurse Field Effect] [Action: Face Machine] Start.");
+   ObjectEventSetHeldMovement(GetNurse(task), MOVEMENT_ACTION_WALK_IN_PLACE_FASTER_LEFT);
+   task->tNurseFacingMachine = TRUE;
+}
+static bool8 Action_FaceMachine_ExtraWait(struct Task* task) {
+   struct ObjectEvent* nurse = GetNurse(task);
+   return !ObjectEventIsHeldMovementActive(nurse);
+}
+
+static void Action_PlacePokemon(struct Task* task) {
+   DebugPrintf("[PokeCenter Nurse Field Effect] [Action: Place Pokemon] End.");
+   struct Sprite* sprite = &gSprites[task->tBallSpriteId];
+   CreatePokeballSprite(task->tSpawnedBallCount, sprite->sSpriteId);
+   ++task->tSpawnedBallCount;
+   PlaySE(SE_BALL);
+}
+
+static void Action_TakePokemon_Start(struct Task* task) {
+   DebugPrintf("[PokeCenter Nurse Field Effect] [Action: Take Pokemon] Start.");
+   ObjectEventSetHeldMovement(GetNurse(task), MOVEMENT_ACTION_WALK_IN_PLACE_FASTER_DOWN);
+   task->tNurseFacingMachine = FALSE;
+}
+static bool8 Action_TakePokemon_ExtraWait(struct Task* task) {
+   struct ObjectEvent* nurse = GetNurse(task);
+   return !ObjectEventIsHeldMovementActive(nurse);
 }
 
 //

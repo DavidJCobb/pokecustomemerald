@@ -41,6 +41,8 @@
 
 * The player can now voluntarily forfeit trainer battles, even outside of the Battle Frontier and Trainer Hill (where the vanilla game would allow forfeiting). Battles that allow forfeiting will show a "GIVE UP" option instead of "RUN." Clicking this option always pops a confirmation prompt (as it did in the vanilla game).
 
+* Pokemon that aren't gender-unknown are now referred to with gendered pronouns during battle, to make the text feel less impersonal (i.e. "MISDREAVUS hurt herself in her confusion" rather than "MISDREAVUS hurt itself in its confusion").
+
 [^no-backfield-inspo]: The option to limit backfield healing was inspired by [a collaboration between Pokémon Challenges and SmallAnt](https://www.youtube.com/watch?v=_3VwGkml-nk) wherein the latter ran a Nuzlocke while the former gained control of all NPC trainers and tried to stop him. Unlike a typical NPC trainer, PChal could sacrifice weaker Pokémon to withdraw his heavy hitters and heal them in safety, and he was ruthless in taking advantage of this, allowing him to effectively wall SmallAnt using Norman's Slaking.
 
 ### Pacing
