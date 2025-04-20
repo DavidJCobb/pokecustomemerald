@@ -61,6 +61,15 @@
 #define B_TXT_PARTNER_CLASS 0x32
 #define B_TXT_PARTNER_NAME 0x33
 #define B_TXT_BUFF3 0x34
+//
+// EXTENSIONS START HERE.
+//
+// Pronouns: the next byte is a PRONOUN_TYPE_ value.
+#define B_TXT_ATK_PRONOUN 0x35
+#define B_TXT_DEF_PRONOUN 0x36
+#define B_TXT_EFF_PRONOUN 0x37 // EFF = short for gEffectBank
+#define B_TXT_ACTIVE_PRONOUN 0x38
+#define B_TXT_SCR_ACTIVE_PRONOUN 0x39
 
 // for B_TXT_BUFF1, B_TXT_BUFF2 and B_TXT_BUFF3
 
