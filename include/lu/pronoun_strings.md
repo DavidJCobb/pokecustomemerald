@@ -30,3 +30,5 @@ Current forms:
 * `gText_PkmnCuredOfParalysis`
 * `gText_PkmnSnappedOutOfConfusion`
 * `gText_PkmnGotOverInfatuation`
+* To facilitate the above, some means for scripts to buffer the pronoun type of some relevant entity, and then some string format code which takes the buffered pronoun type and prints a pronoun given a form constant.
+  * The `pronoun_macros.h` header exists for use by scripts. However, I don't want to `#include` it in `event_scripts.inc` and thereby force every script in the game to recompile. It can be `#include`d from specific scripts as needed.
