@@ -54,6 +54,7 @@ Add new options:
       * *We have to let the player enter Double Battles if they cap their party size to 1, so that Tate & Liza isn't a softlock.*
     * Permissive: "You can always enter Double Battles, even if you only have one Pokemon on hand."
     * Forced: "All battles are Double Battles, except for specialized battles at the Battle Tower and Battle Frontier. You can enter Double Battles even if you only have one Pokemon on hand."
+      * *Requires implementing Wild Double Battles, which in turn requires making some adjustments to wild Pokemon generation and Pokemon catching.*
     * Disabled: "All battles are Single Battles, except for specialized battles at the Battle Tower and Battle Frontier."
       * Includes Multi Battles with NPC allies i.e. Steven.
   * Scale secondary status effect chances
@@ -126,7 +127,7 @@ Add new options:
   * "Limit the player to using Pokemon of a single species. This setting overrides any options pertaining to starter Pokemon."
   * Enabled (Yes/No)
   * Player species
-  * Allow Evolutions (Yes/No)
+  * Allow whole evolution family (Yes/No)
     * "Control whether the player is allowed to evolve members of the target species, and whether the player is allowed to obtain eggs that hatch into pre-evolutions of the target species."
     * *If set to No, then the Daycare will never produce eggs that hatch even into a pre-evo.*
   * Obtaining Pokemon (Limit Catches/Polymorph/Give At Milestones)
@@ -366,6 +367,10 @@ This will require thorough investigation of the battle script engine as well as 
 
 * Releasing a Pokemon should return its held item to the bag.
   * If there's insufficient bag space, then show a confirmation prompt warning that the held item will e lost.
+* Wallpapers
+  * The menu for choosing a wallpaper should use two columns, not one, and should support horizontal scrolling.
+  * Add more wallpapers! A Spinda-themed design would be nice, and would fit with the custom title screen.
+* The context menu for Pokemon should allow assigning/taking their held item.
 
 ### Pokedex
 

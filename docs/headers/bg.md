@@ -127,6 +127,10 @@ Shows a given BG layer.
       <dd><p>The layer.</p></dd>
 </dl>
 
+## Tricks
+
+* The Pokemon Storage System UI uses `IsDma3ManagerBusyWithBgCopy()` when changing a box's wallpaper, to poll for when the wallpaper graphics have finished loading. They load and decompress the wallpaper tiles into a heap-allocated buffer, call `LoadBgTiles` to queue a copy into VRAM, and then free the buffer once the copy is done.
+
 ## See also
 
 * [palette.h](#palette.md)

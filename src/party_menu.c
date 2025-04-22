@@ -79,7 +79,7 @@
 
 enum {
     MENU_SUMMARY,
-    MENU_RENAME,
+    MENU_RENAME, // added
     MENU_SWITCH,
     MENU_CANCEL1,
     MENU_ITEM,
@@ -99,6 +99,8 @@ enum {
     MENU_TRADE2,
     MENU_TOSS,
     MENU_FIELD_MOVES
+    // MENU_FIELD_MOVES + n == field move N, so you should 
+    // add any new menu items above MENU_FIELD_MOVES.
 };
 
 // IDs for the action lists that appear when a party mon is selected
