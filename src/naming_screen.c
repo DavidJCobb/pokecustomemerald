@@ -29,6 +29,7 @@
 #include "main.h"
 #include "constants/event_objects.h"
 #include "constants/rgb.h"
+#include "menu_helpers.h" // MenuHelpers_IsLinkActive
 
 enum {
     INPUT_NONE,
@@ -438,7 +439,8 @@ static void CB2_LoadNamingScreen(void)
         gMain.state++;
         break;
     case 4:
-        ResetTasks();
+        if (!MenuHelpers_IsLinkActive())
+            ResetTasks();
         gMain.state++;
         break;
     case 5:

@@ -194,7 +194,7 @@ One potential wrinkle: emulators support the RTC. How do they manage the date an
 
 ## Features
 
-* Allow the player to rename Pokemon from the party and PC menus.
+* Allow the player to rename Pokemon from the PC menu.
 * Ball Capsules
   * Gen IV only stored up to 12 designs, and let you assign these to a Pokemon as desired. It wasn't "one design for every Pokemon," so it might actually be viable to implement.
 * Overworld follower Pokemon

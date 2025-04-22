@@ -3,9 +3,10 @@
 #include "battle.h"
 #include "battle_anim.h"
 #include "battle_controllers.h"
+#include "battle_factory.h" // InBattleFactory
 #include "battle_gfx_sfx_util.h"
 #include "battle_interface.h"
-#include "battle_pike.h"
+#include "battle_pike.h" // InBattlePike
 #include "battle_pyramid.h"
 #include "battle_pyramid_bag.h"
 #include "bg.h"
@@ -78,6 +79,7 @@
 
 enum {
     MENU_SUMMARY,
+    MENU_RENAME,
     MENU_SWITCH,
     MENU_CANCEL1,
     MENU_ITEM,
@@ -489,9 +491,15 @@ static void DisplayPartyPokemonDataGivenCustomGameBattleItemUsageLimits(u8 slot)
 static bool8 IsBackfieldSlot(u8 slot); // CGO
 static bool8 ItemUseWouldBeIllegalRevive(s8 slot); // CGO
 
+static void CursorCb_Rename(u8 taskId);
+static void CB2_ShowPokemonRenameScreen(void);
+static void CB2_ReturnToPartyMenuFromRenameScreen(void);
+
 // static const data
 #include "data/pokemon/tutor_learnsets.h"
 #include "data/party_menu.h"
+
+#include "lu/pronoun_strings.h"
 
 // code
 static void InitPartyMenu(u8 menuType, u8 layout, u8 partyAction, bool8 keepCursorPos, u8 messageId, TaskFunc task, MainCallback callback)
@@ -2664,7 +2672,7 @@ static void SetPartyMonFieldSelectionActions(struct Pokemon *mons, u8 slotId)
     // Add field moves to action list
     for (i = 0; i < MAX_MON_MOVES; i++)
     {
-        for (j = 0; sFieldMoves[j] != FIELD_MOVES_COUNT; j++)
+        for (j = 0; j < ARRAY_COUNT(sFieldMoves); ++j)
         {
             if (GetMonData(&mons[slotId], i + MON_DATA_MOVE1) == sFieldMoves[j])
             {
@@ -2682,6 +2690,9 @@ static void SetPartyMonFieldSelectionActions(struct Pokemon *mons, u8 slotId)
             AppendToList(sPartyMenuInternal->actions, &sPartyMenuInternal->numActions, MENU_MAIL);
         else
             AppendToList(sPartyMenuInternal->actions, &sPartyMenuInternal->numActions, MENU_ITEM);
+    }
+    if (!InBattleFactory() && !IsTradedMon(&mons[slotId])) {
+        AppendToList(sPartyMenuInternal->actions, &sPartyMenuInternal->numActions, MENU_RENAME);
     }
     AppendToList(sPartyMenuInternal->actions, &sPartyMenuInternal->numActions, MENU_CANCEL1);
 }
@@ -2842,6 +2853,33 @@ static void CB2_ReturnToPartyMenuFromSummaryScreen(void)
     gPaletteFade.bufferTransferDisabled = TRUE;
     gPartyMenu.slotId = gLastViewedMonIndex;
     InitPartyMenu(gPartyMenu.menuType, KEEP_PARTY_LAYOUT, gPartyMenu.action, TRUE, PARTY_MSG_DO_WHAT_WITH_MON, Task_TryCreateSelectionWindow, gPartyMenu.exitCallback);
+}
+
+static void CursorCb_Rename(u8 taskId) {
+   PlaySE(SE_SELECT);
+   sPartyMenuInternal->exitCallback = CB2_ShowPokemonRenameScreen;
+   Task_ClosePartyMenu(taskId);
+}
+
+#include "naming_screen.h"
+static void CB2_ShowPokemonRenameScreen(void) {
+   struct Pokemon* subject = &gPlayerParty[gPartyMenu.slotId];
+   GetMonData(subject, MON_DATA_NICKNAME, gStringVar2);
+   DoNamingScreen(
+      NAMING_SCREEN_NICKNAME,
+      gStringVar2,
+      GetMonData(subject, MON_DATA_SPECIES, NULL),
+      GetMonGender(subject),
+      GetMonData(subject, MON_DATA_PERSONALITY, NULL),
+      CB2_ReturnToPartyMenuFromRenameScreen
+   );
+}
+
+static void CB2_ReturnToPartyMenuFromRenameScreen(void) {
+   gPaletteFade.bufferTransferDisabled = TRUE;
+   struct Pokemon *mon = &gPlayerParty[gPartyMenu.slotId];
+   SetMonData(mon, MON_DATA_NICKNAME, gStringVar2);
+   InitPartyMenu(gPartyMenu.menuType, KEEP_PARTY_LAYOUT, gPartyMenu.action, TRUE, PARTY_MSG_DO_WHAT_WITH_MON, Task_TryCreateSelectionWindow, gPartyMenu.exitCallback);
 }
 
 static void CursorCb_Switch(u8 taskId)

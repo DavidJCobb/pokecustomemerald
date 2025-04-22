@@ -21,7 +21,7 @@
     * Wager options
       * Scale money gain on victory
       * Alter money loss on defeat (classic/modern)
-  * Catching Pokemon
+  * Catching Pokémon
     * Catch rate flat increase
     * Catch rate scaling
     * Catch EXP toggle
@@ -30,7 +30,7 @@
     * Run indoors
     * Bike indoors
     * Poison damage and step interval
-  * Starter Pokemon
+  * Starter Pokémon
     * Change the three available species
     * Change the initial level of the player's starter
     * Force a gender for the player's starter
@@ -41,7 +41,9 @@
 
 * The player can now voluntarily forfeit trainer battles, even outside of the Battle Frontier and Trainer Hill (where the vanilla game would allow forfeiting). Battles that allow forfeiting will show a "GIVE UP" option instead of "RUN." Clicking this option always pops a confirmation prompt (as it did in the vanilla game).
 
-* Pokemon that aren't gender-unknown are now referred to with gendered pronouns during battle, to make the text feel less impersonal (i.e. "MISDREAVUS hurt herself in her confusion" rather than "MISDREAVUS hurt itself in its confusion").
+* Pokémon that aren't gender-unknown are now referred to with gendered pronouns during battle, to make the text feel less impersonal (i.e. "MISDREAVUS hurt herself in her confusion" rather than "MISDREAVUS hurt itself in its confusion").
+
+* You can now rename Pokémon via the party menu.
 
 [^no-backfield-inspo]: The option to limit backfield healing was inspired by [a collaboration between Pokémon Challenges and SmallAnt](https://www.youtube.com/watch?v=_3VwGkml-nk) wherein the latter ran a Nuzlocke while the former gained control of all NPC trainers and tried to stop him. Unlike a typical NPC trainer, PChal could sacrifice weaker Pokémon to withdraw his heavy hitters and heal them in safety, and he was ruthless in taking advantage of this, allowing him to effectively wall SmallAnt using Norman's Slaking.
 
@@ -55,7 +57,7 @@
 
 * Substantially reduced the delay before Professor Birch appears in the New Game intro.
 
-* Changed the pacing of the Pokemon Center healing animation. The nurse takes Poke Balls from the player and inserts them into the machine two at a time.
+* Changed the pacing of the Pokémon Center healing animation. The nurse takes Poke Balls from the player and inserts them into the machine two at a time.
 
 #### Battles
 
