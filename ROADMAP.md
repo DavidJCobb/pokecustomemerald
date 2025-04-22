@@ -37,6 +37,8 @@
   * Don't allow opening the CGO menu via Options if Options is opened via the main menu.
   * Don't allow opening the CGO menu via Options if CGO options can't be adjusted during a playthrough.
 
+Add new options:
+
 * Battling
   * Cap player party levels
     * Constant maximum

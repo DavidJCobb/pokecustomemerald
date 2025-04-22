@@ -109,3 +109,30 @@ extern const u8* GetPronounString(enum PronounType type, enum PronounForm form) 
    }
    return list[form];
 }
+
+#include "constants/pokemon.h"
+extern const u8* GetPokemonGenderPronounString(u8 monGender, enum PronounForm form) {
+   enum PronounType type = PRONOUN_TYPE_NEUTER;
+   switch (monGender) {
+      case MON_MALE:
+         type = PRONOUN_TYPE_MASCULINE;
+         break;
+      case MON_FEMALE:
+         type = PRONOUN_TYPE_FEMININE;
+         break;
+      default:
+         break;
+   }
+   return GetPronounString(type, form);
+}
+
+extern enum PronounType PokemonGenderToPronounType(u8 monGender) {
+   switch (monGender) {
+      case MON_MALE:
+         return PRONOUN_TYPE_MASCULINE;
+      case MON_FEMALE:
+         return PRONOUN_TYPE_FEMININE;
+      default:
+         return PRONOUN_TYPE_NEUTER;
+   }
+}

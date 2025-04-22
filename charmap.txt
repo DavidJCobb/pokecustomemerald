@@ -345,6 +345,10 @@ ARCHIE         = FD 0A
 MAXIE          = FD 0B
 KYOGRE         = FD 0C
 GROUDON        = FD 0D
+@ extended
+PRONOUN_VAR_1  = FD 0E @ follow with a PRONOUN_FORM byte
+PRONOUN_VAR_2  = FD 0F
+PRONOUN_VAR_3  = FD 10
 
 @ battle string placeholders
 

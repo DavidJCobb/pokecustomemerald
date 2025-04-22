@@ -262,6 +262,10 @@
 #define PLACEHOLDER_ID_MAXIE         0xB
 #define PLACEHOLDER_ID_KYOGRE        0xC
 #define PLACEHOLDER_ID_GROUDON       0xD
+// extensions
+#define PLACEHOLDER_ID_PRONOUN_VAR_1 0x0E // next byte is a PRONOUN_FORM_... constant
+#define PLACEHOLDER_ID_PRONOUN_VAR_2 0x0F // next byte is a PRONOUN_FORM_... constant
+#define PLACEHOLDER_ID_PRONOUN_VAR_3 0x10 // next byte is a PRONOUN_FORM_... constant
 
 // battle placeholders are located in battle_message.h
 

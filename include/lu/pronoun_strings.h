@@ -31,6 +31,9 @@ enum PronounForm {
 };
 
 extern const u8* GetPronounString(enum PronounType, enum PronounForm);
+extern const u8* GetPokemonGenderPronounString(u8 monGender, enum PronounForm);
+
+extern enum PronounType PokemonGenderToPronounType(u8 monGender);
 
 inline bool8 IsValidPronounForm(enum PronounForm form) {
    return (form & ~CAPITALIZE_PRONOUN_FORM) < NUM_PRONOUN_FORMS;

@@ -7,6 +7,7 @@ EWRAM_DATA u8 gStringVar1[0x100] = {0};
 EWRAM_DATA u8 gStringVar2[0x100] = {0};
 EWRAM_DATA u8 gStringVar3[0x100] = {0};
 EWRAM_DATA u8 gStringVar4[0x3E8] = {0};
+EWRAM_DATA u8 gPronounVars[3] = {0};
 EWRAM_DATA static u8 sUnknownStringVar[16] = {0};
 
 static const u8 sDigits[] = __("0123456789ABCDEF");
@@ -332,6 +333,7 @@ u8 *ConvertIntToHexStringN(u8 *dest, s32 value, enum StringConvertMode mode, u8 
     return dest;
 }
 
+#include "lu/pronoun_strings.h"
 u8 *StringExpandPlaceholders(u8 *dest, const u8 *src)
 {
     for (;;)
@@ -344,7 +346,20 @@ u8 *StringExpandPlaceholders(u8 *dest, const u8 *src)
         {
         case PLACEHOLDER_BEGIN:
             placeholderId = *src++;
-            expandedString = GetExpandedPlaceholder(placeholderId);
+            if (
+                placeholderId >= PLACEHOLDER_ID_PRONOUN_VAR_1 &&
+                placeholderId <= PLACEHOLDER_ID_PRONOUN_VAR_3
+            ) {
+                u8 form = *src++;
+                if (IsValidPronounForm(form)) {
+                    enum PronounType type = placeholderId - PLACEHOLDER_ID_PRONOUN_VAR_1;
+                    expandedString = GetPronounString(type, form);
+                } else {
+                    expandedString = gText_ExpandedPlaceholder_Empty;
+                }
+            } else {
+                expandedString = GetExpandedPlaceholder(placeholderId);
+            }
             dest = StringExpandPlaceholders(dest, expandedString);
             break;
         case EXT_CTRL_CODE_BEGIN:

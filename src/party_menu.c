@@ -4501,6 +4501,7 @@ void ItemUseCB_Medicine(u8 taskId, TaskFunc task)
         else
         {
             GetMonNickname(mon, gStringVar1);
+            gPronounVars[0] = PokemonGenderToPronounType(GetMonGender(mon));
             GetMedicineItemEffectMessage(item);
             DisplayPartyMenuMessage(gStringVar4, TRUE);
             ScheduleBgCopyTilemapToVram(2);
@@ -4720,6 +4721,7 @@ static void TryUsePPItem(u8 taskId)
         RemoveBagItem(item, 1);
         move = GetMonData(mon, MON_DATA_MOVE1 + *moveSlot);
         StringCopy(gStringVar1, gMoveNames[move]);
+        gPronounVars[0] = PokemonGenderToPronounType(GetMonGender(mon));
         GetMedicineItemEffectMessage(item);
         DisplayPartyMenuMessage(gStringVar4, TRUE);
         ScheduleBgCopyTilemapToVram(2);
@@ -5601,6 +5603,7 @@ static void TryGiveMailToSelectedMon(u8 taskId)
     mail = &gSaveBlock1Ptr->mail[gPlayerPCItemPageInfo.itemsAbove + PARTY_SIZE + gPlayerPCItemPageInfo.cursorPos];
     if (GetMonData(mon, MON_DATA_HELD_ITEM) != ITEM_NONE)
     {
+        gPronounVars[0] = PokemonGenderToPronounType(GetMonGender(mon));
         DisplayPartyMenuMessage(gText_PkmnHoldingItemCantHoldMail, TRUE);
     }
     else
