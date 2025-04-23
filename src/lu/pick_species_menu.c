@@ -818,8 +818,8 @@ static void PaintListingContents(void) {
    
    SetLoadingSpinnerVisible(sMenuState->widgets.loading_spinner_sprite_id, FALSE);
    
-   u8 pos   = GetListingScrollPosition();
-   u8 count = sMenuState->listing.contents.count;
+   u16 pos   = GetListingScrollPosition();
+   u16 count = sMenuState->listing.contents.count;
    {
       struct LuScrollbar* scrollbar = &sMenuState->widgets.scrollbar;
       scrollbar->scroll_pos = pos;

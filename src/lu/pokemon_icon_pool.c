@@ -105,7 +105,6 @@ extern u16 AddPooledPokemonIcon(struct PokemonIconPool* pool, PokemonSpeciesID s
    
    u16 i = FirstFreeIndex(pool);
    if (i == NO_POOLED_POKEMON_ICON) {
-      DebugPrintf("failed to add pooled icon: species %u (pool is full)", species);
       return i;
    }
    
@@ -126,14 +125,12 @@ extern u16 AddPooledPokemonIcon(struct PokemonIconPool* pool, PokemonSpeciesID s
       TRUE // handleDeoxys
    );
    if (sprite_id >= MAX_SPRITES) {
-      DebugPrintf("failed to add pooled icon: species %u (no sprite available)", species);
       pool->sprite_ids[i] = SPRITE_NONE;
       return NO_POOLED_POKEMON_ICON;
    }
    pool->species_ids[i] = species;
    UnmarkPooledPokemonIconForDelete(pool, i);
    
-   DebugPrintf("added pooled icon: species %u at index %u, sprite ID %u", species, i, pool->sprite_ids[i]);
    return i;
 }
 extern void RemovePooledPokemonIcon(struct PokemonIconPool* pool, u8 i) {
@@ -149,7 +146,6 @@ extern void RemovePooledPokemonIcon(struct PokemonIconPool* pool, u8 i) {
 }
 
 void MarkAllPooledPokemonIconsForDelete(struct PokemonIconPool* pool) {
-   DebugPrintf("marking all pooled icons for delete");
    u8 wholes = pool->count / 8;
    for(int i = 0; i < wholes; ++i) {
       pool->delete_flags[i] = 0xFF;
@@ -163,28 +159,23 @@ void MarkAllPooledPokemonIconsForDelete(struct PokemonIconPool* pool) {
    }
 }
 void MarkPooledPokemonIconForDelete(struct PokemonIconPool* pool, u8 i) {
-   DebugPrintf("marking pooled icon for delete: %u", i);
    pool->delete_flags[i / 8] |= 1 << (i % 8);
 }
 void UnmarkPooledPokemonIconForDelete(struct PokemonIconPool* pool, u8 i) {
-   DebugPrintf("unmarking pooled icon for delete: %u", i);
    pool->delete_flags[i / 8] &= ~(1 << (i % 8));
 }
 void DeleteMarkedPooledPokemonIcons(struct PokemonIconPool* pool) {
-   DebugPrintf("deleting all marked-for-delete pooled icons...");
    for(int i = 0; i < pool->count; ++i) {
       bool8 flag = (pool->delete_flags[i / 8] & (1 << (i % 8))) != 0;
       if (!flag)
          continue;
       u8 id = pool->sprite_ids[i];
-      DebugPrintf(" - deleting pool index %u sprite ID %u, species %u", i, id, pool->species_ids[i]);
       pool->species_ids[i] = 0;
       if (id < MAX_SPRITES) {
          DestroySprite(&gSprites[id]);
       }
       pool->sprite_ids[i] = SPRITE_NONE;
    }
-   DebugPrintf("deleted all marked-for-delete pooled icons");
    memset(
       pool->delete_flags,
       0,

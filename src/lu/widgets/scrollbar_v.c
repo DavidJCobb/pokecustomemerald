@@ -335,7 +335,7 @@ extern void RepaintScrollbarV(struct LuScrollbar* widget) {
             {  // Thumb-to-track tile.
                u8 split = (thumb_pos + thumb_size) % TILE_HEIGHT;
                if (split) {
-                  PaintEdgeTile(GetNthTileData(widget, tile_id), color_thumb, color_track, TILE_HEIGHT - split);
+                  PaintEdgeTile(GetNthTileData(widget, tile_id), color_thumb, color_track, split);
                   PlaceNthTile(widget, tile_id, thumb_tile_y2, 1);
                   ++tile_id;
                }
