@@ -28,6 +28,7 @@
 #include "constants/species.h"
 #include "lu/widgets/enum_picker.h"
 #include "lu/widgets/keybind_strip.h"
+#include "lu/widgets/loading_spinner.h"
 #include "lu/widgets/scrollbar_v.h"
 #include "lu/string_wrap.h"
 #include "lu/strings.h"
@@ -45,6 +46,7 @@ enum {
    LISTING_POS_TYPE_2,
    LISTING_POS_GENERATION,
    LISTING_POS_SWITCH_FOCUS_TO_RESULTS,
+   FORM_ITEM_COUNT,
 };
 
 enum PaneEnum {
@@ -86,12 +88,15 @@ struct MenuState {
    struct {
       struct SpeciesList contents;
       u16 scroll_pos;
+      u8 sort_task;
    } listing;
    
    struct {
       struct LuEnumPicker   enum_picker;   // for filtering options
       struct LuKeybindStrip keybind_strip;
       struct LuScrollbar    scrollbar;     // for results listing
+      
+      u8 loading_spinner_sprite_id;
    } widgets;
 };
 static EWRAM_DATA struct MenuState* sMenuState = NULL;
@@ -105,6 +110,9 @@ static const u16 sOptionsListingPalette[] = INCBIN_U16("graphics/lu/cgo_menu/opt
 //
 static const u8 sTextColor_OptionNames[] = {1, 2, 3};
 static const u8 sTextColor_OptionValues[] = {1, 4, 5};
+static const u8 sTextColor_OptionValuesDisabled[] = {1, 6, 7};
+
+static const u16 sLoadingSpinnerPalette[] = INCBIN_U16("graphics/lu/spinner/spinner-32-aa-orange-on-white.gbapal");
 
 enum {
    WIN_HEADER,
@@ -139,7 +147,7 @@ enum {
 #define WIN_FORM_TILE_HEIGHT (DISPLAY_TILE_HEIGHT - WIN_FORM_TILE_Y - KEYBIND_STRIP_TILE_HEIGHT)
 
 #define FORM_CRITERION_VALUE_X 80 // relative to containing window
-#define FORM_CRITERION_VALUE_W 70
+#define FORM_CRITERION_VALUE_W 50
 
 #define WIN_LISTING_TILE_X      (WIN_FORM_TILE_X + WIN_FORM_TILE_WIDTH + SELECTION_CURSOR_TILE_W)
 #define WIN_LISTING_TILE_Y      WIN_FORM_TILE_Y
@@ -169,7 +177,7 @@ STATIC_ASSERT(sizeof(VRAMTileLayout) <= BG_VRAM_SIZE, sStaticAssertion01_VramUsa
 
 static const struct LuEnumPickerInitParams sEnumPickerInit = {
    .base_pos = {
-      .x = (WIN_FORM_TILE_X * TILE_WIDTH) + FORM_CRITERION_VALUE_X - 8,
+      .x = (WIN_FORM_TILE_X * TILE_WIDTH) + FORM_CRITERION_VALUE_X,
       .y = (WIN_LISTING_TILE_Y * TILE_HEIGHT),
    },
    .sprite_tags = {
@@ -288,8 +296,7 @@ static void Task_MenuProcessInput(u8 taskId);
 static void Task_MenuFadeOut(u8 taskId);
 
 static void PaintMenuHeader(void);
-static void PaintFilterCriteriaLabels(void);
-static void PaintFilterCriteriaValues(void);
+static void PaintForm(void);
 static void PaintCursor(void);
 static void PaintListingContents(void);
 static void UpdateKeybindStrip(void);
@@ -300,6 +307,7 @@ static u16 GetListingScrollPosition(void);
 
 static void SetFocusedPane(enum PaneEnum);
 
+static bool8 IsAsyncSortInProgress(void);
 static void OnFilterChanged(void);
 
 static void CB2_InitPickSpeciesMenu(void) {
@@ -318,8 +326,7 @@ static void CB2_InitPickSpeciesMenu(void) {
          
          ShowBg(BACKGROUND_LAYER_NORMAL);
          
-         // Enable sprite layer:
-         SetGpuReg(REG_OFFSET_DISPCNT, GetGpuReg(REG_OFFSET_DISPCNT) | DISPCNT_OBJ_ON);
+         SetGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_OBJ_ON | DISPCNT_OBJ_1D_MAP);
          
          gMain.state++;
          break;
@@ -383,10 +390,21 @@ static void CB2_InitPickSpeciesMenu(void) {
                InitScrollbarV(&sMenuState->widgets.scrollbar, &sScrollbarInit);
                scrollbar->max_visible_items = MAX_MENU_ITEMS_VISIBLE_AT_ONCE;
             }
+            {
+               sMenuState->widgets.loading_spinner_sprite_id = SpawnLoadingSpinner(
+                  (WIN_LISTING_TILE_X + WIN_LISTING_TILE_WIDTH  / 2) * TILE_WIDTH,
+                  (WIN_LISTING_TILE_Y + WIN_LISTING_TILE_HEIGHT / 2) * TILE_HEIGHT,
+                  4097,
+                  4097,
+                  sLoadingSpinnerPalette,
+                  0,
+                  FALSE
+               );
+            }
             PaintMenuHeader();
-            PaintFilterCriteriaLabels();
-            PaintFilterCriteriaValues();
+            PaintForm();
             SetFocusedPane(PANE_FORM);
+            OnFilterChanged();
 
             CopyWindowToVram(WIN_FORM, COPYWIN_FULL);
             CopyWindowToVram(WIN_LISTING, COPYWIN_FULL);
@@ -408,6 +426,8 @@ extern void ShowPickSpeciesMenu(const struct PickSpeciesMenuParams* params) {
    sMenuState->filter_params.types[0] = TYPE_CRITERION_ANY;
    sMenuState->filter_params.types[1] = TYPE_CRITERION_ANY;
    
+   sMenuState->listing.sort_task = TASK_NONE;
+   
    SetMainCallback2(CB2_InitPickSpeciesMenu);
 }
 
@@ -417,13 +437,21 @@ static void Task_MenuFadeIn(u8 taskId) {
 }
 
 static void Task_MenuProcessInput(u8 taskId) {
-   if (JOY_NEW(DPAD_UP)) {
-      MoveCursor(-1);
-      return;
-   }
-   if (JOY_NEW(DPAD_DOWN)) {
-      MoveCursor(1);
-      return;
+   {
+      s8 by = 0;
+      if (sMenuState->cursor_is_in_results) {
+         if (JOY_REPEAT(DPAD_UP))
+            by = -1;
+         else if (JOY_REPEAT(DPAD_DOWN))
+            by = 1;
+      } else {
+         if (JOY_NEW(DPAD_UP))
+            by = -1;
+         else if (JOY_NEW(DPAD_DOWN))
+            by = 1;
+      }
+      if (by)
+         MoveCursor(by);
    }
    if (sMenuState->cursor_is_in_results) {
       if (JOY_NEW(A_BUTTON)) {
@@ -440,6 +468,10 @@ static void Task_MenuProcessInput(u8 taskId) {
    } else {
       if (JOY_NEW(A_BUTTON)) {
          if (sMenuState->cursor_pos == LISTING_POS_SWITCH_FOCUS_TO_RESULTS) {
+            if (IsAsyncSortInProgress()) {
+               PlaySE(SE_FAILURE);
+               return;
+            }
             SetFocusedPane(PANE_LISTING);
          }
          return;
@@ -513,8 +545,8 @@ static void Task_MenuProcessInput(u8 taskId) {
                }
             }
          }
-         PaintFilterCriteriaValues();
          OnFilterChanged();
+         PaintForm();
          if (by < 0) {
             OnEnumPickerDecreased(&sMenuState->widgets.enum_picker);
          } else {
@@ -532,10 +564,15 @@ static void Task_MenuFadeOut(u8 taskId) {
    void (*callback)(u16) = sMenuState->params.callback;
    u16 value = sMenuState->selection;
    
+   if (sMenuState->listing.sort_task != TASK_NONE) {
+      DestroyTask(sMenuState->listing.sort_task);
+      sMenuState->listing.sort_task = TASK_NONE;
+   }
    DestroyTask(taskId);
    DestroyEnumPicker(&sMenuState->widgets.enum_picker);
    DestroyKeybindStrip(&sMenuState->widgets.keybind_strip);
    DestroyScrollbarV(&sMenuState->widgets.scrollbar);
+   DestroyLoadingSpinner(sMenuState->widgets.loading_spinner_sprite_id);
    FreeAllWindowBuffers();
    Free(sMenuState);
    sMenuState = NULL;
@@ -552,142 +589,117 @@ static void PaintMenuHeader(void) {
    AddTextPrinterParameterized(WIN_HEADER, FONT_NORMAL, title, 8, 1, TEXT_SKIP_DRAW, NULL);
    CopyWindowToVram(WIN_HEADER, COPYWIN_FULL);
 }
-static void PaintFilterCriteriaLabels(void) {
+
+static void PaintForm(void) {
+   u8 dynamic_text_buffer[5];
+   
    FillWindowPixelBuffer(WIN_FORM, PIXEL_FILL(1));
-   AddTextPrinterParameterized3(
-      WIN_FORM,
-      FONT_NORMAL,
-      (TILE_WIDTH * 1), // x
-      (0 * (TILE_HEIGHT * 2)), // y
-      sTextColor_OptionNames,
-      TEXT_SKIP_DRAW,
-      gText_lu_PickSpeciesMenu_Label_FirstLetter
-   );
-   AddTextPrinterParameterized3(
-      WIN_FORM,
-      FONT_NORMAL,
-      (TILE_WIDTH * 1), // x
-      (1 * (TILE_HEIGHT * 2)), // y
-      sTextColor_OptionNames,
-      TEXT_SKIP_DRAW,
-      gText_lu_PickSpeciesMenu_Label_Type1
-   );
-   AddTextPrinterParameterized3(
-      WIN_FORM,
-      FONT_NORMAL,
-      (TILE_WIDTH * 1), // x
-      (2 * (TILE_HEIGHT * 2)), // y
-      sTextColor_OptionNames,
-      TEXT_SKIP_DRAW,
-      gText_lu_PickSpeciesMenu_Label_Type2
-   );
-   AddTextPrinterParameterized3(
-      WIN_FORM,
-      FONT_NORMAL,
-      (TILE_WIDTH * 1), // x
-      (3 * (TILE_HEIGHT * 2)), // y
-      sTextColor_OptionNames,
-      TEXT_SKIP_DRAW,
-      gText_lu_PickSpeciesMenu_Label_Generation
-   );
-   AddTextPrinterParameterized3(
-      WIN_FORM,
-      FONT_NORMAL,
-      (TILE_WIDTH * 1), // x
-      (4 * (TILE_HEIGHT * 2)), // y
-      sTextColor_OptionValues,
-      TEXT_SKIP_DRAW,
-      gText_lu_PickSpeciesMenu_Label_SwitchToListing
-   );
-}
-static void PaintFilterCriteriaValues(void) {
-   FillWindowPixelRect(
-      WIN_FORM,
-      PIXEL_FILL(1),
-      FORM_CRITERION_VALUE_X,
-      0,
-      FORM_CRITERION_VALUE_W,
-      LISTING_POS_SWITCH_FOCUS_TO_RESULTS * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)
-   );
-   //
-   // First Letter:
-   //
-   if (sMenuState->filter_params.first_letter == 0) {
-      AddTextPrinterParameterized3(
-         WIN_FORM,
-         FONT_NORMAL,
-         FORM_CRITERION_VALUE_X, // x
-         (0 * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)), // y
-         sTextColor_OptionValues,
-         TEXT_SKIP_DRAW,
-         gText_lu_PickSpeciesMenu_FirstLetter_Any
-      );
-   } else {
-      char str[2];
-      str[0] = CHAR_A + sMenuState->filter_params.first_letter - FIRST_LETTER_A;
-      str[1] = EOS;
+   
+   for(u8 i = 0; i < FORM_ITEM_COUNT; ++i) {
+      bool8     disabled   = FALSE;
+      bool8     hyperlink  = FALSE;
+      const u8* label_text = NULL;
+      const u8* value_text = NULL;
+      switch (i) {
+         case LISTING_POS_FIRST_LETTER:
+            label_text = gText_lu_PickSpeciesMenu_Label_FirstLetter;
+            {
+               u8 value = sMenuState->filter_params.first_letter;
+               if (value == 0) {
+                  value_text = gText_lu_PickSpeciesMenu_FirstLetter_Any;
+               } else {
+                  dynamic_text_buffer[0] = CHAR_A + value - FIRST_LETTER_A;
+                  dynamic_text_buffer[1] = EOS;
+                  value_text = dynamic_text_buffer;
+               }
+            }
+            break;
+         case LISTING_POS_TYPE_1:
+         case LISTING_POS_TYPE_2:
+            label_text = gText_lu_PickSpeciesMenu_Label_Type1;
+            {
+               u8 value = sMenuState->filter_params.types[0];
+               if (i == LISTING_POS_TYPE_2) {
+                  value      = sMenuState->filter_params.types[1];
+                  label_text = gText_lu_PickSpeciesMenu_Label_Type2;
+               }
+               if (value == TYPE_CRITERION_ANY) {
+                  value_text = gText_lu_PickSpeciesMenu_Type_Any;
+               } else if (value == TYPE_CRITERION_NONE) {
+                  value_text = gText_lu_PickSpeciesMenu_Type_None;
+               } else {
+                  value_text = gTypeNames[value];
+               }
+            }
+            break;
+         case LISTING_POS_GENERATION:
+            label_text = gText_lu_PickSpeciesMenu_Label_Generation;
+            {
+               value_text = gText_lu_PickSpeciesMenu_Generation_Any;
+               switch (sMenuState->filter_params.generation) {
+                  case GENERATION_KANTO:
+                     value_text = gText_lu_PickSpeciesMenu_Generation_Kanto;
+                     break;
+                  case GENERATION_JOHTO:
+                     value_text = gText_lu_PickSpeciesMenu_Generation_Johto;
+                     break;
+                  case GENERATION_HOENN:
+                     value_text = gText_lu_PickSpeciesMenu_Generation_Hoenn;
+                     break;
+               }
+            }
+            break;
+         case LISTING_POS_SWITCH_FOCUS_TO_RESULTS:
+            label_text = gText_lu_PickSpeciesMenu_Label_SwitchToListing;
+            hyperlink  = TRUE;
+            disabled   = IsAsyncSortInProgress();
+            break;
+      }
       
-      AddTextPrinterParameterized3(
-         WIN_FORM,
-         FONT_NORMAL,
-         FORM_CRITERION_VALUE_X, // x
-         (0 * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)), // y
-         sTextColor_OptionValues,
-         TEXT_SKIP_DRAW,
-         str
-      );
-   }
-   //
-   // Types:
-   //
-   for(int i = 0; i < 2; ++i) {
-      const u8* text = NULL;
-      u8 type = sMenuState->filter_params.types[i];
-      if (type == TYPE_CRITERION_ANY) {
-         text = gText_lu_PickSpeciesMenu_Type_Any;
-      } else if (type == TYPE_CRITERION_NONE) {
-         text = gText_lu_PickSpeciesMenu_Type_None;
-      } else {
-         text = gTypeNames[type];
+      if (label_text) {
+         const u8* colors = sTextColor_OptionNames;
+         if (hyperlink) {
+            colors = sTextColor_OptionValues;
+            if (disabled) {
+               colors = sTextColor_OptionValuesDisabled;
+            }
+         }
+         AddTextPrinterParameterized3(
+            WIN_FORM,
+            FONT_NORMAL,
+            0, // x
+            (i * (TILE_HEIGHT * 2)), // y
+            colors,
+            TEXT_SKIP_DRAW,
+            label_text
+         );
       }
-      AddTextPrinterParameterized3(
-         WIN_FORM,
-         FONT_NORMAL,
-         FORM_CRITERION_VALUE_X, // x
-         ((1 + i) * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)), // y
-         sTextColor_OptionValues,
-         TEXT_SKIP_DRAW,
-         text
-      );
-   }
-   //
-   // Generations:
-   //
-   {
-      const u8* text = gText_lu_PickSpeciesMenu_Generation_Any;
-      switch (sMenuState->filter_params.generation) {
-         case GENERATION_KANTO:
-            text = gText_lu_PickSpeciesMenu_Generation_Kanto;
-            break;
-         case GENERATION_JOHTO:
-            text = gText_lu_PickSpeciesMenu_Generation_Johto;
-            break;
-         case GENERATION_HOENN:
-            text = gText_lu_PickSpeciesMenu_Generation_Hoenn;
-            break;
+      if (value_text) {
+         const u8* colors = sTextColor_OptionValues;
+         if (disabled) {
+            colors = sTextColor_OptionValuesDisabled;
+         }
+         
+         u8 w = GetStringWidth(FONT_NORMAL, value_text, 0);
+         u8 x = FORM_CRITERION_VALUE_X;
+         if (w < FORM_CRITERION_VALUE_X) {
+            x += (FORM_CRITERION_VALUE_W - w) / 2;
+         }
+         
+         AddTextPrinterParameterized3(
+            WIN_FORM,
+            FONT_NORMAL,
+            x, // x
+            (i * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)), // y
+            colors,
+            TEXT_SKIP_DRAW,
+            value_text
+         );
       }
-      AddTextPrinterParameterized3(
-         WIN_FORM,
-         FONT_NORMAL,
-         FORM_CRITERION_VALUE_X, // x
-         (3 * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)), // y
-         sTextColor_OptionValues,
-         TEXT_SKIP_DRAW,
-         text
-      );
    }
    CopyWindowToVram(WIN_FORM, COPYWIN_GFX);
 }
+
 static void PaintCursor(void) {
    FillBgTilemapBufferRect(
       BACKGROUND_LAYER_NORMAL,
@@ -755,6 +767,20 @@ static void PaintListingItem(u8 display_pos, PokemonSpeciesID species) {
    );
 }
 static void PaintListingContents(void) {
+   if (IsAsyncSortInProgress()) {
+      SetLoadingSpinnerVisible(sMenuState->widgets.loading_spinner_sprite_id, TRUE);
+      
+      struct LuScrollbar* scrollbar = &sMenuState->widgets.scrollbar;
+      scrollbar->scroll_pos = 0;
+      scrollbar->item_count = 1;
+      RepaintScrollbarV(scrollbar);
+      
+      FillWindowPixelBuffer(WIN_LISTING, PIXEL_FILL(1));
+      CopyWindowToVram(WIN_LISTING, COPYWIN_GFX);
+      return;
+   }
+   SetLoadingSpinnerVisible(sMenuState->widgets.loading_spinner_sprite_id, FALSE);
+   
    u8 pos   = GetListingScrollPosition();
    u8 count = sMenuState->listing.contents.count;
    {
@@ -866,6 +892,12 @@ static void SetFocusedPane(enum PaneEnum pane) {
    //
 }
 
+static void OnAsyncSortSpeciesListDone(void);
+
+static bool8 IsAsyncSortInProgress(void) {
+   return sMenuState->listing.sort_task != TASK_NONE;
+}
+
 static bool8 FilterSpecies(PokemonSpeciesID species) {
    if (species == SPECIES_NONE) {
       return (sMenuState->params.zero_type != PICKSPECIESMENU_ZEROTYPE_DISALLOWED);
@@ -881,8 +913,27 @@ static bool8 FilterSpecies(PokemonSpeciesID species) {
    }
    {  // Types
       if (sMenuState->filter_params.types[0] != TYPE_CRITERION_ANY) {
-         if (gSpeciesInfo[species].types[0] != sMenuState->filter_params.types[0])
-            return FALSE;
+         if (sMenuState->filter_params.types[1] == TYPE_CRITERION_ANY) {
+            //
+            // If the user has only picked one type (e.g. FLYING/ANY), then allow 
+            // dual-type Pokemon to match if either of their types is the type 
+            // the user picked.
+            //
+            // The edge-case we want to handle here is the fact that as of Gen III, 
+            // no Pokemon has FLYING as its first type; every single one of them is 
+            // dual-type. The player shouldn't have to select ANY/FLYING to view 
+            // these Pokemon; this check makes FLYING/ANY sufficient.
+            //
+            if (
+               gSpeciesInfo[species].types[0] != sMenuState->filter_params.types[0] &&
+               gSpeciesInfo[species].types[1] != sMenuState->filter_params.types[0]
+            ) {
+               return FALSE;
+            }
+         } else {
+            if (gSpeciesInfo[species].types[0] != sMenuState->filter_params.types[0])
+               return FALSE;
+         }
       }
       if (sMenuState->filter_params.types[1] == TYPE_CRITERION_NONE) {
          u8 type = sMenuState->filter_params.types[1];
@@ -952,16 +1003,41 @@ static bool8 SortSpecies(PokemonSpeciesID a, PokemonSpeciesID b) { // returns a 
    return TRUE;
 }
 static void OnFilterChanged(void) {
+   if (sMenuState->listing.sort_task != TASK_NONE) {
+      DestroyTask(sMenuState->listing.sort_task);
+      sMenuState->listing.sort_task = TASK_NONE;
+      DebugPrintf("[OnFilterChanged] Destroyed ongoing async sort.");
+   }
+   
    AllocFilteredSpeciesList(
       &sMenuState->listing.contents,
       FilterSpecies
    );
    DebugPrintf("[OnFilterChanged] Species list allocated.");
-   SortSpeciesList(
-      &sMenuState->listing.contents,
-      SortSpecies
-   );
-   DebugPrintf("[OnFilterChanged] Species list sorted.");
+   
+   if (sMenuState->listing.contents.count > 200) {
+      sMenuState->listing.sort_task = SortSpeciesListAsync(
+         &sMenuState->listing.contents,
+         SortSpecies,
+         600,
+         OnAsyncSortSpeciesListDone
+      );
+      DebugPrintf("[OnFilterChanged] Species list is large. Created/restarted a task to sort it for us...");
+      PaintListingContents();
+   } else {
+      SortSpeciesList(
+         &sMenuState->listing.contents,
+         SortSpecies
+      );
+      DebugPrintf("[OnFilterChanged] Species list sorted.");
+      PaintListingContents();
+      DebugPrintf("[OnFilterChanged] Species list painted.");
+   }
+}
+
+static void OnAsyncSortSpeciesListDone(void) {
+   DebugPrintf("Async sort complete.");
+   sMenuState->listing.sort_task = TASK_NONE;
+   PaintForm(); // un-grey-out the menu item to enter the listing
    PaintListingContents();
-   DebugPrintf("[OnFilterChanged] Species list painted.");
 }

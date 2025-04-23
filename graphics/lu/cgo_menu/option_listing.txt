@@ -1,0 +1,16 @@
+Color 0
+Color 1		content area background
+Color 2		body text color
+Color 3		body text shadow color
+Color 4		option text color
+Color 5		option text shadow color
+Color 6		disabled option text color
+Color 7		disabled option text shadow color
+Color 8		unused
+Color 9		unused
+Color 10	unused
+Color 11	unused
+Color 12	unused
+Color 13	unused
+Color 14	scrollbar track
+Color 15	scrollbar thumb
