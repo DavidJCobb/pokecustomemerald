@@ -29,7 +29,7 @@
     * Start game with running shoes
     * Run indoors
     * Bike indoors
-    * Poison damage and step interval
+    * Poison damage, step interval, and optional Gen IV behavior (stop damage at 1HP)
   * Starter Pokémon
     * Change the three available species
     * Change the initial level of the player's starter
