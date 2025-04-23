@@ -66,6 +66,8 @@
 #include "constants/metatile_labels.h"
 #include "palette.h"
 
+#include "field_specials/ShouldDistributeEonTicket.h"
+
 #define TAG_ITEM_ICON 5500
 
 #define GFXTAG_MULTICHOICE_SCROLL_ARROWS 2000
@@ -3624,15 +3626,6 @@ bool32 IsTrainerRegistered(void)
             return TRUE;
     }
     return FALSE;
-}
-
-// Always returns FALSE
-bool32 ShouldDistributeEonTicket(void)
-{
-    if (!VarGet(VAR_DISTRIBUTE_EON_TICKET))
-        return FALSE;
-
-    return TRUE;
 }
 
 #define tState data[0]

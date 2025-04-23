@@ -3262,6 +3262,41 @@ static void Cmd_jumpiftype(void)
         gBattlescriptCurrInstr += 7;
 }
 
+enum {
+   // Should battlers be able to receive EXP at all? At this stage, we 
+   // check whether the fainted Pokemon belongs to the player's enemy, 
+   // and whether the current battle type allows EXP gains.
+   GETEXP_STAGE_CHECK_EXP_ALLOWED = 0,
+   
+   // Calculate the total EXP to distribute, and prepare to distribute 
+   // EXP to the first Pokemon in the player's party (i.e. set up the 
+   // "which mon" variable for the next stage).
+   GETEXP_STAGE_CALC_TOTAL_EXP = 1,
+   
+   // Calculate how much EXP a specific battler should receive. This 
+   // includes skipping them entirely if they haven't yet been sent out 
+   // and aren't holding an EXP Share.
+   GETEXP_STAGE_CALC_EXP_FOR_MON = 2,
+   
+   // Dispatch the to-be-earned EXP to the battler's battle controller, 
+   // if and only if the battler isn't fainted and isn't at max level.
+   GETEXP_STAGE_DISPATCH = 3,
+   
+   // Check the battle controller's response. If it's told us that the 
+   // target Pokemon leveled up, then update the battle stat data. 
+   // The battle controller will generally only distribute EXP one 
+   // level-up at a time, so we'll be paying attention to that too.
+   GETEXP_STAGE_RECEIVE = 4,
+   
+   // If all EXP has been distributed for the current Pokemon, then 
+   // advance to the next Pokemon (re-running stage 2). Otherwise, 
+   // re-run the DISPATCH stage for the current Pokemon; we'll loop 
+   // until it's gained all the levels it can.
+   GETEXP_STAGE_ADVANCE = 5,
+   
+   GETEXP_STAGE_FINISHED = 6,
+};
+
 static void Cmd_getexp(void)
 {
     u16 item;
@@ -3276,7 +3311,7 @@ static void Cmd_getexp(void)
 
     switch (gBattleScripting.getexpState)
     {
-    case 0: // check if should receive exp at all
+    case GETEXP_STAGE_CHECK_EXP_ALLOWED: // check if should receive exp at all
         if (GetBattlerSide(gBattlerFainted) != B_SIDE_OPPONENT || (gBattleTypeFlags &
              (BATTLE_TYPE_LINK
               | BATTLE_TYPE_RECORDED_LINK
@@ -3286,7 +3321,7 @@ static void Cmd_getexp(void)
               | BATTLE_TYPE_BATTLE_TOWER
               | BATTLE_TYPE_EREADER_TRAINER)))
         {
-            gBattleScripting.getexpState = 6; // goto last case
+            gBattleScripting.getexpState = GETEXP_STAGE_FINISHED; // goto last case
         }
         else
         {
@@ -3294,7 +3329,7 @@ static void Cmd_getexp(void)
             gBattleStruct->givenExpMons |= gBitTable[gBattlerPartyIndexes[gBattlerFainted]];
         }
         break;
-    case 1: // calculate experience points to redistribute
+    case GETEXP_STAGE_CALC_TOTAL_EXP: // calculate experience points to redistribute
         {
             u16 calculatedExp;
             s32 viaSentIn;
@@ -3302,6 +3337,12 @@ static void Cmd_getexp(void)
             for (viaSentIn = 0, i = 0; i < PARTY_SIZE; i++)
             {
                 if (GetMonData(&gPlayerParty[i], MON_DATA_SPECIES) == SPECIES_NONE || GetMonData(&gPlayerParty[i], MON_DATA_HP) == 0)
+                    continue;
+                if (GetMonData(&gPlayerParty[i], MON_DATA_LEVEL) == MAX_LEVEL)
+                    //
+                    // Don't allow max-level Pokemon to "swallow" EXP that would 
+                    // otherwise be divided amongst other battle participants.
+                    //
                     continue;
                 if (gBitTable[i] & sentIn)
                     viaSentIn++;
@@ -3342,7 +3383,7 @@ static void Cmd_getexp(void)
             gBattleStruct->sentInPokes = sentIn;
         }
         // fall through
-    case 2: // set exp value to the poke in expgetter_id and print message
+    case GETEXP_STAGE_CALC_EXP_FOR_MON: // set exp value to the poke in expgetter_id and print message
         if (gBattleControllerExecFlags == 0)
         {
             item = GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_HELD_ITEM);
@@ -3355,13 +3396,13 @@ static void Cmd_getexp(void)
             if (holdEffect != HOLD_EFFECT_EXP_SHARE && !(gBattleStruct->sentInPokes & 1))
             {
                 *(&gBattleStruct->sentInPokes) >>= 1;
-                gBattleScripting.getexpState = 5;
+                gBattleScripting.getexpState = GETEXP_STAGE_ADVANCE;
                 gBattleMoveDamage = 0; // used for exp
             }
             else if (GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_LEVEL) == MAX_LEVEL)
             {
                 *(&gBattleStruct->sentInPokes) >>= 1;
-                gBattleScripting.getexpState = 5;
+                gBattleScripting.getexpState = GETEXP_STAGE_ADVANCE;
                 gBattleMoveDamage = 0; // used for exp
             }
             else
@@ -3398,8 +3439,10 @@ static void Cmd_getexp(void)
                         gBattleMoveDamage += gExpShareExp;
                     if (holdEffect == HOLD_EFFECT_LUCKY_EGG)
                         gBattleMoveDamage = (gBattleMoveDamage * 150) / 100;
-                    if (gBattleTypeFlags & BATTLE_TYPE_TRAINER)
-                        gBattleMoveDamage = (gBattleMoveDamage * 150) / 100;
+                    if (gBattleTypeFlags & BATTLE_TYPE_TRAINER) {
+                        // gBattleMoveDamage = (gBattleMoveDamage * 150) / 100; // vanilla
+                        gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.scale_exp_gains.trainer_battles);
+                    }
 
                     if (IsTradedMon(&gPlayerParty[gBattleStruct->expGetterMonId]))
                     {
@@ -3448,7 +3491,7 @@ static void Cmd_getexp(void)
             }
         }
         break;
-    case 3: // Set stats and give exp
+    case GETEXP_STAGE_DISPATCH: // Set stats and give exp
         if (gBattleControllerExecFlags == 0)
         {
             gBattleBufferB[gBattleStruct->expGetterBattlerId][0] = 0;
@@ -3468,7 +3511,7 @@ static void Cmd_getexp(void)
             gBattleScripting.getexpState++;
         }
         break;
-    case 4: // lvl up if necessary
+    case GETEXP_STAGE_RECEIVE: // lvl up if necessary
         if (gBattleControllerExecFlags == 0)
         {
             gActiveBattler = gBattleStruct->expGetterBattlerId;
@@ -3517,30 +3560,30 @@ static void Cmd_getexp(void)
 #endif
                     gBattleMons[2].spAttack = GetMonData(&gPlayerParty[gBattleStruct->expGetterMonId], MON_DATA_SPATK);
                 }
-                gBattleScripting.getexpState = 5;
+                gBattleScripting.getexpState = GETEXP_STAGE_ADVANCE;
             }
             else
             {
                 gBattleMoveDamage = 0;
-                gBattleScripting.getexpState = 5;
+                gBattleScripting.getexpState = GETEXP_STAGE_ADVANCE;
             }
         }
         break;
-    case 5: // looper increment
+    case GETEXP_STAGE_ADVANCE: // looper increment
         if (gBattleMoveDamage) // there is exp to give, goto case 3 that gives exp
         {
-            gBattleScripting.getexpState = 3;
+            gBattleScripting.getexpState = GETEXP_STAGE_DISPATCH;
         }
         else
         {
             gBattleStruct->expGetterMonId++;
             if (gBattleStruct->expGetterMonId < PARTY_SIZE)
-                gBattleScripting.getexpState = 2; // loop again
+                gBattleScripting.getexpState = GETEXP_STAGE_CALC_EXP_FOR_MON; // loop again
             else
-                gBattleScripting.getexpState = 6; // we're done
+                gBattleScripting.getexpState = GETEXP_STAGE_FINISHED; // we're done
         }
         break;
-    case 6: // increment instruction
+    case GETEXP_STAGE_FINISHED: // increment instruction
         if (gBattleControllerExecFlags == 0)
         {
             // not sure why gf clears the item and ability here

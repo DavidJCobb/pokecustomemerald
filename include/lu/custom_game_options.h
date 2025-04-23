@@ -30,6 +30,7 @@ struct CustomGameScaleAndClamp {
 
 u16 ApplyCustomGameScaleAndClamp_u16(u16, const struct CustomGameScaleAndClamp*);
 
+u8 ApplyCustomGameScale_u8(u8, CustomGameScalePct scale);
 u16 ApplyCustomGameScale_u16(u16, CustomGameScalePct scale);
 u32 ApplyCustomGameScale_u32(u32, CustomGameScalePct scale);
 s32 ApplyCustomGameScale_s32(s32, CustomGameScalePct scale);
@@ -42,6 +43,13 @@ extern struct CustomGameOptions {
    bool8 start_with_running_shoes;
    bool8 can_run_indoors;
    bool8 can_bike_indoors;
+   
+   struct {
+      LU_BP_DEFAULT(TRUE) bool8 daycare_can_teach_moves : 1;
+      LU_BP_DEFAULT(100)  CustomGameScalePct daycare_scale_cost;
+      LU_BP_DEFAULT(100)  CustomGameScalePct daycare_scale_step_exp;
+      LU_BP_DEFAULT(100) LU_BP_MINMAX(0, 500) CustomGameScalePct egg_lay_chance;
+   } daycare_eggs;
    
    CustomGameScalePct scale_wild_encounter_rate;
    
@@ -64,15 +72,30 @@ extern struct CustomGameOptions {
    struct {
       CustomGameScalePct normal;
       CustomGameScalePct traded;
+      LU_BP_DEFAULT(150) CustomGameScalePct trainer_battles;
    } scale_exp_gains;
    CustomGameScalePct scale_player_money_gain_on_victory;
    bool8 modern_calc_player_money_loss_on_defeat;
+   
+   struct {
+      LU_BP_DEFAULT(FALSE) bool8 eon_ticket;
+      struct {
+         LU_BP_DEFAULT(16) LU_BP_MINMAX(16 + 1) u8 rarity; // +1 for Never
+         LU_BP_DEFAULT(FALSE) bool8 include_pc;
+      } mirage_island;
+   } events;
    
    struct {
       LU_BP_MINMAX(0, 60)   u8    interval;
       LU_BP_MINMAX(1, 2000) u16   damage;
       LU_BP_DEFAULT(TRUE)   bool8 faint;
    } overworld_poison;
+   
+   struct {
+      LU_BP_DEFAULT(5)   LU_BP_MINMAX(0,    8) u8  min_badge_count;
+      LU_BP_DEFAULT(31)  LU_BP_MINMAX(0,  100) u8  chance;
+      LU_BP_DEFAULT(255) LU_BP_MINMAX(0, 5000) u16 interval;
+   } rematches;
    
    struct {
       LU_BP_DEFAULT(0) PokemonSpeciesID species[3];
@@ -95,6 +118,10 @@ extern struct CustomGameSavestate {
 
 extern void ResetCustomGameOptions(void);
 extern void ResetCustomGameSavestate(void);
+
+// Set the values of available custom game options to mimic the game mechanics of a 
+// given generation of Pokemon games.
+extern void SetCustomGameOptionsPerGeneration(struct CustomGameOptions*, u8 generation);
 
 extern void CustomGames_HandleNewPlaythroughStarted(void);
 

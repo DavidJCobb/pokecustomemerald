@@ -11,6 +11,14 @@ static void InitializeScaleAndClamp(struct CustomGameScaleAndClamp* v) {
    v->max   = 0xFFFF;
 }
 
+u8 ApplyCustomGameScale_u8(u8 v, CustomGameScalePct scale {
+   if (scale != 100) {
+      v = ((u32)v * scale) / 100;
+      if (v > 255)
+         v = 255;
+   }
+   return v;
+}
 u16 ApplyCustomGameScale_u16(u16 v, CustomGameScalePct scale) {
    if (scale != 100) {
       v = ((u32)v * scale) / 100;
@@ -48,6 +56,11 @@ void ResetCustomGameOptions(void) {
    gCustomGameOptions.can_run_indoors          = FALSE;
    gCustomGameOptions.can_bike_indoors         = FALSE;
    
+   gCustomGameOptions.daycare_eggs.daycare_can_teach_moves = TRUE;
+   gCustomGameOptions.daycare_eggs.daycare_scale_cost      = 100;
+   gCustomGameOptions.daycare_eggs.daycare_scale_step_exp  = 100;
+   gCustomGameOptions.daycare_eggs.egg_lay_chance          = 100;
+   
    gCustomGameOptions.scale_wild_encounter_rate = 100;
    
    gCustomGameOptions.enable_catch_exp = FALSE;
@@ -66,13 +79,22 @@ void ResetCustomGameOptions(void) {
    
    gCustomGameOptions.scale_exp_gains.normal = 100;
    gCustomGameOptions.scale_exp_gains.traded = 150;
+   gCustomGameOptions.scale_exp_gains.trainer_battles = 150;
    
    gCustomGameOptions.scale_player_money_gain_on_victory      = 100;
    gCustomGameOptions.modern_calc_player_money_loss_on_defeat = FALSE;
    
+   gCustomGameOptions.events.eon_ticket = FALSE;
+   gCustomGameOptions.events.mirage_island.rarity     = 16;
+   gCustomGameOptions.events.mirage_island.include_pc = FALSE;
+   
    gCustomGameOptions.overworld_poison.interval = 4; // vanilla value; formerly hardcoded
    gCustomGameOptions.overworld_poison.damage   = 1; // vanilla value; formerly hardcoded
    gCustomGameOptions.overworld_poison.faint    = TRUE;
+   
+   gCustomGameOptions.rematches.min_badge_count = 5;
+   gCustomGameOptions.rematches.chance          = 31;
+   gCustomGameOptions.rematches.interval        = 255;
    
    gCustomGameOptions.starters.species[0] = 0;
    gCustomGameOptions.starters.species[1] = 0;
@@ -82,6 +104,27 @@ void ResetCustomGameOptions(void) {
 }
 
 void ResetCustomGameSavestate(void) {
+}
+
+extern void SetCustomGameOptionsPerGeneration(struct CustomGameOptions* dst, u8 generation) {
+   if (generation >= 4) {
+      gCustomGameOptions.can_run_indoors = TRUE;
+      
+      gCustomGameOptions.modern_calc_player_money_loss_on_defeat = TRUE;
+      
+      gCustomGameOptions.overworld_poison.faint = FALSE;
+      
+      if (generation >= 5) {
+         gCustomGameOptions.overworld_poison.interval = 0;
+         gCustomGameOptions.overworld_poison.damage   = 0;
+         if (generation >= 6) {
+            gCustomGameOptions.enable_catch_exp = TRUE;
+            if (generation >= 7) {
+               gCustomGameOptions.scale_exp_gains.trainer_battles = 100;
+            }
+         }
+      }
+   }
 }
 
 void CustomGames_HandleNewPlaythroughStarted(void) {

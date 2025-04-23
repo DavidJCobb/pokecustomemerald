@@ -19,6 +19,13 @@
 
 ## Custom Game Options
 
+UI changes:
+
+* Add an optional pointer to `CGOptionMenuItem::values::integral`. When non-null, it should point to a struct which can optionally define a format string *or* override individual numeric values with strings.
+  * Use case: Mirage Island rarity option ("%u / 16", with additional "Always" and "Never" options).
+
+Flow changes:
+
 * Change the flow for starting a new game.
   * Enhanced
     * All optional QOL changes are enabled.
@@ -32,6 +39,7 @@
 * Make it so that the ability to adjust custom game options during a playthrough is, itself, a custom game option.
   * Don't allow opening the CGO menu via Options if Options is opened via the main menu.
   * Don't allow opening the CGO menu via Options if CGO options can't be adjusted during a playthrough.
+* Add quick options to the CGO menu to set options to match generations, e.g. setting "Gen 4" would change the available options to match Gen 4 game mechanics as much as is possible. (We have a `SetCustomGameOptionsPerGeneration` function to help with this.)
 
 Add new options:
 
@@ -55,16 +63,11 @@ Add new options:
       * Includes Multi Battles with NPC allies i.e. Steven.
   * Scale secondary status effect chances
     * "Scale the likelihood that damaging moves will also apply a status effect to their target."
-* Eggs
-  * Scale egg laying time
+* Daycare and eggs
   * Scale egg hatch time
 * Events
   * Rebattling legendary encounters (Allow/Disallow)
     * Set fallback locations for Lati@s? Or just make it so it never stops roaming until caught?
-  * Eon Ticket (Enable/Disable)
-  * Mirage Island
-    * Scale probability
-    * Check boxed Pokemon (Enabled/Disabled)
 * Infinite Rare Candies from game start, OR an item that lets the player pick a level to advance a Pokemon to.
 * Infinite stat vitamins from game start, OR an item that lets the player pick a number of EVs to apply/remove to a Pokemon.
 * Nuzlocke
@@ -167,6 +170,35 @@ Add new options:
 
 * Pokemon Custom Emerald allows the player to voluntarily forfeit trainer battles. Don't allow the player to forfeit story-critical trainer battles (i.e. any battle against a villain).
   * I've added a `CurrentBattleAllowsForfeiting()` function in `battles/battle_allows_forfeiting.c`. Whatever flag I add to indicate these battles can be checked for in there.
+
+### Cheat/debug menus
+
+* Overworld
+  * Disable NPC trainer line-of-sight
+  * Disable wild encounters
+  * Fast-travel to any map
+  * Use any bike
+  * Use any field move
+  * Use any fishing rod
+  * Walk through walls
+* Battles
+  * ...
+* Utility
+  * Test audio
+    * Cries
+    * Music
+    * Sounds
+  * Test Pokemon sprites (icon, front, back, palettes)
+  * Test trainer sprites
+  * Test battle animations
+  * Set up test battle
+    * Battle type (single, double, multi; trainer, wild)
+    * Hand-edit player and enemy teams
+    * Hand-edit ally teammates (if a Multi Battle)
+* Detect vanilla GameShark/ActionReplay codes
+  * Warn the user that these are unsafe for ROM hacks
+  * Instruct them on how to reach the hidden cheat menus
+  * Reassure them that we won't keep track of what they've tried or not tried to do
 
 ### Items
 
@@ -361,6 +393,11 @@ This will require thorough investigation of the battle script engine as well as 
 * A UI widget to display the name of the speaking NPC.
 * Unit portraits
 
+### Battles
+
+* Button to re-show the enemy trainer's party layout (i.e. the Poke Balls shown at battle start and when they're switching out)
+* Button to show your moves' descriptions, typing, physical/special, etc..
+
 ### Clock set
 
 * Show the exact time (HH:MM) rather than forcing players to rely on the clock hands alone.
@@ -373,6 +410,7 @@ This will require thorough investigation of the battle script engine as well as 
 
 * Releasing a Pokemon should return its held item to the bag.
   * If there's insufficient bag space, then show a confirmation prompt warning that the held item will e lost.
+    * Better yet: redirect to player's PC if possible; warn of loss if not.
 * Wallpapers
   * The menu for choosing a wallpaper should use two columns, not one, and should support horizontal scrolling.
   * Add more wallpapers! A Spinda-themed design would be nice, and would fit with the custom title screen.

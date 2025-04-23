@@ -1,6 +1,13 @@
 #include "lu/custom_game_options_menu/menu_item.h"
 #include "lu/strings.h"
 
+#include "strings/custom_game_options.battle.h"
+#include "strings/custom_game_options.daycare_eggs.h"
+#include "strings/custom_game_options.events.h"
+#include "strings/custom_game_options.mirage_island.h"
+#include "strings/custom_game_options.overworld_poison.h"
+#include "strings/custom_game_options.rematch.h"
+
 #define END_OF_LIST_SENTINEL { \
    .name        = NULL, \
    .help_string = NULL, \
@@ -8,6 +15,8 @@
    .value_type  = VALUE_TYPE_NONE, \
    .target      = NULL, \
 }
+
+#define END_OF_NAME_OVERRIDES_SENTINEL { .name = NULL }
 
 //
 
@@ -52,6 +61,56 @@ static const struct CGOptionMenuItem sCatchingOptions[] = {
    },
    END_OF_LIST_SENTINEL,
 };
+
+//
+
+static const struct CGOptionMenuItem sRematchOptions[] = {
+   {  // Min badge count
+      .name        = gText_lu_CGOptionName_Rematch_MinBadges,
+      .help_string = gText_lu_CGOptionHelp_Rematch_MinBadges,
+      .value_type = VALUE_TYPE_U8,
+      .values = {
+         .integral = {
+            .min = 0,
+            .max = 8,
+         }
+      },
+      .target = {
+         .as_u8 = &sTempOptions.rematches.min_badge_count
+      }
+   },
+   {  // Chance
+      .name        = gText_lu_CGOptionName_Rematch_Chance,
+      .help_string = gText_lu_CGOptionHelp_Rematch_Chance,
+      .value_type = VALUE_TYPE_U8,
+      .values = {
+         .integral = {
+            .min = 0,
+            .max = 100,
+         }
+      },
+      .target = {
+         .as_u8 = &sTempOptions.rematches.chance
+      }
+   },
+   {  // Interval
+      .name        = gText_lu_CGOptionName_Rematch_Interval,
+      .help_string = gText_lu_CGOptionHelp_Rematch_Interval,
+      .value_type = VALUE_TYPE_U16,
+      .values = {
+         .integral = {
+            .min = 0,
+            .max = 5000,
+         }
+      },
+      .target = {
+         .as_u16 = &sTempOptions.rematches.interval
+      }
+   },
+   END_OF_LIST_SENTINEL,
+};
+
+//
 
 static const u8* const sOption_ItemUseInBattles_ValueNameStrings[] = {
    gText_lu_CGOptionValues_common_Enabled,
@@ -215,6 +274,21 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          .as_u16 = &sTempOptions.scale_exp_gains.traded
       }
    },
+   {  // Scale EXP gains (trainer battles)
+      .name        = gText_lu_CGOptionName_BattlesScaleEXPTrainerBattles,
+      .help_string = gText_lu_CGOptionHelp_BattlesScaleEXPTrainerBattles,
+      .flags       = (1 << MENUITEM_FLAG_PERCENTAGE),
+      .value_type = VALUE_TYPE_U16,
+      .values = {
+         .integral = {
+            .min = 0,
+            .max = 5000,
+         }
+      },
+      .target = {
+         .as_u16 = &sTempOptions.scale_exp_gains.trainer_battles
+      }
+   },
    {  // Scale monetary earnings on victory
       .name        = gText_lu_CGOptionName_BattlesScaleVictoryPayout,
       .help_string = gText_lu_CGOptionHelp_BattlesScaleVictoryPayout,
@@ -246,8 +320,135 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          .as_bool8 = &sTempOptions.modern_calc_player_money_loss_on_defeat
       }
    },
+   {  // SUBMENU: Rematch
+      .name        = gText_lu_CGOptionCategoryName_Rematch,
+      .help_string = NULL,
+      .flags       = (1 << MENUITEM_FLAG_IS_SUBMENU),
+      .value_type = VALUE_TYPE_NONE,
+      .target = {
+         .submenu = sRematchOptions
+      },
+   },
    END_OF_LIST_SENTINEL,
 };
+
+//
+
+static const struct CGOptionMenuItem sDaycareEggsOptions[] = {
+   {  // Daycare can teach moves
+      .name        = gText_lu_CGOptionName_DaycareEggs_DaycareCanTeachMoves,
+      .help_string = gText_lu_CGOptionHelp_DaycareEggs_DaycareCanTeachMoves,
+      .value_type = VALUE_TYPE_BOOL8,
+      .target = {
+         .as_bool8 = &sTempOptions.daycare_eggs.daycare_can_teach_moves
+      }
+   },
+   {  // Daycare scale cost
+      .name        = gText_lu_CGOptionName_DaycareEggs_DaycareScaleCost,
+      .help_string = gText_lu_CGOptionHelp_DaycareEggs_DaycareScaleCost,
+      .flags       = (1 << MENUITEM_FLAG_PERCENTAGE),
+      .value_type = VALUE_TYPE_U16,
+      .values = {
+         .integral = {
+            .min = 0,
+            .max = 5000,
+         }
+      },
+      .target = {
+         .as_u16 = &sTempOptions.daycare_scale_cost
+      }
+   },
+   {  // Daycare scale EXP
+      .name        = gText_lu_CGOptionName_DaycareEggs_DaycareScaleEXP,
+      .help_string = gText_lu_CGOptionHelp_DaycareEggs_DaycareScaleEXP,
+      .flags       = (1 << MENUITEM_FLAG_PERCENTAGE),
+      .value_type = VALUE_TYPE_U16,
+      .values = {
+         .integral = {
+            .min = 0,
+            .max = 5000,
+         }
+      },
+      .target = {
+         .as_u16 = &sTempOptions.daycare_scale_step_exp
+      }
+   },
+   {  // Egg lay chance
+      .name        = gText_lu_CGOptionName_DaycareEggs_EggLayChance,
+      .help_string = gText_lu_CGOptionHelp_DaycareEggs_EggLayChance,
+      .flags       = (1 << MENUITEM_FLAG_PERCENTAGE),
+      .value_type = VALUE_TYPE_U16,
+      .values = {
+         .integral = {
+            .min = 0,
+            .max = 500,
+         }
+      },
+      .target = {
+         .as_u16 = &sTempOptions.egg_lay_chance
+      }
+   },
+   END_OF_LIST_SENTINEL,
+};
+
+//
+
+static const struct CGOptionMenuItemIntegralValueNameOverride sMirageIslandRarityOverrides[] = {
+   {
+      .name  = gText_lu_CGOptionValues_common_Never,
+      .value = {
+         .as_u8 = 17
+      },
+   },
+   END_OF_NAME_OVERRIDES_SENTINEL
+};
+static const struct CGOptionMenuItemIntegralFormat sMirageIslandRarityFmt = {
+   .format_string  = gText_lu_CGOptionValueFormat_MirageIsland_Rarity,
+   .name_overrides = sMirageIslandRarityOverrides,
+};
+//
+static const struct CGOptionMenuItem sEventsMirageIslandOptions[] = {
+   {  // Include boxed Pokemon
+      .name        = gText_lu_CGOptionName_MirageIsland_IncludePC,
+      .help_string = gText_lu_CGOptionHelp_MirageIsland_IncludePC,
+      .value_type = VALUE_TYPE_BOOL8,
+      .target = {
+         .as_bool8 = &sTempOptions.events.mirage_island.include_pc
+      }
+   },
+   {  // Rarity
+      .name        = gText_lu_CGOptionName_MirageIsland_Rarity,
+      .help_string = gText_lu_CGOptionHelp_MirageIsland_Rarity,
+      .value_type = VALUE_TYPE_U8,
+      .target = {
+         .as_u8 = &sTempOptions.events.mirage_island.rarity
+      }
+   },
+};
+
+static const struct CGOptionMenuItem sEventOptions[] = {
+   {  // Eon Ticket
+      .name        = gText_lu_CGOptionName_Events_EonTicket,
+      .help_string = gText_lu_CGOptionHelp_Events_EonTicket,
+      .flags       = 0,
+      .value_type = VALUE_TYPE_BOOL8,
+      .target = {
+         .as_bool8 = &sTempOptions.events.eon_ticket
+      }
+   },
+   {  // SUBMENU: Mirage Island
+      .name        = gText_lu_CGOptionCategoryName_MirageIsland,
+      .help_string = gText_lu_CGOptionCategoryHelp_MirageIsland,
+      .flags       = (1 << MENUITEM_FLAG_IS_SUBMENU),
+      .value_type = VALUE_TYPE_NONE,
+      .target = {
+         .submenu = sEventsMirageIslandOptions
+      }
+   },
+   END_OF_LIST_SENTINEL,
+};
+
+//
 
 static const u8* const sOption_OverworldPoison_Faint_ValueNameStrings[] = {
    gText_lu_CGOptionHelp_OverworldPoison_Termination_Survive,
@@ -424,6 +625,24 @@ static const struct CGOptionMenuItem sTopLevelMenu[] = {
       .value_type = VALUE_TYPE_NONE,
       .target = {
          .submenu = sCatchingOptions
+      },
+   },
+   {  // SUBMENU: Daycare and eggs
+      .name        = gText_lu_CGOptionCategoryName_DaycareEggs,
+      .help_string = NULL,
+      .flags       = (1 << MENUITEM_FLAG_IS_SUBMENU),
+      .value_type = VALUE_TYPE_NONE,
+      .target = {
+         .submenu = sDaycareEggsOptions
+      },
+   },
+   {  // SUBMENU: Event options
+      .name        = gText_lu_CGOptionCategoryName_Events,
+      .help_string = NULL,
+      .flags       = (1 << MENUITEM_FLAG_IS_SUBMENU),
+      .value_type = VALUE_TYPE_NONE,
+      .target = {
+         .submenu = sEventOptions
       },
    },
    {  // SUBMENU: Overworld poison

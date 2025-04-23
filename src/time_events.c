@@ -9,6 +9,8 @@
 #include "script.h"
 #include "task.h"
 
+#include "lu/custom_game_options.h"
+
 static u32 GetMirageRnd(void)
 {
     u32 hi = VarGet(VAR_MIRAGE_RND_H);
@@ -39,16 +41,49 @@ void UpdateMirageRnd(u16 days)
     SetMirageRnd(rnd);
 }
 
-bool8 IsMirageIslandPresent(void)
-{
-    u16 rnd = GetMirageRnd() >> 16;
-    int i;
+bool8 IsMirageIslandPresent(void) {
+   if (gCustomGameOptions.events.mirage_island.rarity == 0) {
+      return TRUE;
+   }
+   if (gCustomGameOptions.events.mirage_island.rarity == 17) {
+      return FALSE;
+   }
+   
+   u16 rnd  = GetMirageRnd() >> 16;
+   u16 mask = 0xFFFF;
+   {
+      u8 bits = gCustomGameOptions.events.mirage_island.rarity;
+      if (bits < 16) {
+         mask = (1 << bits) - 1;
+         rnd  &= mask;
+      }
+   }
 
-    for (i = 0; i < PARTY_SIZE; i++)
-        if (GetMonData(&gPlayerParty[i], MON_DATA_SPECIES) && (GetMonData(&gPlayerParty[i], MON_DATA_PERSONALITY) & 0xFFFF) == rnd)
-            return TRUE;
+   for (int i = 0; i < PARTY_SIZE; i++) {
+      if (!GetMonData(&gPlayerParty[i], MON_DATA_SPECIES))
+         continue;
+      
+      u16 personality = GetMonData(&gPlayerParty[i], MON_DATA_PERSONALITY) & mask;
+      
+      if (personality == rnd)
+         return TRUE;
+   }
+   
+   if (gCustomGameOptions.events.mirage_island.include_pc) {
+      const struct BoxPokemon* mon = &gPokemonStoragePtr->boxes1d[0];
+      for(u8 i = 0; i < TOTAL_BOXES_COUNT; ++i) {
+         for(u8 j = 0; j < IN_BOX_COUNT; ++j) {
+            const struct BoxPokemon* mon = gPokemonStoragePtr->boxes[i][j];
+            if (!mon->hasSpecies)
+               continue;
+            u16 personality = mon->personality & mask;
+            if (personality == rnd)
+               return TRUE;
+         }
+      }
+   }
 
-    return FALSE;
+   return FALSE;
 }
 
 void UpdateShoalTideFlag(void)

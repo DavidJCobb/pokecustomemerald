@@ -23,6 +23,8 @@
 #include "constants/moves.h"
 #include "constants/region_map_sections.h"
 
+#include "lu/custom_game_options.h"
+
 extern const struct Evolution gEvolutionTable[][EVOS_PER_MON];
 
 static void ClearDaycareMonMail(struct DaycareMail *mail);
@@ -221,13 +223,15 @@ static void ApplyDaycareExperience(struct Pokemon *mon)
         // Add the mon's gained daycare experience level by level until it can't level up anymore.
         if (TryIncrementMonLevel(mon))
         {
-            // Teach the mon new moves it learned while in the daycare.
-            firstMove = TRUE;
-            while ((learnedMove = MonTryLearningNewMove(mon, firstMove)) != 0)
-            {
-                firstMove = FALSE;
-                if (learnedMove == MON_HAS_MAX_MOVES)
-                    DeleteFirstMoveAndGiveMoveToMon(mon, gMoveToLearn);
+            if (gCustomGameOptions.daycare_eggs.daycare_can_teach_moves) {
+               // Teach the mon new moves it learned while in the daycare.
+               firstMove = TRUE;
+               while ((learnedMove = MonTryLearningNewMove(mon, firstMove)) != 0)
+               {
+                   firstMove = FALSE;
+                   if (learnedMove == MON_HAS_MAX_MOVES)
+                       DeleteFirstMoveAndGiveMoveToMon(mon, gMoveToLearn);
+               }
             }
         }
         else
@@ -252,7 +256,7 @@ static u16 TakeSelectedPokemonFromDaycare(struct DaycareMon *daycareMon)
 
     if (GetMonData(&pokemon, MON_DATA_LEVEL) != MAX_LEVEL)
     {
-        experience = GetMonData(&pokemon, MON_DATA_EXP) + daycareMon->steps;
+        experience = GetMonData(&pokemon, MON_DATA_EXP) + (daycareMon->steps * gCustomGameOptions.daycare_eggs.daycare_scale_step_exp);
         SetMonData(&pokemon, MON_DATA_EXP, &experience);
         ApplyDaycareExperience(&pokemon);
     }
@@ -287,7 +291,7 @@ static u8 GetLevelAfterDaycareSteps(struct BoxPokemon *mon, u32 steps)
 {
     struct BoxPokemon tempMon = *mon;
 
-    u32 experience = GetBoxMonData(mon, MON_DATA_EXP) + steps;
+    u32 experience = GetBoxMonData(mon, MON_DATA_EXP) + (steps * gCustomGameOptions.daycare_eggs.daycare_scale_step_exp);
     SetBoxMonData(&tempMon, MON_DATA_EXP,  &experience);
     return GetLevelFromBoxMonExp(&tempMon);
 }
@@ -317,6 +321,7 @@ static u32 GetDaycareCostForSelectedMon(struct DaycareMon *daycareMon)
     u8 numLevelsGained = GetNumLevelsGainedFromSteps(daycareMon);
     GetBoxMonNickname(&daycareMon->mon, gStringVar1);
     cost = 100 + 100 * numLevelsGained;
+    cost = ApplyCustomGameScale_u32(cost, gCustomGameOptions.daycare_eggs.daycare_scale_step_exp);
     ConvertIntToDecimalStringN(gStringVar2, cost, STR_CONV_MODE_LEFT_ALIGN, 5);
     return cost;
 }
@@ -890,6 +895,7 @@ static bool8 TryProduceOrHatchEgg(struct DayCare *daycare)
     if (daycare->offspringPersonality == 0 && validEggs == DAYCARE_MON_COUNT && (daycare->mons[1].steps & 0xFF) == 0xFF)
     {
         u8 compatibility = GetDaycareCompatibilityScore(daycare);
+        compatibility = ApplyCustomGameScale_u8(compatibility, gCustomGameOptions.daycare_eggs.egg_lay_chance);
         if (compatibility > (Random() * 100u) / USHRT_MAX)
             TriggerPendingDaycareEgg();
     }

@@ -982,7 +982,7 @@ static void DrawMenuItem(const struct CGOptionMenuItem* item, u8 row, bool8 is_s
       // TODO: For submenus, draw an icon like ">>" in place of the value
    } else if (item->value_type == VALUE_TYPE_U8 || item->value_type == VALUE_TYPE_U16) {
       
-      #define _BUFFER_SIZE 7
+      #define _BUFFER_SIZE 24
       
       u8  text[_BUFFER_SIZE];
       u8  i;
@@ -1002,6 +1002,31 @@ static void DrawMenuItem(const struct CGOptionMenuItem* item, u8 row, bool8 is_s
                text[len]     = CHAR_PERCENT;
                text[len + 1] = EOS;
             }
+         }
+      }
+      
+      {  // Apply format string.
+         const u8* fs = GetOptionValueFormatString(item);
+         if (fs) {
+            const u8* src = fs;
+            u8*       dst = text;
+            for(u8 i = 0; i < (_BUFFER_SIZE - 1); ++i, ++dst, ++src) {
+               u8 c = *src;
+               if (c == CHAR_DYNAMIC) {
+                  dst = ConvertIntToDecimalStringN(
+                     dst,
+                     value,
+                     STR_CONV_MODE_LEFT_ALIGN,
+                     _BUFFER_SIZE - i - 1
+                  );
+                  --dst;
+                  continue;
+               }
+               *dst = c;
+               if (c == EOS)
+                  break;
+            }
+            text[_BUFFER_SIZE - 1] = EOS;
          }
       }
       

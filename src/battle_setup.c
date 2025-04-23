@@ -1603,30 +1603,24 @@ static void SetRematchIdForTrainer(const struct RematchTrainer *table, u32 table
     gSaveBlock1Ptr->trainerRematches[tableId] = i;
 }
 
-static bool32 UpdateRandomTrainerRematches(const struct RematchTrainer *table, u16 mapGroup, u16 mapNum)
-{
-    s32 i;
-    bool32 ret = FALSE;
+static bool32 UpdateRandomTrainerRematches(const struct RematchTrainer *table, u16 mapGroup, u16 mapNum) {
+   s32 i;
+   bool32 ret = FALSE;
 
-    for (i = 0; i <= REMATCH_SPECIAL_TRAINER_START; i++)
-    {
-        if (table[i].mapGroup == mapGroup && table[i].mapNum == mapNum && !IsRematchForbidden(i))
-        {
-            if (gSaveBlock1Ptr->trainerRematches[i] != 0)
-            {
-                // Trainer already wants a rematch. Don't bother updating it.
-                ret = TRUE;
+   for (i = 0; i <= REMATCH_SPECIAL_TRAINER_START; i++) {
+      if (table[i].mapGroup == mapGroup && table[i].mapNum == mapNum && !IsRematchForbidden(i)) {
+         if (gSaveBlock1Ptr->trainerRematches[i] != 0) {
+            // Trainer already wants a rematch. Don't bother updating it.
+            ret = TRUE;
+         } else if (FlagGet(TRAINER_REGISTERED_FLAGS_START + i)) {
+            if ((Random() % 100) < gCustomGameOptions.rematches.chance) {
+               SetRematchIdForTrainer(table, i);
+               ret = TRUE;
             }
-            else if (FlagGet(TRAINER_REGISTERED_FLAGS_START + i)
-             && (Random() % 100) <= 30)  // 31% chance of getting a rematch.
-            {
-                SetRematchIdForTrainer(table, i);
-                ret = TRUE;
-            }
-        }
-    }
-
-    return ret;
+         }
+      }
+   }
+   return ret;
 }
 
 void UpdateRematchIfDefeated(s32 rematchTableId)
@@ -1774,7 +1768,7 @@ static bool8 WasSecondRematchWon(const struct RematchTrainer *table, u16 firstBa
     return TRUE;
 }
 
-static bool32 HasAtLeastFiveBadges(void)
+static bool32 RematchBadgeRequirementMet(void)
 {
     s32 i, count;
 
@@ -1782,7 +1776,7 @@ static bool32 HasAtLeastFiveBadges(void)
     {
         if (FlagGet(sBadgeFlags[i]) == TRUE)
         {
-            if (++count >= 5)
+            if (++count >= gCustomGameOptions.rematches.min_badge_count)
                 return TRUE;
         }
     }
@@ -1790,14 +1784,12 @@ static bool32 HasAtLeastFiveBadges(void)
     return FALSE;
 }
 
-#define STEP_COUNTER_MAX 255
-
 void IncrementRematchStepCounter(void)
 {
-    if (HasAtLeastFiveBadges())
+    if (RematchBadgeRequirementMet())
     {
-        if (gSaveBlock1Ptr->trainerRematchStepCounter >= STEP_COUNTER_MAX)
-            gSaveBlock1Ptr->trainerRematchStepCounter = STEP_COUNTER_MAX;
+        if (gSaveBlock1Ptr->trainerRematchStepCounter >= gCustomGameOptions.rematches.interval)
+            gSaveBlock1Ptr->trainerRematchStepCounter = gCustomGameOptions.rematches.interval;
         else
             gSaveBlock1Ptr->trainerRematchStepCounter++;
     }
@@ -1805,7 +1797,7 @@ void IncrementRematchStepCounter(void)
 
 static bool32 IsRematchStepCounterMaxed(void)
 {
-    if (HasAtLeastFiveBadges() && gSaveBlock1Ptr->trainerRematchStepCounter >= STEP_COUNTER_MAX)
+    if (RematchBadgeRequirementMet() && gSaveBlock1Ptr->trainerRematchStepCounter >= gCustomGameOptions.rematches.interval)
         return TRUE;
     else
         return FALSE;

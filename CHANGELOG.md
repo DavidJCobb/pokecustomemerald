@@ -21,10 +21,24 @@
     * Wager options
       * Scale money gain on victory
       * Alter money loss on defeat (classic/modern)
+    * Rematch options
+      * Minimum badges before trainers start becoming available
+      * Interval at which trainers are re-checked
+      * Chance of each trainer becoming available
   * Catching Pokémon
     * Catch rate flat increase
     * Catch rate scaling
     * Catch EXP toggle
+  * Daycare and eggs
+    * Daycare can teach new moves (enabled/disabled)
+    * Scale daycare cost
+    * Scale daycare EXP
+    * Scale egg laying chance
+  * Events
+    * Eon Ticket availability
+    * Mirage Island
+      * Rarity
+      * Include boxed Pokémon
   * Overworld
     * Start game with running shoes
     * Run indoors
@@ -44,6 +58,8 @@
 * Pokémon that aren't gender-unknown are now referred to with gendered pronouns during battle, to make the text feel less impersonal (i.e. "MISDREAVUS hurt herself in her confusion" rather than "MISDREAVUS hurt itself in its confusion").
 
 * You can now rename Pokémon via the party menu.
+
+* When EXP is earned in battles and divided amongst the participants, Lv. 100 Pokemon no longer waste any of the EXP.
 
 [^no-backfield-inspo]: The option to limit backfield healing was inspired by [a collaboration between Pokémon Challenges and SmallAnt](https://www.youtube.com/watch?v=_3VwGkml-nk) wherein the latter ran a Nuzlocke while the former gained control of all NPC trainers and tried to stop him. Unlike a typical NPC trainer, PChal could sacrifice weaker Pokémon to withdraw his heavy hitters and heal them in safety, and he was ruthless in taking advantage of this, allowing him to effectively wall SmallAnt using Norman's Slaking.
 

@@ -22,6 +22,24 @@ enum { // CGOptionMenuItem::flags
    MENUITEM_FLAG_POKEMON_SPECIES_ALLOW_0, // Allow zero as a Pokemon species number (displays as "None" by default)
 };
 
+struct CGOptionMenuItemIntegralValueNameOverride {
+   const u8* name;
+   union {
+      bool8 as_bool8;
+      u8    as_u8;
+      u16   as_u16;
+   } value;
+};
+struct CGOptionMenuItemIntegralFormat {
+   const u8* format_string;
+   // Mark the place where the value should be inserted using {CHAR_DYNAMIC}. 
+   // The resulting string shouldn't be longer than 24 characters.
+   
+   const CGOptionMenuItemIntegralValueNameOverride* name_overrides;
+   // If specified, must be an array, terminated with an item whose name pointer 
+   // is NULL.
+};
+
 struct CGOptionMenuItem {
    const u8* name; // == NULL for (sub)menu end sentinel
    const u8* help_string;
@@ -37,6 +55,7 @@ struct CGOptionMenuItem {
       struct {
          s16 min;
          s16 max;
+         struct CGOptionMenuItemIntegralFormat* formatting;
       } integral; // used if MENUITEM_FLAG_IS_ENUM is not set and the `value_type` is marked as u8 or u16
    } values;
    union {
@@ -55,6 +74,7 @@ void SetOptionValue(const struct CGOptionMenuItem* item, u16 value);
 
 const u8* GetOptionValueName(const struct CGOptionMenuItem* item, u16 value);
 u16       GetOptionValueCount(const struct CGOptionMenuItem* item);
+const u8* GetOptionValueFormatString(const struct CGOptionMenuItem* item);
 u16       GetOptionMinValue(const struct CGOptionMenuItem* item);
 
 void CycleOptionSelectedValue(const struct CGOptionMenuItem* item, s8 by);

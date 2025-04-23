@@ -63,6 +63,23 @@ const u8* GetOptionValueName(const struct CGOptionMenuItem* item, u16 value) {
       return gText_lu_CGOptionValues_common_Enabled;
    }
    
+   switch (item->value_type) {
+      case VALUE_TYPE_U8:
+      case VALUE_TYPE_U16:
+         {
+            const struct CGOptionMenuItemIntegralFormat* fmt = item->values.integral.formatting;
+            if (fmt && fmt->name_overrides) {
+               const struct CGOptionMenuItemIntegralValueNameOverride* ov = fmt->name_overrides;
+               for (; ov->name; ++ov) {
+                  if (ov->value.as_u16 == value) {
+                     return ov->name;
+                  }
+               }
+            }
+         }
+         break;
+   }
+   
    if (value == 0) {
       if (item->flags & (1 << MENUITEM_FLAG_0_MEANS_DISABLED)) {
          return gText_lu_CGOptionValues_common_Disabled;
@@ -104,6 +121,19 @@ u16 GetOptionValueCount(const struct CGOptionMenuItem* item) {
          return item->values.integral.max - item->values.integral.min + 1;
    }
    return 0;
+}
+const u8* GetOptionValueFormatString(const struct CGOptionMenuItem* item) {
+   switch (item->value_type) {
+      case VALUE_TYPE_U8:
+      case VALUE_TYPE_U16:
+         break;
+      default:
+         return NULL;
+   }
+   const struct CGOptionMenuItemIntegralFormat* fmt = item->values.integral.formatting;
+   if (!fmt)
+      return NULL;
+   return fmt->format_string;
 }
 u16 GetOptionMinValue(const struct CGOptionMenuItem* item) {
    if (item->flags & (1 << MENUITEM_FLAG_IS_ENUM)) {
