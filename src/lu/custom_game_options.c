@@ -72,6 +72,7 @@ void ResetCustomGameOptions(void) {
    
    gCustomGameOptions.overworld_poison.interval = 4; // vanilla value; formerly hardcoded
    gCustomGameOptions.overworld_poison.damage   = 1; // vanilla value; formerly hardcoded
+   gCustomGameOptions.overworld_poison.faint    = TRUE;
    
    gCustomGameOptions.starters.species[0] = 0;
    gCustomGameOptions.starters.species[1] = 0;

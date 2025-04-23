@@ -3,6 +3,7 @@
 
 #include "lu/bitpack_options.h"
 #include "gba/types.h"
+#include "gba/defines.h"
 
 enum {
    CustomGame_ItemUseInBattles_Enabled,
@@ -68,8 +69,9 @@ extern struct CustomGameOptions {
    bool8 modern_calc_player_money_loss_on_defeat;
    
    struct {
-      LU_BP_MINMAX(0, 60)   u8  interval;
-      LU_BP_MINMAX(1, 2000) u16 damage;
+      LU_BP_MINMAX(0, 60)   u8    interval;
+      LU_BP_MINMAX(1, 2000) u16   damage;
+      LU_BP_DEFAULT(TRUE)   bool8 faint;
    } overworld_poison;
    
    struct {

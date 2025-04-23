@@ -102,6 +102,11 @@ extern const u8 gText_lu_CGOptionHelp_OverworldPoison_Interval[];
 //
 extern const u8 gText_lu_CGOptionName_OverworldPoison_Damage[];
 extern const u8 gText_lu_CGOptionHelp_OverworldPoison_Damage[];
+//
+extern const u8 gText_lu_CGOptionName_OverworldPoison_Termination[];
+extern const u8 gText_lu_CGOptionHelp_OverworldPoison_Termination[];
+extern const u8 gText_lu_CGOptionHelp_OverworldPoison_Termination_Faint[];
+extern const u8 gText_lu_CGOptionHelp_OverworldPoison_Termination_Survive[];
 
 extern const u8 gText_lu_CGOptionCategoryName_StarterPokemon[];
 extern const u8 gText_lu_CGOptionCategoryHelp_StarterPokemon[];

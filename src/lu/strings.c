@@ -112,6 +112,11 @@ const u8 gText_lu_CGOptionHelp_OverworldPoison_Interval[] = _("Poisoned Pokémon
 //
 const u8 gText_lu_CGOptionName_OverworldPoison_Damage[] = _("Damage dealt");
 const u8 gText_lu_CGOptionHelp_OverworldPoison_Damage[] = _("Poisoned Pokémon take damage after every few steps you take. You can change the amount of damage dealt at one time.\n\nDefault: Pokémon take 1 HP of damage at a time.");
+//
+const u8 gText_lu_CGOptionName_OverworldPoison_Termination[] = _("Allow Pokémon to faint");
+const u8 gText_lu_CGOptionHelp_OverworldPoison_Termination[] = _("Poisoned Pokémon take damage after every few steps you take. You can control whether Pokémon may faint as a result, or whether they survive and are cured upon reaching 1 HP.\n\nDefault: Pokémon can faint from being poisoned.");
+const u8 gText_lu_CGOptionHelp_OverworldPoison_Termination_Faint[] = _("Faint at 0 HP");
+const u8 gText_lu_CGOptionHelp_OverworldPoison_Termination_Survive[] = _("Cure at 1 HP");
 
 const u8 gText_lu_CGOptionCategoryName_StarterPokemon[] = _("Starter Pokémon");
 const u8 gText_lu_CGOptionCategoryHelp_StarterPokemon[] = _("Modify the three starter Pokémon that the player can choose from at the beginning of the game.");

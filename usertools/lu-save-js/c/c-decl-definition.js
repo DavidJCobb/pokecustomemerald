@@ -134,6 +134,13 @@ export default class CDeclDefinition extends CDefinition {
       this.default_value = node.getAttribute("default-value");
       if (this.default_value !== null) {
          switch (this.type) {
+            case "boolean":
+               if (this.default_value == "true") {
+                  this.default_value = true;
+               } else {
+                  this.default_value = !!Math.floor(+this.default_value);
+               }
+               break;
             case "integer":
                this.default_value = Math.floor(+this.default_value);
                break;

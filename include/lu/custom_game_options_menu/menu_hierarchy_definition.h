@@ -249,6 +249,15 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
    END_OF_LIST_SENTINEL,
 };
 
+static const u8* const sOption_OverworldPoison_Faint_ValueNameStrings[] = {
+   gText_lu_CGOptionHelp_OverworldPoison_Termination_Survive,
+   gText_lu_CGOptionHelp_OverworldPoison_Termination_Faint,
+};   
+static const u8* const sOption_OverworldPoison_Faint_ValueHelpStrings[] = {
+   NULL,
+   NULL,
+};
+
 static const struct CGOptionMenuItem sOverworldPoisonOptions[] = {
    {  // Interval
       .name        = gText_lu_CGOptionName_OverworldPoison_Interval,
@@ -278,6 +287,22 @@ static const struct CGOptionMenuItem sOverworldPoisonOptions[] = {
       },
       .target = {
          .as_u16 = &sTempOptions.overworld_poison.damage
+      }
+   },
+   {  // Faint or cure
+      .name        = gText_lu_CGOptionName_OverworldPoison_Termination,
+      .help_string = gText_lu_CGOptionHelp_OverworldPoison_Termination,
+      .flags       = (1 << MENUITEM_FLAG_IS_ENUM),
+      .value_type = VALUE_TYPE_BOOL8,
+      .values = {
+         .named = {
+            .name_strings = sOption_OverworldPoison_Faint_ValueNameStrings,
+            .help_strings = sOption_OverworldPoison_Faint_ValueHelpStrings,
+            .count = 2,
+         }
+      },
+      .target = {
+         .as_bool8 = &sTempOptions.overworld_poison.faint
       }
    },
    END_OF_LIST_SENTINEL,

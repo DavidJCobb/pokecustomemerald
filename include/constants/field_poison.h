@@ -4,6 +4,7 @@
 #define FLDPSN_NONE  0
 #define FLDPSN_PSN   1
 #define FLDPSN_FNT   2
+#define FLDPSN_HEAL  3
 
 #define FLDPSN_NO_WHITEOUT        0
 #define FLDPSN_WHITEOUT           1

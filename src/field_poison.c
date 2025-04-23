@@ -52,6 +52,16 @@ static void FaintFromFieldPoison(u8 partyIdx)
     StringGet_Nickname(gStringVar1);
 }
 
+static void RecoverFromFieldPoison(u8 partyIdx) {
+   struct Pokemon *pokemon = &gPlayerParty[partyIdx];
+   u32 status = STATUS1_NONE;
+   
+   AdjustFriendship(pokemon, FRIENDSHIP_EVENT_FAINT_FIELD_PSN);
+   SetMonData(pokemon, MON_DATA_STATUS, &status);
+   GetMonData(pokemon, MON_DATA_NICKNAME, gStringVar1);
+   StringGet_Nickname(gStringVar1);
+}
+
 static bool32 MonFaintedFromPoison(u8 partyIdx)
 {
     struct Pokemon *pokemon = &gPlayerParty[partyIdx];
@@ -61,8 +71,18 @@ static bool32 MonFaintedFromPoison(u8 partyIdx)
     return FALSE;
 }
 
+static bool8 MonCanBeCuredOfPoison(u8 partyIdx) {
+   struct Pokemon *pokemon = &gPlayerParty[partyIdx];
+   if (IsMonValidSpecies(pokemon) && GetMonData(pokemon, MON_DATA_HP) == 1 && GetAilmentFromStatus(GetMonData(pokemon, MON_DATA_STATUS)) == AILMENT_PSN)
+      return TRUE;
+
+    return FALSE;
+}
+
 #define tState    data[0]
 #define tPartyIdx data[1]
+
+#include "strings/field_poison.h"
 
 static void Task_TryFieldPoisonWhiteOut(u8 taskId)
 {
@@ -72,12 +92,20 @@ static void Task_TryFieldPoisonWhiteOut(u8 taskId)
     case 0:
         for (; tPartyIdx < PARTY_SIZE; tPartyIdx++)
         {
-            if (MonFaintedFromPoison(tPartyIdx))
-            {
-                FaintFromFieldPoison(tPartyIdx);
-                ShowFieldMessage(gText_PkmnFainted_FldPsn);
-                tState++;
-                return;
+            if (gCustomGameOptions.overworld_poison.faint) {
+               if (MonFaintedFromPoison(tPartyIdx)) {
+                  FaintFromFieldPoison(tPartyIdx);
+                  ShowFieldMessage(gText_PkmnFainted_FldPsn);
+                  tState++;
+                  return;
+               }
+            } else {
+               if (MonCanBeCuredOfPoison(tPartyIdx)) {
+                  RecoverFromFieldPoison(tPartyIdx);
+                  ShowFieldMessage(gText_FieldPoison_EnduredAndCured);
+                  tState++;
+                  return;
+               }
             }
         }
         tState = 2; // Finished checking party
@@ -126,10 +154,12 @@ s32 DoPoisonFieldEffect(void)
     struct Pokemon *pokemon = gPlayerParty;
     u32 numPoisoned = 0;
     u32 numFainted = 0;
+    u32 numCured = 0;
 
     for (i = 0; i < PARTY_SIZE; i++)
     {
-        if (GetMonData(pokemon, MON_DATA_SANITY_HAS_SPECIES) && GetAilmentFromStatus(GetMonData(pokemon, MON_DATA_STATUS)) == AILMENT_PSN)
+        u32 status = GetMonData(pokemon, MON_DATA_STATUS);
+        if (GetMonData(pokemon, MON_DATA_SANITY_HAS_SPECIES) && GetAilmentFromStatus(status) == AILMENT_PSN)
         {
             // Apply poison damage
             hp = GetMonData(pokemon, MON_DATA_HP);
@@ -139,9 +169,17 @@ s32 DoPoisonFieldEffect(void)
                u16 damage = gCustomGameOptions.overworld_poison.damage; // vanilla: 1
                if (hp <= damage) {
                   hp = 0;
-                  numFainted++;
+                  if (gCustomGameOptions.overworld_poison.faint) {
+                     numFainted++;
+                  } else {
+                     hp = 1;
+                     numCured++;
+                  }
                } else {
                   hp -= damage;
+                  if (hp == 1 && !gCustomGameOptions.overworld_poison.faint) {
+                     numCured++;
+                  }
                }
             }
 
@@ -157,6 +195,9 @@ s32 DoPoisonFieldEffect(void)
 
     if (numFainted != 0)
         return FLDPSN_FNT;
+
+    if (numCured != 0)
+        return FLDPSN_HEAL;
 
     if (numPoisoned != 0)
         return FLDPSN_PSN;
