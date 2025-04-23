@@ -3,10 +3,6 @@
 
 ## Needed polishing
 
-* The pick-species menu takes *way* too long to sort the species list when no filters are applied, causing a very visible lag-spike. We need to implement an "async sort" function, so we can divide the sorting work over multiple frames when there are many, many species to sort.
-  * We should show a loading indicator in place of the listing while a sort is ongoing.
-  * The menu should remain operable while a sort is ongoing, but the user shouldn't be able to move the cursor into the listing pane until the sort is complete.
-    * The "Choose Pokemon >>" link should be shown in grey while a sort is ongoing.
 * If you change whichever of the three starter species the rival ends up using, then their parties should be altered to use that species, dynamically computing the appropriate stats, evolutions, etc., based on level.
 
 ## Characters
@@ -192,6 +188,16 @@ One potential wrinkle: emulators support the RTC. How do they manage the date an
 ### Scripting (overworld)
 
 * Investigate making multiple-choice menus scriptable, such that the script can decide the quantity and text of the selectable options.
+
+
+### Sprites
+
+Pokemon icon sprites use some cursed trickery to load only a single frame of their animation into VRAM at a time &mdash; necessary because the PC can potentially show up to 36 such sprites at a time, and having each one load both of its animation frames at once would burn too much VRAM.
+
+Game Freak's sprite library has a system for dynamically allocating VRAM for sprite tiles, when loading the sprite. However, the Pokemon icon library uses a bunch of nasty hacks to ensure that only a single frame of the icon loads at a time. These hacks make it dangerous to manage Pokemon icon sprites using the standard sprite-handling functions (which is why there *is* an entire library for Pokemon icons, much of which is dedicated to partially reimplementing sprite functionality with workarounds for what those nasty hacks break).
+
+It'd be nice if we could modify the core sprite library to support keeping only a sprite's current frame of animation in VRAM, and then strip away most of the Pokemon icon code and fall back on standard sprite handling. See documentation on `pokemon_icon.h` for information.
+
 
 ## Features
 
