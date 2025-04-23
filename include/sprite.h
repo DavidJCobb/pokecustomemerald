@@ -1,6 +1,8 @@
 #ifndef GUARD_SPRITE_H
 #define GUARD_SPRITE_H
 
+#define LU_SPRITE_RESOURCE_LIFETIME_FIXES
+
 #define OAM_MATRIX_COUNT 32
 #define MAX_SPRITES 64
 #define SPRITE_NONE 0xFF
@@ -195,9 +197,23 @@ struct Sprite
 {
     /*0x00*/ struct OamData oam;
     /*0x08*/ const union AnimCmd *const *anims;
+             #ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+    /*0x0C*/ union {
+                const struct SpriteFrameImage* images;
+                struct SpriteFrameImage*       images_owned;
+             };
+             #else
     /*0x0C*/ const struct SpriteFrameImage *images;
+             #endif
     /*0x10*/ const union AffineAnimCmd *const *affineAnims;
+             #ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+    /*0x0C*/ union {
+                const struct SpriteTemplate* template;
+                struct SpriteTemplate*       template_owned;
+             };
+             #else
     /*0x14*/ const struct SpriteTemplate *template;
+             #endif
     /*0x18*/ const struct SubspriteTable *subspriteTables;
     /*0x1C*/ SpriteCallback callback;
 
@@ -219,8 +235,13 @@ struct Sprite
     /*0x3E*/ bool16 inUse:1;               //1
              bool16 coordOffsetEnabled:1;  //2
              bool16 invisible:1;           //4
+             #ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+             bool16 ownsImageList:1;       //8
+             bool16 ownsTemplate:1;        // 0x10
+             #else
              bool16 flags_3:1;             //8
              bool16 flags_4:1;             //0x10
+             #endif
              bool16 flags_5:1;             //0x20
              bool16 flags_6:1;             //0x40
              bool16 flags_7:1;             //0x80
@@ -233,7 +254,14 @@ struct Sprite
              bool16 usingSheet:1;          //0x40
              bool16 anchored:1;            //0x80
 
+             #ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+    /*0x40*/ union {
+                 u16 sheetTileStart; // if usingSheet
+                 u16 allocTileCount; // if !usingSheet
+             };
+             #else
     /*0x40*/ u16 sheetTileStart;
+             #endif
 
     /*0x42*/ u8 subspriteTableNum:6;
              u8 subspriteMode:2;
@@ -323,5 +351,10 @@ void CopyFromSprites(u8 *dest);
 u8 SpriteTileAllocBitmapOp(u16 bit, u8 op);
 void ClearSpriteCopyRequests(void);
 void ResetAffineAnimData(void);
+
+#ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+void SpriteTakeOwnershipOfImages(struct Sprite*, u16 images_count);
+void SpriteTakeOwnershipOfTemplate(struct Sprite*);
+#endif
 
 #endif //GUARD_SPRITE_H

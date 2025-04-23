@@ -1,7 +1,11 @@
 #include "global.h"
 #include "sprite.h"
+#ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+   #include "malloc.h"
+#endif
 #include "main.h"
 #include "palette.h"
+#include "gba/isagbprint.h"
 
 #define MAX_SPRITE_COPY_REQUESTS 64
 
@@ -571,7 +575,11 @@ u8 CreateSpriteAt(u8 index, const struct SpriteTemplate *template, s16 x, s16 y,
         }
         sprite->oam.tileNum = tileNum;
         sprite->usingSheet = FALSE;
+        #ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+        sprite->allocTileCount = (sprite->images->size / TILE_SIZE_4BPP);
+        #else
         sprite->sheetTileStart = 0;
+        #endif
     }
     else
     {
@@ -622,9 +630,14 @@ void DestroySprite(struct Sprite *sprite)
         if (!sprite->usingSheet)
         {
             u16 i;
+            #ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+            u16 tileEnd = sprite->oam.tileNum + sprite->allocTileCount;
+            #else
             u16 tileEnd = (sprite->images->size / TILE_SIZE_4BPP) + sprite->oam.tileNum;
-            for (i = sprite->oam.tileNum; i < tileEnd; i++)
+            #endif
+            for (i = sprite->oam.tileNum; i < tileEnd; i++) {
                 FREE_SPRITE_TILE(i);
+            }
         }
         ResetSprite(sprite);
     }
@@ -679,9 +692,24 @@ void SetOamMatrix(u8 matrixNum, u16 a, u16 b, u16 c, u16 d)
     gOamMatrices[matrixNum].d = d;
 }
 
-void ResetSprite(struct Sprite *sprite)
-{
-    *sprite = sDummySprite;
+void ResetSprite(struct Sprite *sprite) {
+   #ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+      if (sprite->ownsImageList) {
+         if (sprite->images != NULL) {
+            Free(sprite->images_owned);
+            sprite->images = NULL;
+         }
+         sprite->ownsImageList = FALSE;
+      }
+      if (sprite->ownsTemplate) {
+         if (sprite->template != NULL) {
+            Free(sprite->template_owned);
+            sprite->template = NULL;
+         }
+         sprite->ownsTemplate = FALSE;
+      }
+   #endif
+   *sprite = sDummySprite;
 }
 
 void CalcCenterToCornerVec(struct Sprite *sprite, u8 shape, u8 size, u8 affineMode)
@@ -1757,3 +1785,30 @@ bool8 AddSubspritesToOamBuffer(struct Sprite *sprite, struct OamData *destOam, u
 
     return 0;
 }
+
+#ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
+void SpriteTakeOwnershipOfImages(struct Sprite* sprite, u16 images_count) {
+   if (sprite->ownsImageList)
+      return;
+   if (sprite->images == NULL)
+      return;
+   
+   struct SpriteFrameImage* dst = AllocZeroed(sizeof(struct SpriteFrameImage) * images_count);
+   for(u16 i = 0; i < images_count; ++i) {
+      dst[i] = sprite->images[i];
+   }
+   sprite->images = dst;
+   sprite->ownsImageList = TRUE;
+}
+void SpriteTakeOwnershipOfTemplate(struct Sprite* sprite) {
+   if (sprite->ownsTemplate)
+      return;
+   if (sprite->template == NULL)
+      return;
+   
+   struct SpriteTemplate* dst = AllocZeroed(sizeof(struct SpriteTemplate));
+   *dst = *sprite->template;
+   sprite->template = dst;
+   sprite->ownsTemplate = TRUE;
+}
+#endif

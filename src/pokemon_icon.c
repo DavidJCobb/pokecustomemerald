@@ -1281,6 +1281,8 @@ static u8 CreateMonIconSprite(struct MonIconSpriteTemplate *iconTemplate, s16 x,
     };
 
     spriteId = CreateSprite(&spriteTemplate, x, y, subpriority);
+    SpriteTakeOwnershipOfImages(&gSprites[spriteId], 1);
+    SpriteTakeOwnershipOfTemplate(&gSprites[spriteId]);
     gSprites[spriteId].animPaused = TRUE;
     gSprites[spriteId].animBeginning = FALSE;
     gSprites[spriteId].images = (const struct SpriteFrameImage *)iconTemplate->image;

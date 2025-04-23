@@ -11,6 +11,7 @@
 #include "menu.h"
 #include "palette.h"
 #include "pokemon.h" // gSpeciesInfo
+#include "pokemon_icon.h"
 #include "scanline_effect.h"
 #include "sound.h" // PlaySE
 #include "sprite.h"
@@ -36,6 +37,7 @@
 #include "lu/vram_layout_helpers.h"
 
 #include "lu/pick_species_menu.strings.h"
+#include "lu/pokemon_icon_pool.h"
 #include "lu/species_list_utils.h"
 
 #include "gba/isagbprint.h"
@@ -74,6 +76,13 @@ enum {
    GENERATIONS_COUNT
 };
 
+enum {
+   SPRITE_PALETTE_TAG_ENUMPICKER = 4096,
+   SPRITE_PALETTE_TAG_SPINNER    = 4097,
+};
+
+#define MAX_MON_ICONS 10
+
 struct MenuState {
    struct PickSpeciesMenuParams params;
    
@@ -89,6 +98,7 @@ struct MenuState {
       struct SpeciesList contents;
       u16 scroll_pos;
       u8 sort_task;
+      struct PokemonIconPool pokemon_icons;
    } listing;
    
    struct {
@@ -149,6 +159,8 @@ enum {
 #define FORM_CRITERION_VALUE_X 80 // relative to containing window
 #define FORM_CRITERION_VALUE_W 50
 
+#define WIN_LISTING_ICONS_X     ((WIN_FORM_TILE_X + WIN_FORM_TILE_WIDTH + SELECTION_CURSOR_TILE_W) * TILE_WIDTH)
+
 #define WIN_LISTING_TILE_X      (WIN_FORM_TILE_X + WIN_FORM_TILE_WIDTH + SELECTION_CURSOR_TILE_W)
 #define WIN_LISTING_TILE_Y      WIN_FORM_TILE_Y
 #define WIN_LISTING_TILE_WIDTH  (DISPLAY_TILE_WIDTH - WIN_LISTING_TILE_X - 1)
@@ -182,7 +194,7 @@ static const struct LuEnumPickerInitParams sEnumPickerInit = {
    },
    .sprite_tags = {
       .tile    = 4096,
-      .palette = 4096,
+      .palette = SPRITE_PALETTE_TAG_ENUMPICKER,
    },
    .width = FORM_CRITERION_VALUE_W,
 };
@@ -395,7 +407,7 @@ static void CB2_InitPickSpeciesMenu(void) {
                   (WIN_LISTING_TILE_X + WIN_LISTING_TILE_WIDTH  / 2) * TILE_WIDTH,
                   (WIN_LISTING_TILE_Y + WIN_LISTING_TILE_HEIGHT / 2) * TILE_HEIGHT,
                   4097,
-                  4097,
+                  SPRITE_PALETTE_TAG_SPINNER,
                   sLoadingSpinnerPalette,
                   0,
                   FALSE
@@ -427,6 +439,8 @@ extern void ShowPickSpeciesMenu(const struct PickSpeciesMenuParams* params) {
    sMenuState->filter_params.types[1] = TYPE_CRITERION_ANY;
    
    sMenuState->listing.sort_task = TASK_NONE;
+   
+   InitPokemonIconPool(&sMenuState->listing.pokemon_icons, MAX_MON_ICONS);
    
    SetMainCallback2(CB2_InitPickSpeciesMenu);
 }
@@ -573,6 +587,7 @@ static void Task_MenuFadeOut(u8 taskId) {
    DestroyKeybindStrip(&sMenuState->widgets.keybind_strip);
    DestroyScrollbarV(&sMenuState->widgets.scrollbar);
    DestroyLoadingSpinner(sMenuState->widgets.loading_spinner_sprite_id);
+   DestroyPokemonIconPool(&sMenuState->listing.pokemon_icons);
    FreeAllWindowBuffers();
    Free(sMenuState);
    sMenuState = NULL;
@@ -759,7 +774,7 @@ static void PaintListingItem(u8 display_pos, PokemonSpeciesID species) {
    AddTextPrinterParameterized3(
       WIN_LISTING,
       FONT_NORMAL,
-      0, // x
+      16, // x
       (display_pos * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)) + 1, // y
       sTextColor_OptionNames,
       TEXT_SKIP_DRAW,
@@ -777,8 +792,12 @@ static void PaintListingContents(void) {
       
       FillWindowPixelBuffer(WIN_LISTING, PIXEL_FILL(1));
       CopyWindowToVram(WIN_LISTING, COPYWIN_GFX);
+      
+      SetPooledPokemonIconsVisible(&sMenuState->listing.pokemon_icons, FALSE);
+      
       return;
    }
+   
    SetLoadingSpinnerVisible(sMenuState->widgets.loading_spinner_sprite_id, FALSE);
    
    u8 pos   = GetListingScrollPosition();
@@ -797,6 +816,42 @@ static void PaintListingContents(void) {
       PaintListingItem(i, sMenuState->listing.contents.speciesIDs[i + pos]);
    }
    CopyWindowToVram(WIN_LISTING, COPYWIN_GFX);
+   
+   //
+   // Update sprites.
+   //
+   {
+      struct PokemonIconPool* pool = &sMenuState->listing.pokemon_icons;
+      SetPooledPokemonIconsVisible(pool, TRUE);
+      MarkAllPooledPokemonIconsForDelete(pool);
+      for(int i = 0; i < MAX_MENU_ITEMS_VISIBLE_AT_ONCE; ++i) {
+         if (i + pos >= count)
+            break;
+         PokemonSpeciesID species = sMenuState->listing.contents.speciesIDs[i + pos];
+         
+         u16 j = FindPooledPokemonIconBySpecies(pool, species);
+         if (j != NO_POOLED_POKEMON_ICON) {
+            UnmarkPooledPokemonIconForDelete(pool, j);
+            
+            u8 y = (WIN_LISTING_TILE_Y * TILE_HEIGHT) + i * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES);
+            SetPooledPokemonIconPosition(pool, j, WIN_LISTING_ICONS_X, y);
+         }
+      }
+      DeleteMarkedPooledPokemonIcons(pool);
+      for(int i = 0; i < MAX_MENU_ITEMS_VISIBLE_AT_ONCE; ++i) {
+         if (i + pos >= count)
+            break;
+         PokemonSpeciesID species = sMenuState->listing.contents.speciesIDs[i + pos];
+         
+         u16 j = FindPooledPokemonIconBySpecies(pool, species);
+         if (j != NO_POOLED_POKEMON_ICON) {
+            continue;
+         }
+         
+         u8 y = (WIN_LISTING_TILE_Y * TILE_HEIGHT) + i * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES);
+         AddPooledPokemonIcon(pool, species, WIN_LISTING_ICONS_X, y);
+      }
+   }
 }
 static void UpdateKeybindStrip(void) {
    u8 enabled_entries = (1 << 0) | (1 << 4);
