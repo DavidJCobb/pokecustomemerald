@@ -98,6 +98,7 @@ struct MenuState {
       struct SpeciesList contents;
       u16 scroll_pos;
       u8 sort_task;
+      u8 anim_task;
       struct PokemonIconPool pokemon_icons;
    } listing;
    
@@ -153,15 +154,16 @@ enum {
 
 #define WIN_FORM_TILE_X      SELECTION_CURSOR_TILE_W
 #define WIN_FORM_TILE_Y      (WIN_HEADER_TILE_HEIGHT + 1)
-#define WIN_FORM_TILE_WIDTH  15
+#define WIN_FORM_TILE_WIDTH  12
 #define WIN_FORM_TILE_HEIGHT (DISPLAY_TILE_HEIGHT - WIN_FORM_TILE_Y - KEYBIND_STRIP_TILE_HEIGHT)
 
-#define FORM_CRITERION_VALUE_X 80 // relative to containing window
+#define FORM_CRITERION_VALUE_X 40 // relative to containing window
 #define FORM_CRITERION_VALUE_W 50
 
-#define WIN_LISTING_ICONS_X     ((WIN_FORM_TILE_X + WIN_FORM_TILE_WIDTH + SELECTION_CURSOR_TILE_W) * TILE_WIDTH)
+#define WIN_LISTING_CURSOR_X    (WIN_FORM_TILE_X + WIN_FORM_TILE_WIDTH)
+#define WIN_LISTING_ICONS_X     ((WIN_LISTING_CURSOR_X + SELECTION_CURSOR_TILE_W) * TILE_WIDTH)
 
-#define WIN_LISTING_TILE_X      (WIN_FORM_TILE_X + WIN_FORM_TILE_WIDTH + SELECTION_CURSOR_TILE_W)
+#define WIN_LISTING_TILE_X      ((WIN_LISTING_ICONS_X / TILE_WIDTH) + 3)
 #define WIN_LISTING_TILE_Y      WIN_FORM_TILE_Y
 #define WIN_LISTING_TILE_WIDTH  (DISPLAY_TILE_WIDTH - WIN_LISTING_TILE_X - 1)
 #define WIN_LISTING_TILE_HEIGHT WIN_FORM_TILE_HEIGHT
@@ -322,6 +324,8 @@ static void SetFocusedPane(enum PaneEnum);
 static bool8 IsAsyncSortInProgress(void);
 static void OnFilterChanged(void);
 
+static void ChildTask_AnimatePokemonIcons(u8 taskId); // subordinate task
+
 static void CB2_InitPickSpeciesMenu(void) {
    switch (gMain.state) {
       default:
@@ -439,6 +443,7 @@ extern void ShowPickSpeciesMenu(const struct PickSpeciesMenuParams* params) {
    sMenuState->filter_params.types[1] = TYPE_CRITERION_ANY;
    
    sMenuState->listing.sort_task = TASK_NONE;
+   sMenuState->listing.anim_task = CreateTask(ChildTask_AnimatePokemonIcons, 1);
    
    InitPokemonIconPool(&sMenuState->listing.pokemon_icons, MAX_MON_ICONS);
    
@@ -581,6 +586,10 @@ static void Task_MenuFadeOut(u8 taskId) {
    if (sMenuState->listing.sort_task != TASK_NONE) {
       DestroyTask(sMenuState->listing.sort_task);
       sMenuState->listing.sort_task = TASK_NONE;
+   }
+   if (sMenuState->listing.anim_task != TASK_NONE) {
+      DestroyTask(sMenuState->listing.anim_task);
+      sMenuState->listing.anim_task = TASK_NONE;
    }
    DestroyTask(taskId);
    DestroyEnumPicker(&sMenuState->widgets.enum_picker);
@@ -728,7 +737,7 @@ static void PaintCursor(void) {
    FillBgTilemapBufferRect(
       BACKGROUND_LAYER_NORMAL,
       VRAM_BG_TileID(VRAMTileLayout, blank_tile),
-      WIN_LISTING_TILE_X - SELECTION_CURSOR_TILE_W,
+      WIN_LISTING_CURSOR_X,
       WIN_LISTING_TILE_Y,
       SELECTION_CURSOR_TILE_W, // width to paint over
       WIN_LISTING_TILE_HEIGHT,
@@ -737,7 +746,7 @@ static void PaintCursor(void) {
    
    u8 base_x;
    if (sMenuState->cursor_is_in_results) {
-      base_x = WIN_LISTING_TILE_X - SELECTION_CURSOR_TILE_W;
+      base_x = WIN_LISTING_CURSOR_X;
    } else {
       base_x = 0;
    }
@@ -774,7 +783,7 @@ static void PaintListingItem(u8 display_pos, PokemonSpeciesID species) {
    AddTextPrinterParameterized3(
       WIN_LISTING,
       FONT_NORMAL,
-      16, // x
+      0, // x
       (display_pos * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES)) + 1, // y
       sTextColor_OptionNames,
       TEXT_SKIP_DRAW,
@@ -782,6 +791,15 @@ static void PaintListingItem(u8 display_pos, PokemonSpeciesID species) {
    );
 }
 static void PaintListingContents(void) {
+   FillBgTilemapBufferRect(
+      BACKGROUND_LAYER_NORMAL,
+      VRAM_BG_TileID(VRAMTileLayout, blank_tile),
+      (WIN_LISTING_ICONS_X / TILE_WIDTH),
+      WIN_LISTING_TILE_Y,
+      3, // width to paint over
+      WIN_LISTING_TILE_HEIGHT,
+      BACKGROUND_PALETTE_ID_TEXT
+   );
    if (IsAsyncSortInProgress()) {
       SetLoadingSpinnerVisible(sMenuState->widgets.loading_spinner_sprite_id, TRUE);
       
@@ -817,6 +835,7 @@ static void PaintListingContents(void) {
    }
    CopyWindowToVram(WIN_LISTING, COPYWIN_GFX);
    
+   const u8 Y_OFFSET = 4;
    //
    // Update sprites.
    //
@@ -833,8 +852,8 @@ static void PaintListingContents(void) {
          if (j != NO_POOLED_POKEMON_ICON) {
             UnmarkPooledPokemonIconForDelete(pool, j);
             
-            u8 y = (WIN_LISTING_TILE_Y * TILE_HEIGHT) + i * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES);
-            SetPooledPokemonIconPosition(pool, j, WIN_LISTING_ICONS_X, y);
+            u8 y = Y_OFFSET + (WIN_LISTING_TILE_Y * TILE_HEIGHT) + i * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES);
+            SetPooledPokemonIconPosition(pool, j, WIN_LISTING_ICONS_X + 8, y); // sprite X-coordinates are centered
          }
       }
       DeleteMarkedPooledPokemonIcons(pool);
@@ -848,8 +867,8 @@ static void PaintListingContents(void) {
             continue;
          }
          
-         u8 y = (WIN_LISTING_TILE_Y * TILE_HEIGHT) + i * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES);
-         AddPooledPokemonIcon(pool, species, WIN_LISTING_ICONS_X, y);
+         u8 y = Y_OFFSET + (WIN_LISTING_TILE_Y * TILE_HEIGHT) + i * (TILE_HEIGHT * TEXT_ROW_HEIGHT_IN_TILES);
+         AddPooledPokemonIcon(pool, species, WIN_LISTING_ICONS_X + 8, y); // sprite X-coordinates are centered
       }
    }
 }
@@ -946,6 +965,10 @@ static void SetFocusedPane(enum PaneEnum pane) {
    // TODO: indicate where focus is at (darken the unfocused pane?)
    //
 }
+
+//
+// Sorting/filtering
+//
 
 static void OnAsyncSortSpeciesListDone(void);
 
@@ -1095,4 +1118,46 @@ static void OnAsyncSortSpeciesListDone(void) {
    sMenuState->listing.sort_task = TASK_NONE;
    PaintForm(); // un-grey-out the menu item to enter the listing
    PaintListingContents();
+}
+
+//
+// Animating Pokemon icons
+//
+
+static void ChildTask_AnimatePokemonIcons(u8 taskId) {
+   struct PokemonIconPool* pool = &sMenuState->listing.pokemon_icons;
+   
+   u8 focused_sprite = 0xFF;
+   if (sMenuState->cursor_is_in_results) {
+      focused_sprite = FindPooledPokemonIconBySpecies(
+         pool,
+         sMenuState->listing.contents.speciesIDs[sMenuState->cursor_pos]
+      );
+   }
+   
+   for(int i = 0; i < pool->count; ++i) {
+      u8 id = pool->sprite_ids[i];
+      if (id >= MAX_SPRITES)
+         continue;
+      struct Sprite* sprite = &gSprites[id];
+      if (i == focused_sprite) {
+         UpdateMonIconFrame(sprite);
+         sprite->subpriority = 0;
+      } else {
+         //
+         // Forcibly return the sprite to its first frame.
+         //
+         sprite->animDelayCounter = sprite->anims[sprite->animNum][0].frame.duration & 0xFF;
+         if (sprite->animCmdIndex > 0) {
+            sprite->animCmdIndex = 0;
+            RequestSpriteCopy(
+               (u8*)sprite->images,
+               (u8*)(OBJ_VRAM0 + sprite->oam.tileNum * TILE_SIZE_4BPP),
+               512
+            );
+            //
+            sprite->subpriority = 2;
+         }
+      }
+   }
 }

@@ -2,10 +2,10 @@
 
 const u8 gText_lu_PickSpeciesMenu_DefaultTitle[] = _("Select a Pokémon species");
 
-const u8 gText_lu_PickSpeciesMenu_Label_FirstLetter[] = _("First Letter");
+const u8 gText_lu_PickSpeciesMenu_Label_FirstLetter[] = _("Name");
 const u8 gText_lu_PickSpeciesMenu_Label_Type1[] = _("Type 1");
 const u8 gText_lu_PickSpeciesMenu_Label_Type2[] = _("Type 2");
-const u8 gText_lu_PickSpeciesMenu_Label_Generation[] = _("Generation");
+const u8 gText_lu_PickSpeciesMenu_Label_Generation[] = _("Region");
 const u8 gText_lu_PickSpeciesMenu_Label_SwitchToListing[] = _("Select Pokémon >>");
 
 const u8 gText_lu_PickSpeciesMenu_FirstLetter_Any[] = _("Any");
