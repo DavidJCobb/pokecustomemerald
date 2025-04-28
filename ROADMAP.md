@@ -171,7 +171,6 @@ Add new options:
 * Pokemon Custom Emerald allows the player to voluntarily forfeit trainer battles. Don't allow the player to forfeit story-critical trainer battles (i.e. any battle against a villain).
   * I've added a `CurrentBattleAllowsForfeiting()` function in `battles/battle_allows_forfeiting.c`. Whatever flag I add to indicate these battles can be checked for in there.
 * Battle ambient weather improvements
-  * Add animations for Sandstorm, Hail, and Sunny.
   * Some weathers fade the color palettes, e.g. rain darkening the battle scene. Make it so that when you enter the Bag or Party menus, these fades are maintained. Currently, the weather fade reverts simultaneously while the screen fades to black, despite us not taking any action to undo the fades ourselves.
 
 ### Cheat/debug menus

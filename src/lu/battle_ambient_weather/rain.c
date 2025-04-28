@@ -148,7 +148,17 @@ static void TaskHandler(u8 taskId) {
             RGB_BLACK
          );
          DebugPrintf("[Battle Ambient Weather][Rain] Advancing to TASKSTATE_DARKEN_BACKGROUND.");
-         PlaySE12WithPanning(SE_M_RAIN_DANCE, SOUND_PAN_ATTACKER);
+         #if ENABLE_LOOPING_AMBIENT_SFX
+            SpawnSELoopTask(
+               taskId,
+               SE_M_RAIN_DANCE,
+               SOUND_PAN_ATTACKER,
+               120,
+               0xFFFF
+            );
+         #else
+            PlaySE12WithPanning(SE_M_RAIN_DANCE, SOUND_PAN_ATTACKER);
+         #endif
          ++task->tState;
          break;
       case TASKSTATE_DARKEN_BACKGROUND:
@@ -205,6 +215,9 @@ static void TaskHandler(u8 taskId) {
             0, // blend to
             RGB_BLACK
          );
+         #if ENABLE_LOOPING_AMBIENT_SFX
+            DestroySELoopTask(taskId);
+         #endif
          ++task->tState;
          DebugPrintf("[Battle Ambient Weather][Rain] Advancing to TASKSTATE_TEARDOWN_LIGHTEN_BACKGROUND.");
          break;

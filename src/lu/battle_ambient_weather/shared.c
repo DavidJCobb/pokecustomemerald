@@ -2,6 +2,7 @@
 #include "gba/defines.h"
 #include "gba/types.h"
 #include "util.h" // BlendPalette
+#include "sound.h" // PlaySE12WithPanning
 #include "task.h"
 
 // this initializer doesn't actually work lmao.
@@ -52,4 +53,55 @@ extern bool8 TaskHelper_BlendColors(u8 taskId) {
       ++task->tDelay;
    }
    return FALSE;
+}
+
+#define tSongId         data[0]
+#define tPanning        data[1]
+#define tLengthInFrames data[2]
+#define tLoopCount      data[3]
+#define tTimer          data[4]
+#define tOwnerTaskId    data[5]
+
+static void Task_SELoop(u8);
+
+extern void SpawnSELoopTask(
+   u8  parent_task,
+   u16 song_id,
+   s16 panning,
+   u16 length_in_frames,
+   u16 loop_count // 0xFFFF = infinite
+) {
+   u8 taskId = CreateTask(Task_SELoop, 1);
+   gTasks[taskId].tSongId         = song_id;
+   gTasks[taskId].tPanning        = panning;
+   gTasks[taskId].tLengthInFrames = length_in_frames;
+   gTasks[taskId].tLoopCount      = loop_count;
+   gTasks[taskId].tTimer          = length_in_frames;
+   gTasks[taskId].tOwnerTaskId    = parent_task;
+   gTasks[taskId].func(taskId);
+   gTasks[parent_task].tLoopSEChildTask = taskId;
+}
+extern void DestroySELoopTask(
+   u8 parent_task
+) {
+   u8 taskId = gTasks[parent_task].tLoopSEChildTask;
+   if (taskId != TASK_NONE) {
+      DestroyTask(taskId);
+      gTasks[parent_task].tLoopSEChildTask = TASK_NONE;
+   }
+}
+
+static void Task_SELoop(u8 taskId) {
+   struct Task* task = &gTasks[taskId];
+   
+   if (task->tTimer++ < task->tLengthInFrames)
+      return;
+   task->tTimer = 0;
+   if (task->tLoopCount != 0xFFFF)
+      --task->tLoopCount;
+   PlaySE12WithPanning(task->tSongId, task->tPanning);
+   if (task->tLoopCount == 0) {
+      gTasks[task->tOwnerTaskId].tLoopSEChildTask = TASK_NONE;
+      DestroyTask(taskId);
+   }
 }

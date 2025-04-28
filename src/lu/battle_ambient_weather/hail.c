@@ -284,8 +284,18 @@ static void TaskHandler(u8 taskId) {
          break;
       case TASKSTATE_DARKEN_BACKGROUND:
          if (TaskHelper_BlendColors(taskId)) {
-            // TODO: `loopsewithpan SE_M_HAIL, 0, 8, 10` instead of this
-            PlaySE12WithPanning(SE_M_HAIL, SOUND_PAN_ATTACKER);
+            // loopsewithpan SE_M_HAIL, 0, 8, <infinite>
+            SpawnSELoopTask(
+               taskId,
+               SE_M_HAIL,
+               SOUND_PAN_ATTACKER,
+               8,
+               #if ENABLE_LOOPING_AMBIENT_SFX
+                  0xFFFF
+               #else
+                  10
+               #endif
+            );
             
             DebugPrintf("[Battle Ambient Weather][Hail] Advancing to TASKSTATE_WAITING.");
             ++task->tState;
@@ -328,6 +338,7 @@ static void TaskHandler(u8 taskId) {
             0, // blend to
             RGB_BLACK
          );
+         DestroySELoopTask(taskId);
          ++task->tState;
          DebugPrintf("[Battle Ambient Weather][Hail] Advancing to TASKSTATE_TEARDOWN_LIGHTEN_BACKGROUND.");
          break;

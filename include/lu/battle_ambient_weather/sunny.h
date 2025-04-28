@@ -1,0 +1,7 @@
+#ifndef GUARD_LU_BATTLE_AMBIENT_WEATHER_SUNNY_H
+#define GUARD_LU_BATTLE_AMBIENT_WEATHER_SUNNY_H
+
+extern void StartBattleAmbientWeatherAnim_Sunny(void);
+extern void StopBattleAmbientWeatherAnim_Sunny(bool8 instant);
+
+#endif

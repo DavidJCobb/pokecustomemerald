@@ -3,7 +3,7 @@
 #include "lu/battle_ambient_weather/rain.h"
 #include "global.h" // *sigh*
 #include "gba/defines.h"
-#include "constants/battle_anim.h" // ANIM_TAG_RAIN_DROPS, SOUND_PAN_ATTACKER
+#include "constants/battle_anim.h" // ANIM_TAG_..., SOUND_PAN_ATTACKER
 #include "constants/songs.h"
 #include "decompress.h"
 #include "gpu_regs.h" // SetGpuReg
@@ -140,8 +140,18 @@ static void TaskHandler(u8 taskId) {
          // loadspritegfx ANIM_TAG_FLYING_DIRT
          LoadCompressedSpriteSheetUsingHeap(&sFlyingSandSpriteSheet);
          LoadCompressedSpritePaletteUsingHeap(&sFlyingSandSpritePalette);
-         // playsewithpan SE_M_SANDSTORM, 0
-         PlaySE12WithPanning(SE_M_SANDSTORM, SOUND_PAN_ATTACKER);
+         #if ENABLE_LOOPING_AMBIENT_SFX
+            SpawnSELoopTask(
+               taskId,
+               SE_M_SANDSTORM,
+               SOUND_PAN_ATTACKER,
+               330,
+               0xFFFF
+            );
+         #else
+            // playsewithpan SE_M_SANDSTORM, 0
+            PlaySE12WithPanning(SE_M_SANDSTORM, SOUND_PAN_ATTACKER);
+         #endif
          {  // Vanilla: AnimTask_LoadSandstormBackground
             SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG1 | BLDCNT_TGT2_ALL | BLDCNT_EFFECT_BLEND);
             SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(0, 16));
@@ -210,6 +220,9 @@ static void TaskHandler(u8 taskId) {
       case TASKSTATE_BACKGROUND_ANIM_TEARDOWN: // Vanilla AnimTask_LoadSandstormBackground, state 3
          GetBattleAnimBg1Data(&animBg);
          ClearBattleAnimBg(animBg.bgId);
+         #if ENABLE_LOOPING_AMBIENT_SFX
+            DestroySELoopTask(taskId);
+         #endif
          ++task->tState;
          DebugPrintf("[Battle Ambient Weather][Sandstorm] Advancing to TASKSTATE_BACKGROUND_FULL_TEARDOWN.");
          break;

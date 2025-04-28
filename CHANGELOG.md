@@ -7,7 +7,7 @@
 
   * Hold/toggle to run
 
-* Added Custom Game Options, to alter the game experience in unusual ways.
+* Added **Custom Game Options**, to alter the game experience in unusual ways.
 
   * Battle
     * Accuracy scaling
@@ -53,7 +53,7 @@
 
 * When a Repel runs out and the player has more Repels of the same type in their inventory, they'll be told how many they have left, and offered the option to quickly use another.
 
-* The player can now voluntarily forfeit trainer battles, even outside of the Battle Frontier and Trainer Hill (where the vanilla game would allow forfeiting). Battles that allow forfeiting will show a "GIVE UP" option instead of "RUN." Clicking this option always pops a confirmation prompt (as it did in the vanilla game).
+* The player can now voluntarily **forfeit trainer battles**, even outside of the Battle Frontier and Trainer Hill (where the vanilla game would allow forfeiting). Battles that allow forfeiting will show a "GIVE UP" option instead of "RUN." Clicking this option always pops a confirmation prompt (as it did in the vanilla game).
 
 * Pokémon that aren't gender-unknown are now referred to with gendered pronouns during battle, to make the text feel less impersonal (i.e. "MISDREAVUS hurt herself in her confusion" rather than "MISDREAVUS hurt itself in its confusion").
 
@@ -61,7 +61,7 @@
 
 * When EXP is earned in battles and divided amongst the participants, Lv. 100 Pokemon no longer waste any of the EXP.
 
-* During battles, if the current weather is rain or a sandstorm, then a looping raining animation now plays while selecting the action you want to perform. (In the future, the other weather animations will be made to behave similarly, and then the "Yup, that weather's still weathering on" messages can be wholly removed to improve battle pacing.)
+* **Battle ambient weather:** In battles, while selecting an action, the animation for the current weather will play in a loop. (This means that in the future, the "Yup, that weather's still weathering on" messages can be wholly removed to improve battle pacing.)
 
 [^no-backfield-inspo]: The option to limit backfield healing was inspired by [a collaboration between Pokémon Challenges and SmallAnt](https://www.youtube.com/watch?v=_3VwGkml-nk) wherein the latter ran a Nuzlocke while the former gained control of all NPC trainers and tried to stop him. Unlike a typical NPC trainer, PChal could sacrifice weaker Pokémon to withdraw his heavy hitters and heal them in safety, and he was ruthless in taking advantage of this, allowing him to effectively wall SmallAnt using Norman's Slaking.
 
