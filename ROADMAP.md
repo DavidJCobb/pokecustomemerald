@@ -180,6 +180,8 @@ Add new options:
   * Use any bike
   * Use any field move
   * Use any fishing rod
+  * Set time of day
+  * Set weather
   * Walk through walls
 * Battles
   * ...
