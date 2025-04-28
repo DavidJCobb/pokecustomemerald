@@ -48,6 +48,7 @@
 #include "constants/weather.h"
 
 #include "lu/custom_game_option_handlers/starter.h" // GenerateAndGivePlayerStarter
+#include "lu/custom_game_options.h" // gCustomGameOptions
 
 enum {
     TRANSITION_TYPE_NORMAL,

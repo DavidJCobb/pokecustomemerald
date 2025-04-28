@@ -38,6 +38,7 @@
 #include "constants/rgb.h"
 
 #include "battle/battle_allows_forfeiting.h"
+#include "lu/battle_ambient_weather/core.h"
 
 static void PlayerHandleGetMonData(void);
 static void PlayerHandleSetMonData(void);
@@ -2593,6 +2594,8 @@ static void PlayerHandleChooseAction(void)
     ActionSelectionCreateCursorAt(gActionSelectionCursor[gActiveBattler], 0);
     BattleStringExpandPlaceholdersToDisplayedString(gText_WhatWillPkmnDo);
     BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_ACTION_PROMPT);
+    
+    StartBattleAmbientWeatherAnim();
 }
 
 static void PlayerHandleYesNoBox(void)
@@ -2662,6 +2665,8 @@ static void PlayerHandleChooseItem(void)
     s32 i;
 
     BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 0x10, RGB_BLACK);
+    StopBattleAmbientWeatherAnim(TRUE);
+    
     gBattlerControllerFuncs[gActiveBattler] = OpenBagAndChooseItem;
     gBattlerInMenuId = gActiveBattler;
 
@@ -2689,6 +2694,7 @@ static void PlayerHandleChoosePokemon(void)
         *(&gBattleStruct->prevSelectedPartySlot) = gBattleBufferA[gActiveBattler][2];
         *(&gBattleStruct->abilityPreventingSwitchout) = gBattleBufferA[gActiveBattler][3];
         BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 0x10, RGB_BLACK);
+        StopBattleAmbientWeatherAnim(TRUE);
         gBattlerControllerFuncs[gActiveBattler] = OpenPartyMenuToChooseMon;
         gBattlerInMenuId = gActiveBattler;
     }
@@ -3104,6 +3110,7 @@ static void PlayerHandleBattleAnimation(void)
 static void PlayerHandleLinkStandbyMsg(void)
 {
     RecordedBattle_RecordAllBattlerData(&gBattleBufferA[gActiveBattler][2]);
+    StopBattleAmbientWeatherAnim(FALSE);
     switch (gBattleBufferA[gActiveBattler][1])
     {
     case LINK_STANDBY_MSG_STOP_BOUNCE:

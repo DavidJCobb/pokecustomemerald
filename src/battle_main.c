@@ -63,6 +63,7 @@
 #include "cable_club.h"
 
 #include "battle/battle_allows_forfeiting.h"
+#include "lu/battle_ambient_weather/core.h"
 #include "lu/custom_game_options.h"
 
 extern const struct BgTemplate gBattleBgTemplates[];
@@ -681,6 +682,7 @@ static void CB2_InitBattleInternal(void)
     LoadBattleTextboxAndBackground();
     ResetSpriteData();
     ResetTasks();
+    InitBattleAmbientWeather();
     DrawBattleEntryBackground();
     FreeAllSpritePalettes();
     gReservedSpritePaletteCount = MAX_BATTLERS_COUNT;
@@ -5157,6 +5159,7 @@ static void HandleEndTurn_FinishBattle(void)
         }
 
         RecordedBattle_SetPlaybackFinished();
+        StopBattleAmbientWeatherAnim(TRUE);
         BeginFastPaletteFade(3);
         FadeOutMapMusic(5);
         gBattleMainFunc = FreeResetData_ReturnToOvOrDoEvolutions;

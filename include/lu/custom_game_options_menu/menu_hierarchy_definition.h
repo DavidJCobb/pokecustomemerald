@@ -163,6 +163,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          .integral = {
             .min = 0,
             .max = 5000,
+            .formatting = NULL,
          }
       },
       .target = {
@@ -355,7 +356,7 @@ static const struct CGOptionMenuItem sDaycareEggsOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.daycare_scale_cost
+         .as_u16 = &sTempOptions.daycare_eggs.daycare_scale_cost
       }
    },
    {  // Daycare scale EXP
@@ -370,7 +371,7 @@ static const struct CGOptionMenuItem sDaycareEggsOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.daycare_scale_step_exp
+         .as_u16 = &sTempOptions.daycare_eggs.daycare_scale_step_exp
       }
    },
    {  // Egg lay chance
@@ -385,7 +386,7 @@ static const struct CGOptionMenuItem sDaycareEggsOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.egg_lay_chance
+         .as_u16 = &sTempOptions.daycare_eggs.egg_lay_chance
       }
    },
    END_OF_LIST_SENTINEL,
@@ -395,10 +396,12 @@ static const struct CGOptionMenuItem sDaycareEggsOptions[] = {
 
 static const struct CGOptionMenuItemIntegralValueNameOverride sMirageIslandRarityOverrides[] = {
    {
+      .name  = gText_lu_CGOptionValues_common_Always,
+      .value = 0,
+   },
+   {
       .name  = gText_lu_CGOptionValues_common_Never,
-      .value = {
-         .as_u8 = 17
-      },
+      .value = 17,
    },
    END_OF_NAME_OVERRIDES_SENTINEL
 };
@@ -420,10 +423,18 @@ static const struct CGOptionMenuItem sEventsMirageIslandOptions[] = {
       .name        = gText_lu_CGOptionName_MirageIsland_Rarity,
       .help_string = gText_lu_CGOptionHelp_MirageIsland_Rarity,
       .value_type = VALUE_TYPE_U8,
+      .values = {
+         .integral = {
+            .min = 0,
+            .max = 17,
+            .formatting = &sMirageIslandRarityFmt,
+         }
+      },
       .target = {
          .as_u8 = &sTempOptions.events.mirage_island.rarity
       }
    },
+   END_OF_LIST_SENTINEL,
 };
 
 static const struct CGOptionMenuItem sEventOptions[] = {
@@ -438,7 +449,7 @@ static const struct CGOptionMenuItem sEventOptions[] = {
    },
    {  // SUBMENU: Mirage Island
       .name        = gText_lu_CGOptionCategoryName_MirageIsland,
-      .help_string = gText_lu_CGOptionCategoryHelp_MirageIsland,
+      .help_string = NULL,
       .flags       = (1 << MENUITEM_FLAG_IS_SUBMENU),
       .value_type = VALUE_TYPE_NONE,
       .target = {

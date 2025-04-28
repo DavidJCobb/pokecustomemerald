@@ -2,6 +2,7 @@
 #define GUARD_LU_CUSTOM_GAME_OPTIONS
 
 #include "lu/bitpack_options.h"
+#include "lu/game_typedefs.h"
 #include "gba/types.h"
 #include "gba/defines.h"
 
@@ -44,13 +45,6 @@ extern struct CustomGameOptions {
    bool8 can_run_indoors;
    bool8 can_bike_indoors;
    
-   struct {
-      LU_BP_DEFAULT(TRUE) bool8 daycare_can_teach_moves : 1;
-      LU_BP_DEFAULT(100)  CustomGameScalePct daycare_scale_cost;
-      LU_BP_DEFAULT(100)  CustomGameScalePct daycare_scale_step_exp;
-      LU_BP_DEFAULT(100) LU_BP_MINMAX(0, 500) CustomGameScalePct egg_lay_chance;
-   } daycare_eggs;
-   
    CustomGameScalePct scale_wild_encounter_rate;
    
    bool8 enable_catch_exp;
@@ -78,25 +72,28 @@ extern struct CustomGameOptions {
    bool8 modern_calc_player_money_loss_on_defeat;
    
    struct {
+      LU_BP_DEFAULT(TRUE) bool8 daycare_can_teach_moves;
+      LU_BP_DEFAULT(100)  CustomGameScalePct daycare_scale_cost;
+      LU_BP_DEFAULT(100)  CustomGameScalePct daycare_scale_step_exp;
+      LU_BP_DEFAULT(100) LU_BP_MINMAX(0, 500) CustomGameScalePct egg_lay_chance;
+   } daycare_eggs;
+   struct {
       LU_BP_DEFAULT(FALSE) bool8 eon_ticket;
       struct {
-         LU_BP_DEFAULT(16) LU_BP_MINMAX(16 + 1) u8 rarity; // +1 for Never
+         LU_BP_DEFAULT(16) LU_BP_MINMAX(0, 16 + 1) u8 rarity; // +1 for Never
          LU_BP_DEFAULT(FALSE) bool8 include_pc;
       } mirage_island;
    } events;
-   
    struct {
       LU_BP_MINMAX(0, 60)   u8    interval;
       LU_BP_MINMAX(1, 2000) u16   damage;
       LU_BP_DEFAULT(TRUE)   bool8 faint;
    } overworld_poison;
-   
    struct {
       LU_BP_DEFAULT(5)   LU_BP_MINMAX(0,    8) u8  min_badge_count;
       LU_BP_DEFAULT(31)  LU_BP_MINMAX(0,  100) u8  chance;
       LU_BP_DEFAULT(255) LU_BP_MINMAX(0, 5000) u16 interval;
    } rematches;
-   
    struct {
       LU_BP_DEFAULT(0) PokemonSpeciesID species[3];
       LU_BP_DEFAULT(0) u8 forceGender;

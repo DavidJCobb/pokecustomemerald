@@ -995,7 +995,7 @@ static void DrawMenuItem(const struct CGOptionMenuItem* item, u8 row, bool8 is_s
             text[2] = EOS;
          }
       } else {
-         ConvertIntToDecimalStringN(text, value, STR_CONV_MODE_LEFT_ALIGN, _BUFFER_SIZE - 2);
+         ConvertIntToDecimalStringN(text, value, STR_CONV_MODE_LEFT_ALIGN, 8);
          if (item->flags & (1 << MENUITEM_FLAG_PERCENTAGE)) {
             u16 len = StringLength(text);
             if (len < _BUFFER_SIZE - 2) {
@@ -1017,7 +1017,7 @@ static void DrawMenuItem(const struct CGOptionMenuItem* item, u8 row, bool8 is_s
                      dst,
                      value,
                      STR_CONV_MODE_LEFT_ALIGN,
-                     _BUFFER_SIZE - i - 1
+                     i + 8 + 1 > _BUFFER_SIZE ? _BUFFER_SIZE - i - 1 : 8
                   );
                   --dst;
                   continue;

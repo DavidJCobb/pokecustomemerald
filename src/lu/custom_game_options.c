@@ -11,7 +11,7 @@ static void InitializeScaleAndClamp(struct CustomGameScaleAndClamp* v) {
    v->max   = 0xFFFF;
 }
 
-u8 ApplyCustomGameScale_u8(u8 v, CustomGameScalePct scale {
+u8 ApplyCustomGameScale_u8(u8 v, CustomGameScalePct scale) {
    if (scale != 100) {
       v = ((u32)v * scale) / 100;
       if (v > 255)

@@ -3,6 +3,7 @@
 #include "event_data.h"
 #include "field_weather.h"
 #include "pokemon.h"
+#include "pokemon_storage_system.h"
 #include "random.h"
 #include "overworld.h"
 #include "rtc.h"
@@ -70,10 +71,9 @@ bool8 IsMirageIslandPresent(void) {
    }
    
    if (gCustomGameOptions.events.mirage_island.include_pc) {
-      const struct BoxPokemon* mon = &gPokemonStoragePtr->boxes1d[0];
       for(u8 i = 0; i < TOTAL_BOXES_COUNT; ++i) {
          for(u8 j = 0; j < IN_BOX_COUNT; ++j) {
-            const struct BoxPokemon* mon = gPokemonStoragePtr->boxes[i][j];
+            const struct BoxPokemon* mon = &gPokemonStoragePtr->boxes[i][j];
             if (!mon->hasSpecies)
                continue;
             u16 personality = mon->personality & mask;

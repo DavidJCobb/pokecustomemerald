@@ -1,5 +1,6 @@
 #include "field_specials/ShouldDistributeEonTicket.h"
-#include "constants/vars.h"
+#include "global.h" // *sigh*
+#include "constants/vars.h" // VAR_DISTRIBUTE_EON_TICKET
 #include "event_data.h" // VarGet
 #include "item.h" // CheckBagHasItem
 #include "lu/custom_game_options.h"

@@ -71,7 +71,7 @@ const u8* GetOptionValueName(const struct CGOptionMenuItem* item, u16 value) {
             if (fmt && fmt->name_overrides) {
                const struct CGOptionMenuItemIntegralValueNameOverride* ov = fmt->name_overrides;
                for (; ov->name; ++ov) {
-                  if (ov->value.as_u16 == value) {
+                  if (ov->value == value) {
                      return ov->name;
                   }
                }

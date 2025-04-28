@@ -647,10 +647,15 @@ static void SetBattlePartyIds(void)
     }
 }
 
+#include "gba/isagbprint.h"
 static void PrepareBufferDataTransfer(u8 bufferId, u8 *data, u16 size)
 {
     s32 i;
-
+    DebugPrintf(
+       "Emitting message for battler %u: %u",
+       gActiveBattler,
+       data[0]
+    );
     if (gBattleTypeFlags & BATTLE_TYPE_LINK)
     {
         PrepareBufferDataTransferLink(bufferId, size, data);
