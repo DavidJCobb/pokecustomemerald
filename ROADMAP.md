@@ -255,7 +255,6 @@ It'd be nice if we could modify the core sprite library to support keeping only 
 * Concurrent animations and text for stat changes.
   * Separate battle script commands trigger the animation and the text, and both work by broadcasting messages to the battle controllers and waiting for a response. Changing this flow risks breaking vanilla link compatibility, and would require a unified message for battle controllers (i.e. "message, animation, and optional minimum duration").
 * Health bar changes should animate in proportion with the damage done. When a Lv. 100 Mewtwo annihilates some bug in Viridian Forest, the health bar should drain rapidly both to emphasize the sheer power of the hit and to avoid keeping players waiting as they swat trivial foes out of their way.
-* How difficult would it be to merge the messages for passive (i.e. non-damaging) weather into the player's choices, so there's one less dialog box to click through? (E.g. "Rain continues to fall. What should COMBATANT do?" with the rain animation playing continuously while the player makes their selection.)
   
 #### Coalesced battle text
 

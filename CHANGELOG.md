@@ -61,7 +61,7 @@
 
 * When EXP is earned in battles and divided amongst the participants, Lv. 100 Pokemon no longer waste any of the EXP.
 
-* **Battle ambient weather:** In battles, while selecting an action, the animation for the current weather will play in a loop. (This means that in the future, the "Yup, that weather's still weathering on" messages can be wholly removed to improve battle pacing.)
+* **Battle ambient weather:** In battles, while selecting an action, the animation for the current weather will play in a loop. Additionally, messages like "Rain continues to fall" no longer display, improving pacing.
 
 [^no-backfield-inspo]: The option to limit backfield healing was inspired by [a collaboration between Pokémon Challenges and SmallAnt](https://www.youtube.com/watch?v=_3VwGkml-nk) wherein the latter ran a Nuzlocke while the former gained control of all NPC trainers and tried to stop him. Unlike a typical NPC trainer, PChal could sacrifice weaker Pokémon to withdraw his heavy hitters and heal them in safety, and he was ruthless in taking advantage of this, allowing him to effectively wall SmallAnt using Norman's Slaking.
 
@@ -88,6 +88,8 @@
 * The vanilla game always plays stat-change animations, even when battle animations are disabled, because it's awkward to have a visual affordance (blinking sprite) for when damage is taken but not for when stats are changed. Custom Emerald also plays stat-change animations, but when battle animations are disabled, we use faster timings and higher opacity for stat-change animations.
 
 * The animation that a Pokemon plays when consuming a held berry is slightly briefer: the Pokemon angles down to munch on the berry twice rather than three times.
+
+* As mentioned above, "weather continues" messages no longer display, since the "battle ambient weather" feature feels like an acceptable substitute.
 
 ### Vanilla bug-fixes and engine improvements
 
