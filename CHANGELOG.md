@@ -61,7 +61,7 @@
 
 * When EXP is earned in battles and divided amongst the participants, Lv. 100 Pokemon no longer waste any of the EXP.
 
-* During battles, if the current weather is rain, then a looping raining animation now plays while selecting the action you want to perform. (In the future, the other weather animations will be made to behave similarly, and then the "Yup, that weather's still weathering on" messages can be wholly removed to improve battle pacing.)
+* During battles, if the current weather is rain or a sandstorm, then a looping raining animation now plays while selecting the action you want to perform. (In the future, the other weather animations will be made to behave similarly, and then the "Yup, that weather's still weathering on" messages can be wholly removed to improve battle pacing.)
 
 [^no-backfield-inspo]: The option to limit backfield healing was inspired by [a collaboration between Pokémon Challenges and SmallAnt](https://www.youtube.com/watch?v=_3VwGkml-nk) wherein the latter ran a Nuzlocke while the former gained control of all NPC trainers and tried to stop him. Unlike a typical NPC trainer, PChal could sacrifice weaker Pokémon to withdraw his heavy hitters and heal them in safety, and he was ruthless in taking advantage of this, allowing him to effectively wall SmallAnt using Norman's Slaking.
 

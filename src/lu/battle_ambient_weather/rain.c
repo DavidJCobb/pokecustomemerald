@@ -3,10 +3,12 @@
 #include "lu/battle_ambient_weather/rain.h"
 #include "global.h" // *sigh*
 #include "gba/defines.h"
-#include "constants/battle_anim.h" // ANIM_TAG_RAIN_DROPS
+#include "constants/battle_anim.h" // ANIM_TAG_RAIN_DROPS, SOUND_PAN_ATTACKER
 #include "constants/rgb.h" // RGB_BLACK
+#include "constants/songs.h"
 #include "decompress.h"
 #include "random.h"
+#include "sound.h" // PlaySE12WithPanning
 #include "sprite.h"
 #include "task.h"
 
@@ -65,7 +67,7 @@ static const union AnimCmd sAnim_RainDrop[] = {
 static const union AnimCmd *const sAnims_RainDrop[] = {
    sAnim_RainDrop,
 };
-const struct OamData sOamData_AffineOff_ObjNormal_16x32 = {
+static const struct OamData sOamData_AffineOff_ObjNormal_16x32 = {
    .y = 0,
    .affineMode = ST_OAM_AFFINE_OFF,
    .objMode = ST_OAM_OBJ_NORMAL,
@@ -77,7 +79,7 @@ const struct OamData sOamData_AffineOff_ObjNormal_16x32 = {
    .priority = 2,
    .paletteNum = 0,
 };
-const struct SpriteTemplate sRainDropSpriteTemplate = {
+static const struct SpriteTemplate sRainDropSpriteTemplate = {
    .tileTag     = ANIM_TAG_RAIN_DROPS,
    .paletteTag  = ANIM_TAG_RAIN_DROPS,
    .oam         = &sOamData_AffineOff_ObjNormal_16x32,
@@ -86,10 +88,10 @@ const struct SpriteTemplate sRainDropSpriteTemplate = {
    .affineAnims = gDummySpriteAffineAnimTable,
    .callback    = AnimRainDrop,
 };
-const struct CompressedSpriteSheet sRainDropSpriteSheet = {
+static const struct CompressedSpriteSheet sRainDropSpriteSheet = {
    gBattleAnimSpriteGfx_RainDrops, 0x0700, ANIM_TAG_RAIN_DROPS
 };
-const struct CompressedSpritePalette sRainDropSpritePalette = {
+static const struct CompressedSpritePalette sRainDropSpritePalette = {
    gBattleAnimSpritePal_RainDrops, ANIM_TAG_RAIN_DROPS
 };
 
@@ -127,7 +129,7 @@ static u32 GetPalettesToBlend(void) {
          FALSE
       )
       &
-      ~(1 | 2) // avoid messing up the text and textbox-frame palettes
+      ~(u32)(1 | 2) // avoid messing up the text and textbox-frame palettes
    ;
 }
 
@@ -146,6 +148,7 @@ static void TaskHandler(u8 taskId) {
             RGB_BLACK
          );
          DebugPrintf("[Battle Ambient Weather][Rain] Advancing to TASKSTATE_DARKEN_BACKGROUND.");
+         PlaySE12WithPanning(SE_M_RAIN_DANCE, SOUND_PAN_ATTACKER);
          ++task->tState;
          break;
       case TASKSTATE_DARKEN_BACKGROUND:

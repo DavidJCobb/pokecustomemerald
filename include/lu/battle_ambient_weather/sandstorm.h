@@ -1,0 +1,7 @@
+#ifndef GUARD_LU_BATTLE_AMBIENT_WEATHER_SANDSTORM_H
+#define GUARD_LU_BATTLE_AMBIENT_WEATHER_SANDSTORM_H
+
+extern void StartBattleAmbientWeatherAnim_Sandstorm(void);
+extern void StopBattleAmbientWeatherAnim_Sandstorm(bool8 instant);
+
+#endif

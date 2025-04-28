@@ -18,6 +18,8 @@
 #include "task.h"
 #include "constants/battle_anim.h"
 
+#include "gba/isagbprint.h"
+
 /*
     This file handles the commands for the macros defined in
     battle_anim_script.inc and used in battle_anim_scripts.s
@@ -207,6 +209,7 @@ void DoMoveAnim(u16 move)
 
 void LaunchBattleAnimation(const u8 *const animsTable[], u16 tableId, bool8 isMoveAnim)
 {
+    DebugPrintf("[Battle Anim][LaunchBattleAnimation] Starting %s animation %u...", isMoveAnim ? "move" : "battle", tableId);
     s32 i;
 
     if (!IsContest())

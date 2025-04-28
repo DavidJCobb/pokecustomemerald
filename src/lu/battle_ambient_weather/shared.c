@@ -31,7 +31,7 @@ extern bool8 TaskHelper_BlendColors(u8 taskId) {
       u8  blend  = task->tBlendRange >> 8;
       u8  target = task->tBlendRange & 0xFF;
       
-      u32 palettes = task->tTargetPalettesA | (task->tTargetPalettesB << 16);
+      u32 palettes = task->tTargetPalettesA | ((u32)task->tTargetPalettesB << 16);
       u16 offset   = 0;
       while (palettes != 0) {
          if (palettes & 1) {
