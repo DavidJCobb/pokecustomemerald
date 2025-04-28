@@ -1,5 +1,6 @@
 #include "lu/battle_ambient_weather/core.h"
 #include "lu/battle_ambient_weather/shared.h"
+#include "lu/battle_ambient_weather/hail.h"
 #include "lu/battle_ambient_weather/rain.h"
 #include "lu/battle_ambient_weather/sandstorm.h"
 #include "global.h" // *sigh*
@@ -18,8 +19,10 @@ extern void StartBattleAmbientWeatherAnim(void) {
    }
    if (gBattleWeather & B_WEATHER_RAIN) {
       StartBattleAmbientWeatherAnim_Rain();
-   } else  if (gBattleWeather & B_WEATHER_SANDSTORM) {
+   } else if (gBattleWeather & B_WEATHER_SANDSTORM) {
       StartBattleAmbientWeatherAnim_Sandstorm();
+   } else if (gBattleWeather & B_WEATHER_HAIL) {
+      StartBattleAmbientWeatherAnim_Hail();
    }
    if (gAmbientWeatherTaskId != TASK_NONE) {
       gTasks[gAmbientWeatherTaskId].tWeatherType = gBattleWeather;
@@ -32,5 +35,7 @@ extern void StopBattleAmbientWeatherAnim(bool8 instant) {
       StopBattleAmbientWeatherAnim_Rain(instant);
    } else if (weather & B_WEATHER_SANDSTORM) {
       StopBattleAmbientWeatherAnim_Sandstorm(instant);
+   } else if (weather & B_WEATHER_HAIL) {
+      StopBattleAmbientWeatherAnim_Hail(instant);
    }
 }
