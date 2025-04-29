@@ -19,6 +19,8 @@
 #include "constants/field_effects.h"
 #include "constants/trainer_types.h"
 
+#include "lu/field_debug_menu.h"
+
 // this file's functions
 static u8 CheckTrainer(u8 objectEventId);
 static u8 GetTrainerApproachDistance(struct ObjectEvent *trainerObj);
@@ -369,6 +371,10 @@ static u8 GetTrainerApproachDistanceEast(struct ObjectEvent *trainerObj, s16 ran
 
 static u8 CheckPathBetweenTrainerAndPlayer(struct ObjectEvent *trainerObj, u8 approachDistance, u8 direction)
 {
+    if (gFieldDebugMenuState.disable_trainer_line_of_sight) {
+       return 0;
+    }
+   
     s16 x, y;
     u8 rangeX, rangeY;
     u8 i;

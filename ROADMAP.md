@@ -175,16 +175,11 @@ Add new options:
 
 ### Cheat/debug menus
 
-* Overworld
-  * Disable NPC trainer line-of-sight
-  * Disable wild encounters
-  * Fast-travel to any map
-  * Use any bike
+* Field Debug Menu
   * Use any field move
-  * Use any fishing rod
-  * Set time of day
-  * Set weather
-  * Walk through walls
+    * Implement Cut.
+    * Implement Secret Power.
+    * The Rock Smash option seems to only play the menu, and not actually smash rocks. Fix this.
 * Battles
   * ...
 * Utility

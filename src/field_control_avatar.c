@@ -36,6 +36,7 @@
 #include "constants/trainer_hill.h"
 
 #include "lu/custom_game_options.h"
+#include "lu/field_debug_menu.h"
 #include "lu/running_prefs.h"
 
 static EWRAM_DATA u8 sWildEncounterImmunitySteps = 0;
@@ -87,6 +88,7 @@ void FieldClearPlayerInput(struct FieldInput *input)
     input->input_field_1_2 = FALSE;
     input->input_field_1_3 = FALSE;
     input->fieldButtonToggleRun = FALSE;
+    input->fieldOpenDebugMenu = FALSE;
     input->dpadDirection = 0;
 }
 
@@ -114,6 +116,10 @@ void FieldGetPlayerInput(struct FieldInput *input, u16 newKeys, u16 heldKeys)
         {
             input->heldDirection = TRUE;
             input->heldDirection2 = TRUE;
+        }
+        
+        if ((heldKeys & (SELECT_BUTTON | L_BUTTON)) == (SELECT_BUTTON | L_BUTTON)) {
+            input->fieldOpenDebugMenu = TRUE;
         }
     }
 
@@ -149,6 +155,11 @@ int ProcessPlayerFieldInput(struct FieldInput *input)
 
     gSpecialVar_LastTalked = 0;
     gSelectedObjectEvent = 0;
+    
+    if (input->fieldOpenDebugMenu) {
+        OpenFieldDebugMenu();
+        return TRUE;
+    }
 
     playerDirection = GetPlayerFacingDirection();
     GetPlayerPosition(&position);

@@ -22,6 +22,8 @@
 #include "constants/layouts.h"
 #include "constants/weather.h"
 
+#include "lu/field_debug_menu.h"
+
 extern const u8 EventScript_RepelWoreOff[];
 
 #define MAX_ENCOUNTER_RATE 2880
@@ -501,6 +503,10 @@ static bool8 EncounterOddsCheck(u16 encounterRate)
 // Returns true if it will try to create a wild encounter.
 static bool8 WildEncounterCheck(u32 encounterRate, bool8 ignoreAbility)
 {
+    if (gFieldDebugMenuState.disable_wild_encounters) {
+        return FALSE;
+    }
+   
     encounterRate *= 16;
     if (TestPlayerAvatarFlags(PLAYER_AVATAR_FLAG_MACH_BIKE | PLAYER_AVATAR_FLAG_ACRO_BIKE))
         encounterRate = encounterRate * 80 / 100;

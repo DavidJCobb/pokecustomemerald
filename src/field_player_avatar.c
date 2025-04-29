@@ -30,6 +30,7 @@
 #include "constants/songs.h"
 #include "constants/trainer_types.h"
 
+#include "lu/field_debug_menu.h"
 #include "lu/running_prefs.h"
 
 #define NUM_FORCED_MOVEMENTS 18
@@ -607,6 +608,19 @@ static void PlayerNotOnBikeTurningInPlace(u8 direction, u16 heldKeys)
 static void PlayerNotOnBikeMoving(u8 direction, u16 heldKeys)
 {
     u8 collision = CheckForPlayerAvatarCollision(direction);
+    if (gFieldDebugMenuState.walk_through_walls) {
+       switch (collision) {
+          case COLLISION_IMPASSABLE:
+          case COLLISION_ELEVATION_MISMATCH:
+          case COLLISION_WHEELIE_HOP:
+          case COLLISION_ISOLATED_VERTICAL_RAIL:
+          case COLLISION_ISOLATED_HORIZONTAL_RAIL:
+          case COLLISION_VERTICAL_RAIL:
+          case COLLISION_HORIZONTAL_RAIL:
+            collision = COLLISION_NONE;
+            break;
+       }
+    }
 
     if (collision)
     {

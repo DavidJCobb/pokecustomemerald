@@ -65,6 +65,17 @@
 
 * **Battle ambient weather:** In battles, while selecting an action, the animation for the current weather will play in a loop. Additionally, messages like "Rain continues to fall" no longer display, improving pacing.
 
+* **Field debug menu:** Added a debug menu that can be accessed on the overworld, by holding L and Select. The features include:
+  * Disable trainer line-of-sight
+  * Disable wild encounters
+  * Fast-travel
+  * Use any bike
+  * Use any field move
+  * Use any fishing rod
+  * Set time of day
+  * Set weather
+  * Walk through walls
+
 [^no-backfield-inspo]: The option to limit backfield healing was inspired by [a collaboration between Pokémon Challenges and SmallAnt](https://www.youtube.com/watch?v=_3VwGkml-nk) wherein the latter ran a Nuzlocke while the former gained control of all NPC trainers and tried to stop him. Unlike a typical NPC trainer, PChal could sacrifice weaker Pokémon to withdraw his heavy hitters and heal them in safety, and he was ruthless in taking advantage of this, allowing him to effectively wall SmallAnt using Norman's Slaking.
 
 ### Pacing

@@ -1,0 +1,595 @@
+#include "lu/field_debug_menu.h"
+#include "strings/field_debug_menu.h"
+
+#include "global.h" // *sigh*
+#include "gba/isagbprint.h"
+
+// UI
+#include "constants/songs.h"
+#include "bg.h"
+#include "main.h"
+#include "menu.h"
+#include "sound.h"
+#include "strings.h" // gText_SelectorArrow3
+#include "text.h"
+#include "window.h"
+
+// Field UI
+#include "event_object_lock.h" // ScriptUnfreezeObjectEvents
+#include "event_object_movement.h" // FreezeObjectEvents
+#include "field_player_avatar.h" // PlayerFreeze, StopPlayerAvatar // StartFishing
+#include "script.h" // LockPlayerFieldControls
+
+// Data
+#include "constants/global.h"
+#include "constants/moves.h"
+#include "data.h" // gMoveNames
+
+// Menu actions
+#include "constants/field_effects.h" // FLDEFF_...
+#include "constants/items.h" // OLD_ROD and friends
+#include "constants/weather.h" // WEATHER_...
+#include "bike.h" // GetOnOffBike
+#include "field_effect.h" // FieldEffectStart
+#include "field_weather.h" // SetNextWeather
+#include "global.fieldmap.h" // gPlayerAvatar, PLAYER_AVATAR_FLAG_...
+#include "overworld.h" // CB2_ReturnToField, IsOverworldLinkActive
+#include "region_map.h" // CB2_OpenFlyMap
+#include "wallclock.h" // CB2_StartWallClock
+
+EWRAM_DATA struct FieldDebugMenuState gFieldDebugMenuState = {0};
+
+static void TaskHandler(u8 taskId);
+static void PaintFieldDebugMenuActions(u8 taskId);
+static void DestroyFieldDebugMenu(u8 taskId);
+
+#define TILES_PER_ROW 2
+#define ROW_COUNT     4
+
+#define DEBUG_MENU_FONT FONT_NORMAL
+
+static const struct WindowTemplate sWindowTemplate = {
+   .bg          = 0,
+   .tilemapLeft = 1,
+   .tilemapTop  = 1,
+   .width       = 14,
+   .height      = (ROW_COUNT * TILES_PER_ROW),
+   .paletteNum  = 15,
+   .baseBlock   = 0x139,
+};
+
+enum {
+   MENU_ACTION_DISABLE_TRAINER_LOS,
+   MENU_ACTION_DISABLE_WILD_ENCOUNTERS,
+   MENU_ACTION_FAST_TRAVEL,
+   MENU_ACTION_USE_ANY_BIKE,
+   MENU_ACTION_USE_ANY_FIELD_MOVE,
+   MENU_ACTION_USE_ANY_FISHING_ROD,
+   MENU_ACTION_SET_TIME,
+   MENU_ACTION_SET_WEATHER,
+   MENU_ACTION_WALK_THROUGH_WALLS,
+   //
+   NUM_MENU_ACTIONS
+};
+
+enum {
+   MENU_ACTION_STATE_NORMAL,
+   MENU_ACTION_STATE_ACTIVE,
+   MENU_ACTION_STATE_DISABLED,
+};
+
+typedef void(*FieldDebugMenuActionHandler)(u8 taskId);
+typedef u8(*FieldDebugMenuActionStateGetter)(void);
+
+static u8   FieldDebugMenuActionStateGetter_DisableTrainerLOS(void);
+static void FieldDebugMenuActionHandler_DisableTrainerLOS(u8 taskId);
+static u8   FieldDebugMenuActionStateGetter_DisableWildEncounters(void);
+static void FieldDebugMenuActionHandler_DisableWildEncounters(u8 taskId);
+static void FieldDebugMenuActionHandler_FastTravel(u8 taskId);
+static void FieldDebugMenuActionHandler_SetTime(u8 taskId);
+static void FieldDebugMenuActionHandler_SetWeather(u8 taskId);
+static void FieldDebugMenuActionHandler_UseAnyBike(u8 taskId);
+static void FieldDebugMenuActionHandler_UseAnyFishingRod(u8 taskId);
+static void FieldDebugMenuActionHandler_UseAnyFieldMove(u8 taskId);
+static u8   FieldDebugMenuActionStateGetter_WalkThroughWalls(void);
+static void FieldDebugMenuActionHandler_WalkThroughWalls(u8 taskId);
+
+struct FieldDebugMenuAction {
+   const u8*             label;
+   FieldDebugMenuActionHandler     handler;
+   FieldDebugMenuActionStateGetter state;
+};
+static const struct FieldDebugMenuAction sFieldDebugMenuActions[] = {
+   [MENU_ACTION_DISABLE_TRAINER_LOS] = {
+      .label   = gText_lu_FieldDebugMenu_DisableTrainerLOS,
+      .handler = FieldDebugMenuActionHandler_DisableTrainerLOS,
+      .state   = FieldDebugMenuActionStateGetter_DisableTrainerLOS,
+   },
+   [MENU_ACTION_DISABLE_WILD_ENCOUNTERS] = {
+      .label   = gText_lu_FieldDebugMenu_DisableWildEncounters,
+      .handler = FieldDebugMenuActionHandler_DisableWildEncounters,
+      .state   = FieldDebugMenuActionStateGetter_DisableWildEncounters,
+   },
+   [MENU_ACTION_FAST_TRAVEL] = {
+      .label   = gText_lu_FieldDebugMenu_FastTravel,
+      .handler = FieldDebugMenuActionHandler_FastTravel,
+   },
+   [MENU_ACTION_USE_ANY_BIKE] = {
+      .label   = gText_lu_FieldDebugMenu_UseAnyBike,
+      .handler = FieldDebugMenuActionHandler_UseAnyBike,
+   },
+   [MENU_ACTION_USE_ANY_FIELD_MOVE] = {
+      .label   = gText_lu_FieldDebugMenu_UseAnyFieldMove,
+      .handler = FieldDebugMenuActionHandler_UseAnyFieldMove,
+   },
+   [MENU_ACTION_USE_ANY_FISHING_ROD] = {
+      .label   = gText_lu_FieldDebugMenu_UseAnyFishingRod,
+      .handler = FieldDebugMenuActionHandler_UseAnyFishingRod,
+   },
+   [MENU_ACTION_SET_TIME] = {
+      .label   = gText_lu_FieldDebugMenu_SetTime,
+      .handler = FieldDebugMenuActionHandler_SetTime,
+   },
+   [MENU_ACTION_SET_WEATHER] = {
+      .label   = gText_lu_FieldDebugMenu_SetWeather,
+      .handler = FieldDebugMenuActionHandler_SetWeather,
+   },
+   [MENU_ACTION_WALK_THROUGH_WALLS] = {
+      .label   = gText_lu_FieldDebugMenu_WalkThroughWalls,
+      .handler = FieldDebugMenuActionHandler_WalkThroughWalls,
+      .state   = FieldDebugMenuActionStateGetter_WalkThroughWalls,
+   },
+};
+
+static void FieldDebugMenuActionHandler_Bike_Acro(u8 taskId);
+static void FieldDebugMenuActionHandler_Bike_Mach(u8 taskId);
+
+static const struct FieldDebugMenuAction sBikeActions[] = {
+   {
+      .label   = gText_lu_FieldDebugMenu_UseAnyBike_Acro,
+      .handler = FieldDebugMenuActionHandler_Bike_Acro,
+   },
+   {
+      .label   = gText_lu_FieldDebugMenu_UseAnyBike_Mach,
+      .handler = FieldDebugMenuActionHandler_Bike_Mach,
+   },
+};
+
+static void FieldDebugMenuActionHandler_UseAnyFishingRod_Old(u8 taskId);
+static void FieldDebugMenuActionHandler_UseAnyFishingRod_Good(u8 taskId);
+static void FieldDebugMenuActionHandler_UseAnyFishingRod_Super(u8 taskId);
+
+static const struct FieldDebugMenuAction sFishingRodActions[] = {
+   {
+      .label   = gText_lu_FieldDebugMenu_UseAnyFishingRod_Old,
+      .handler = FieldDebugMenuActionHandler_UseAnyFishingRod_Old,
+   },
+   {
+      .label   = gText_lu_FieldDebugMenu_UseAnyFishingRod_Good,
+      .handler = FieldDebugMenuActionHandler_UseAnyFishingRod_Good,
+   },
+   {
+      .label   = gText_lu_FieldDebugMenu_UseAnyFishingRod_Super,
+      .handler = FieldDebugMenuActionHandler_UseAnyFishingRod_Super,
+   },
+};
+
+static void FieldDebugMenuActionHandler_FieldEffect_Dig(u8 taskId);
+static void FieldDebugMenuActionHandler_FieldEffect_RockSmash(u8 taskId);
+static void FieldDebugMenuActionHandler_FieldEffect_Strength(u8 taskId);
+static void FieldDebugMenuActionHandler_FieldEffect_Surf(u8 taskId);
+static void FieldDebugMenuActionHandler_FieldEffect_Teleport(u8 taskId);
+static void FieldDebugMenuActionHandler_FieldEffect_Waterfall(u8 taskId);
+
+static const struct FieldDebugMenuAction sFieldEffectActions[] = {
+   {
+      .label   = gMoveNames[MOVE_DIG],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_Dig,
+   },
+   {
+      .label   = gMoveNames[MOVE_ROCK_SMASH],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_RockSmash,
+   },
+   {
+      .label   = gMoveNames[MOVE_STRENGTH],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_Strength,
+   },
+   {
+      .label   = gMoveNames[MOVE_SURF],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_Surf,
+   },
+   {
+      .label   = gMoveNames[MOVE_TELEPORT],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_Teleport,
+   },
+   {
+      .label   = gMoveNames[MOVE_WATERFALL],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_Waterfall,
+   },
+};
+
+//
+// Menu code
+//
+
+#define tSetupStage    data[0]
+#define tCursorPos     data[1]
+#define tWindowID      data[2]
+#define tMenuPointerA  data[3]
+#define tMenuPointerB  data[4]
+#define tMenuItemCount data[5]
+enum {
+   TASK_SETUP_STAGE_GFX,
+   TASK_SETUP_STAGE_LOCK,
+   TASK_SETUP_STAGE_DONE,
+};
+#define MENU_TASK_SET_MENU(menu) \
+   do { \
+      SetWordTaskArg(taskId, 3, (u32)menu); \
+      gTasks[taskId].tMenuItemCount = ARRAY_COUNT(menu); \
+      gTasks[taskId].tCursorPos = 0; \
+      DebugPrintf("[Field Debug Menu] Entering (sub)menu with %u items.", ARRAY_COUNT(menu)); \
+   } while (0);
+
+extern void OpenFieldDebugMenu(void) {
+   if (gFieldDebugMenuState.menu_is_open) {
+      DebugPrintf("[Field Debug Menu] Failed to open (already open).");
+      return;
+   }
+   DebugPrintf("[Field Debug Menu] Opening...");
+   
+   u8 taskId = CreateTask(TaskHandler, 0);
+   gTasks[taskId].tSetupStage = 0;
+   gTasks[taskId].tCursorPos  = 0;
+   
+   MENU_TASK_SET_MENU(sFieldDebugMenuActions);
+   
+   gFieldDebugMenuState.menu_is_open = TRUE;
+}
+
+static void TaskHandler(u8 taskId) {
+   struct Task *task = &gTasks[taskId];
+   if (task->tSetupStage < TASK_SETUP_STAGE_DONE) {
+      switch (task->tSetupStage) {
+         case TASK_SETUP_STAGE_GFX:
+            DebugPrintf("[Field Debug Menu] Setup: TASK_SETUP_STAGE_GFX");
+            LoadMessageBoxAndBorderGfx();
+            task->tWindowID = AddWindow(&sWindowTemplate);
+            DrawStdWindowFrame(task->tWindowID, FALSE);
+            CopyWindowToVram(task->tWindowID, COPYWIN_MAP);
+            break;
+         case TASK_SETUP_STAGE_LOCK:
+            DebugPrintf("[Field Debug Menu] Setup: TASK_SETUP_STAGE_LOCK");
+            if (!IsOverworldLinkActive()) {
+               FreezeObjectEvents();
+               PlayerFreeze();
+               StopPlayerAvatar();
+            }
+            LockPlayerFieldControls();
+            break;
+      }
+      ++task->tSetupStage;
+      return;
+   }
+   //
+   // Handle input.
+   //
+   {
+      s8 by = 0;
+      if (JOY_REPEAT(DPAD_UP)) {
+         by = -1;
+      } else if (JOY_REPEAT(DPAD_DOWN)) {
+         by = 1;
+      }
+      if (by) {
+         PlaySE(SE_SELECT);
+         
+         if (by < 0) {
+            if (task->tCursorPos == 0) {
+               task->tCursorPos = task->tMenuItemCount - 1;
+            } else {
+               --task->tCursorPos;
+            }
+         } else {
+            task->tCursorPos = (task->tCursorPos + 1) % task->tMenuItemCount;
+         }
+         
+         PaintFieldDebugMenuActions(taskId);
+         return;
+      }
+   }
+   if (JOY_NEW(A_BUTTON)) {
+      const struct FieldDebugMenuAction* actions = (const struct FieldDebugMenuAction*)GetWordTaskArg(taskId, 3);
+      const struct FieldDebugMenuAction* action = &actions[task->tCursorPos];
+      if (action->handler == NULL) {
+         PlaySE(SE_FAILURE);
+         return;
+      }
+      
+      PlaySE(SE_SELECT);
+      (action->handler)(taskId);
+      if (gTasks[taskId].isActive) {
+         PaintFieldDebugMenuActions(taskId);
+      } else {
+         //
+         // The menu action we just invoked chose to destroy the task.
+         //
+      }
+      return;
+   }
+   if (JOY_NEW(B_BUTTON)) {
+      PlaySE(SE_SELECT);
+      
+      const struct FieldDebugMenuAction* actions = (const struct FieldDebugMenuAction*)GetWordTaskArg(taskId, 3);
+      if (actions == sFieldDebugMenuActions) {
+         DestroyFieldDebugMenu(taskId);
+      } else {
+         MENU_TASK_SET_MENU(sFieldDebugMenuActions);
+         PaintFieldDebugMenuActions(taskId);
+      }
+      
+      return;
+   }
+}
+
+static const u8 sTextColor_Normal[3]   = { 1, 2, 3 };
+static const u8 sTextColor_Active[3]   = { 1, 4, 5 };
+static const u8 sTextColor_Disabled[3] = { 1, 3, 1 };
+
+static void PaintFieldDebugMenuActions(u8 taskId) {
+   struct Task* task = &gTasks[taskId];
+   
+   const struct FieldDebugMenuAction* actions = (const struct FieldDebugMenuAction*)GetWordTaskArg(taskId, 3);
+   const u16 menu_item_count = task->tMenuItemCount;
+   
+   u8 scroll_pos = task->tCursorPos;
+   if (scroll_pos <= (ROW_COUNT / 2) || menu_item_count < ROW_COUNT) {
+      scroll_pos = 0;
+   } else {
+      scroll_pos -= (ROW_COUNT / 2);
+      if (scroll_pos + ROW_COUNT > menu_item_count) {
+         scroll_pos = menu_item_count - ROW_COUNT;
+      }
+   }
+   u8 screen_pos = task->tCursorPos - scroll_pos;
+   
+   FillWindowPixelBuffer(task->tWindowID, PIXEL_FILL(1));
+   
+   for(u8 i = 0; i < ROW_COUNT; ++i) {
+      if (scroll_pos + i >= menu_item_count)
+         break;
+      const struct FieldDebugMenuAction* action = &actions[scroll_pos + i];
+      
+      const u8* colors = sTextColor_Normal;
+      if (action->state) {
+         switch ((action->state)()) {
+            case MENU_ACTION_STATE_NORMAL:
+               break;
+            case MENU_ACTION_STATE_ACTIVE:
+               colors = sTextColor_Active;
+               break;
+            case MENU_ACTION_STATE_DISABLED:
+               colors = sTextColor_Disabled;
+               break;
+         }
+      }
+      AddTextPrinterParameterized3(
+         task->tWindowID,
+         FONT_NORMAL,
+         8, // x
+         i * TILES_PER_ROW * TILE_HEIGHT, // y
+         colors,
+         TEXT_SKIP_DRAW,
+         action->label
+      );
+   }
+   
+   u8 width  = GetMenuCursorDimensionByFont(DEBUG_MENU_FONT, 0);
+   u8 height = GetMenuCursorDimensionByFont(DEBUG_MENU_FONT, 1);
+   AddTextPrinterParameterized(
+      task->tWindowID,
+      DEBUG_MENU_FONT,
+      gText_SelectorArrow3,
+      0,
+      screen_pos * TILES_PER_ROW * TILE_HEIGHT,
+      0,
+      0
+   );
+   CopyWindowToVram(task->tWindowID, COPYWIN_GFX);
+}
+
+static void DestroyFieldDebugMenu(u8 taskId) {
+   DebugPrintf("[Field Debug Menu] Closing...");
+   struct Task *task = &gTasks[taskId];
+   if (task->tWindowID != WINDOW_NONE) {
+      ClearStdWindowAndFrame(task->tWindowID, TRUE);
+      RemoveWindow(task->tWindowID);
+      task->tWindowID = WINDOW_NONE;
+   }
+   ScriptUnfreezeObjectEvents();
+   UnlockPlayerFieldControls();
+   
+   DestroyTask(taskId);
+   gFieldDebugMenuState.menu_is_open = FALSE;
+}
+
+//
+// Menu action handlers
+//
+
+static u8 FieldDebugMenuActionStateGetter_DisableTrainerLOS(void) {
+   if (gFieldDebugMenuState.disable_trainer_line_of_sight) {
+      return MENU_ACTION_STATE_ACTIVE;
+   }
+   return MENU_ACTION_STATE_NORMAL;
+}
+static void FieldDebugMenuActionHandler_DisableTrainerLOS(u8 taskId) {
+   gFieldDebugMenuState.disable_trainer_line_of_sight = !gFieldDebugMenuState.disable_trainer_line_of_sight;
+}
+static u8 FieldDebugMenuActionStateGetter_DisableWildEncounters(void) {
+   if (gFieldDebugMenuState.disable_wild_encounters) {
+      return MENU_ACTION_STATE_ACTIVE;
+   }
+   return MENU_ACTION_STATE_NORMAL;
+}
+static void FieldDebugMenuActionHandler_DisableWildEncounters(u8 taskId) {
+   gFieldDebugMenuState.disable_wild_encounters = !gFieldDebugMenuState.disable_wild_encounters;
+}
+static void FieldDebugMenuActionHandler_FastTravel(u8 taskId) {
+   gFieldDebugMenuState.allow_fast_travel_anywhere = TRUE;
+   //
+   // NOTE: This enables fast-travel anywhere for the rest of the session, 
+   // i.e. using Fly normally allows you to fly anywhere. We need a way to 
+   // clear this state bool, OR a way to avoid state bools in favor of 
+   // passing parameters to the region map code.
+   //
+   DestroyFieldDebugMenu(taskId);
+   SetMainCallback2(CB2_OpenFlyMap);
+}
+static void FieldDebugMenuActionHandler_SetTime(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   SetMainCallback2(CB2_StartWallClock);
+    gMain.savedCallback = CB2_ReturnToField;
+}
+static void FieldDebugMenuActionHandler_UseAnyBike(u8 taskId) {
+   MENU_TASK_SET_MENU(sBikeActions);
+}
+static void FieldDebugMenuActionHandler_UseAnyFishingRod(u8 taskId) {
+   MENU_TASK_SET_MENU(sFishingRodActions);
+}
+static void FieldDebugMenuActionHandler_UseAnyFieldMove(u8 taskId) {
+   MENU_TASK_SET_MENU(sFieldEffectActions);
+}
+static u8 FieldDebugMenuActionStateGetter_WalkThroughWalls(void) {
+   if (gFieldDebugMenuState.walk_through_walls) {
+      return MENU_ACTION_STATE_ACTIVE;
+   }
+   return MENU_ACTION_STATE_NORMAL;
+}
+static void FieldDebugMenuActionHandler_WalkThroughWalls(u8 taskId) {
+   gFieldDebugMenuState.walk_through_walls = !gFieldDebugMenuState.walk_through_walls;
+}
+
+//
+// Bikes
+//
+static void FieldDebugMenuActionHandler_Bike_Acro(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   if (gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_MACH_BIKE) {
+      // If the player is already on the Mach Bike, then dismount, and then 
+      // mount the Acro Bike.
+      GetOnOffBike(PLAYER_AVATAR_FLAG_ACRO_BIKE);
+   }
+   GetOnOffBike(PLAYER_AVATAR_FLAG_ACRO_BIKE);
+}
+static void FieldDebugMenuActionHandler_Bike_Mach(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   if (gPlayerAvatar.flags & PLAYER_AVATAR_FLAG_ACRO_BIKE) {
+      // If the player is already on the Acro Bike, then dismount, and then 
+      // mount the Mach Bike.
+      GetOnOffBike(PLAYER_AVATAR_FLAG_MACH_BIKE);
+   }
+   GetOnOffBike(PLAYER_AVATAR_FLAG_MACH_BIKE);
+}
+
+//
+// Field effects
+//
+static void FieldDebugMenuActionHandler_FieldEffect_Dig(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   FieldEffectStart(FLDEFF_USE_DIG);
+}
+static void FieldDebugMenuActionHandler_FieldEffect_RockSmash(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   FieldEffectStart(FLDEFF_USE_ROCK_SMASH);
+}
+static void FieldDebugMenuActionHandler_FieldEffect_Strength(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   FieldEffectStart(FLDEFF_USE_STRENGTH);
+}
+static void FieldDebugMenuActionHandler_FieldEffect_Surf(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   FieldEffectStart(FLDEFF_USE_SURF);
+}
+static void FieldDebugMenuActionHandler_FieldEffect_Teleport(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   FieldEffectStart(FLDEFF_USE_TELEPORT);
+}
+static void FieldDebugMenuActionHandler_FieldEffect_Waterfall(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   FieldEffectStart(FLDEFF_USE_WATERFALL);
+}
+
+//
+// Fishing Rods
+//
+static void FieldDebugMenuActionHandler_UseAnyFishingRod_Old(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   StartFishing(OLD_ROD);
+}
+static void FieldDebugMenuActionHandler_UseAnyFishingRod_Good(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   StartFishing(GOOD_ROD);
+}
+static void FieldDebugMenuActionHandler_UseAnyFishingRod_Super(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   StartFishing(SUPER_ROD);
+}
+
+//
+// Weather
+//
+
+
+#define WEATHER_HANDLER(name, constant) \
+   static void FieldDebugMenuActionHandler_Weather_##name(u8 taskId) { \
+      SetNextWeather(constant); \
+   }
+
+WEATHER_HANDLER(SunnyCloudy, WEATHER_SUNNY_CLOUDS)
+WEATHER_HANDLER(Sunny, WEATHER_SUNNY)
+WEATHER_HANDLER(Rain, WEATHER_RAIN)
+WEATHER_HANDLER(Snow, WEATHER_SNOW)
+WEATHER_HANDLER(Thunderstorm, WEATHER_RAIN_THUNDERSTORM)
+WEATHER_HANDLER(Fog, WEATHER_FOG_HORIZONTAL)
+WEATHER_HANDLER(Ashfall, WEATHER_VOLCANIC_ASH)
+WEATHER_HANDLER(Sandstorm, WEATHER_SANDSTORM)
+WEATHER_HANDLER(FogDiagonal, WEATHER_FOG_DIAGONAL)
+WEATHER_HANDLER(Underwater, WEATHER_UNDERWATER)
+WEATHER_HANDLER(Overcast, WEATHER_SHADE)
+WEATHER_HANDLER(Drought, WEATHER_DROUGHT)
+WEATHER_HANDLER(Downpour, WEATHER_DOWNPOUR)
+WEATHER_HANDLER(UnderwaterBubbles, WEATHER_UNDERWATER_BUBBLES)
+WEATHER_HANDLER(Abnormal, WEATHER_ABNORMAL)
+WEATHER_HANDLER(Route119Cycle, WEATHER_ROUTE119_CYCLE)
+WEATHER_HANDLER(Route123Cycle, WEATHER_ROUTE123_CYCLE)
+
+#define WEATHER_MENU_ENTRY(name) \
+   { \
+      .label   = gText_lu_FieldDebugMenu_SetWeather_##name, \
+      .handler = FieldDebugMenuActionHandler_Weather_##name, \
+   }
+
+static const struct FieldDebugMenuAction sWeatherActions[] = {
+   WEATHER_MENU_ENTRY(SunnyCloudy),
+   WEATHER_MENU_ENTRY(Sunny),
+   WEATHER_MENU_ENTRY(Rain),
+   WEATHER_MENU_ENTRY(Snow),
+   WEATHER_MENU_ENTRY(Thunderstorm),
+   WEATHER_MENU_ENTRY(Fog),
+   WEATHER_MENU_ENTRY(Ashfall),
+   WEATHER_MENU_ENTRY(Sandstorm),
+   WEATHER_MENU_ENTRY(FogDiagonal),
+   WEATHER_MENU_ENTRY(Underwater),
+   WEATHER_MENU_ENTRY(Overcast),
+   WEATHER_MENU_ENTRY(Drought),
+   WEATHER_MENU_ENTRY(Downpour),
+   WEATHER_MENU_ENTRY(UnderwaterBubbles),
+   WEATHER_MENU_ENTRY(Abnormal),
+   WEATHER_MENU_ENTRY(Route119Cycle),
+   WEATHER_MENU_ENTRY(Route123Cycle),
+};
+
+static void FieldDebugMenuActionHandler_SetWeather(u8 taskId) {
+   MENU_TASK_SET_MENU(sWeatherActions);
+}

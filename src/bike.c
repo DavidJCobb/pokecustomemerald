@@ -11,6 +11,7 @@
 #include "constants/songs.h"
 
 #include "lu/custom_game_options.h"
+#include "lu/field_debug_menu.h"
 
 // this file's functions
 static void MovePlayerOnMachBike(u8, u16, u16);
@@ -873,7 +874,17 @@ static u8 GetBikeCollision(u8 direction)
     s16 y = playerObjEvent->currentCoords.y;
     MoveCoords(direction, &x, &y);
     metatileBehavior = MapGridGetMetatileBehaviorAt(x, y);
-    return GetBikeCollisionAt(playerObjEvent, x, y, direction, metatileBehavior);
+    
+    u8 collision = GetBikeCollisionAt(playerObjEvent, x, y, direction, metatileBehavior);
+    if (gFieldDebugMenuState.walk_through_walls) {
+       switch (collision) {
+          case COLLISION_IMPASSABLE:
+          case COLLISION_ELEVATION_MISMATCH:
+            collision = COLLISION_NONE;
+            break;
+       }
+    }
+    return collision;
 }
 
 static u8 GetBikeCollisionAt(struct ObjectEvent *objectEvent, s16 x, s16 y, u8 direction, u8 metatileBehavior)
