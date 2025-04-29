@@ -51,6 +51,8 @@
 
 * Implemented a custom title screen.
 
+* When setting the current time of day, the wall clock now shows the exact hours and minutes, on the left side of the screen.
+
 * When a Repel runs out and the player has more Repels of the same type in their inventory, they'll be told how many they have left, and offered the option to quickly use another.
 
 * The player can now voluntarily **forfeit trainer battles**, even outside of the Battle Frontier and Trainer Hill (where the vanilla game would allow forfeiting). Battles that allow forfeiting will show a "GIVE UP" option instead of "RUN." Clicking this option always pops a confirmation prompt (as it did in the vanilla game).

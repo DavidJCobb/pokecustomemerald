@@ -40,6 +40,7 @@ static void SpriteCB_MinuteHand(struct Sprite *sprite);
 static void SpriteCB_HourHand(struct Sprite *sprite);
 static void SpriteCB_PMIndicator(struct Sprite *sprite);
 static void SpriteCB_AMIndicator(struct Sprite *sprite);
+static void UpdateDisplayedExactTime(u8 taskId);
 
 #define sTaskId data[0]
 
@@ -69,6 +70,7 @@ enum {
 enum {
     WIN_MSG,
     WIN_BUTTON_LABEL,
+    WIN_EXACT_TIME,
 };
 
 static const u32 sHand_Gfx[] = INCBIN_U32("graphics/wallclock/hand.4bpp.lz");
@@ -93,6 +95,15 @@ static const struct WindowTemplate sWindowTemplates[] =
         .height = 2,
         .paletteNum = 12,
         .baseBlock = 560
+    },
+    [WIN_EXACT_TIME] = {
+        .bg = 2,
+        .tilemapLeft = 2,
+        .tilemapTop = 11,
+        .width = 6,
+        .height = 2,
+        .paletteNum = 12,
+        .baseBlock = 608
     },
     DUMMY_WIN_TEMPLATE
 };
@@ -828,6 +839,7 @@ static void Task_SetClock_HandleInput(u8 taskId)
             }
         }
     }
+    UpdateDisplayedExactTime(taskId);
 }
 
 static void Task_SetClock_AskConfirm(u8 taskId)
@@ -883,6 +895,7 @@ static void Task_ViewClock_WaitFadeIn(u8 taskId)
 static void Task_ViewClock_HandleInput(u8 taskId)
 {
     InitClockWithRtc(taskId);
+    UpdateDisplayedExactTime(taskId);
     if (JOY_NEW(A_BUTTON | B_BUTTON))
         gTasks[taskId].func = Task_ViewClock_FadeOut;
 }
@@ -1098,4 +1111,40 @@ static void SpriteCB_AMIndicator(struct Sprite *sprite)
     }
     sprite->x2 = Cos2(sprite->sAngle) * 30 / 0x1000;
     sprite->y2 = Sin2(sprite->sAngle) * 30 / 0x1000;
+}
+
+#include "constants/characters.h"
+#include "string_util.h"
+
+static void UpdateDisplayedExactTime(u8 taskId) {
+   u8 hour   = gTasks[taskId].tHours;
+   u8 minute = gTasks[taskId].tMinutes;
+   if (hour > 12) {
+      hour -= 12;
+   }
+   
+   u8 text[6];
+   ConvertUIntToDecimalStringN(text + 0, hour,   STR_CONV_MODE_LEADING_ZEROS, 2);
+   text[2] = CHAR_COLON;
+   ConvertUIntToDecimalStringN(text + 3, minute, STR_CONV_MODE_LEADING_ZEROS, 2);
+   text[5] = EOS;
+   
+   const u8 x = 0;
+   const u8 y = 3;
+   
+   AddTextPrinterParameterized(WIN_EXACT_TIME, FONT_NORMAL, text, x, y, 0, NULL);
+   u8 width = GetStringWidth(FONT_NORMAL, text, 0);
+   {
+      if (gTasks[taskId].tPeriod == PERIOD_AM) {
+         text[0] = CHAR_A;
+      } else {
+         text[0] = CHAR_P;
+      }
+      text[1] = CHAR_M;
+      text[2] = EOS;
+      AddTextPrinterParameterized(WIN_EXACT_TIME, FONT_SMALL, text, x + 1 + width, y + 1, 0, NULL);
+   }
+   
+   PutWindowTilemap(WIN_EXACT_TIME);
+   ScheduleBgCopyTilemapToVram(2);
 }

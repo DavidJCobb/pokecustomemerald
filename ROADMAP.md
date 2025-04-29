@@ -372,15 +372,6 @@ This will require thorough investigation of the battle script engine as well as 
   * Bold
   * Italics
 
-### Battles
-
-* Pronouns for Pokemon (i.e. "he" or "she" when appropriate, rather than always "it")
-  * subject: he/she/they/it
-  * object: him/her/them/it
-  * possessive: his/hers/their/its
-  * reflexive: himself/herself/themself/itself
-  * subject-is: he's/she's/they're/it's
-
 ## UI
 
 ### Overworld
@@ -400,10 +391,6 @@ This will require thorough investigation of the battle script engine as well as 
 
 * Button to re-show the enemy trainer's party layout (i.e. the Poke Balls shown at battle start and when they're switching out)
 * Button to show your moves' descriptions, typing, physical/special, etc..
-
-### Clock set
-
-* Show the exact time (HH:MM) rather than forcing players to rely on the clock hands alone.
 
 ### Party menu
 
