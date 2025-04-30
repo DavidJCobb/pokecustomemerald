@@ -170,6 +170,9 @@ Add new options:
   * I've added a `CurrentBattleAllowsForfeiting()` function in `battles/battle_allows_forfeiting.c`. Whatever flag I add to indicate these battles can be checked for in there.
 * Battle ambient weather improvements
   * Some weathers fade the color palettes, e.g. rain darkening the battle scene. Make it so that when you enter the Bag or Party menus, these fades are maintained. Currently, the weather fade reverts simultaneously while the screen fades to black, despite us not taking any action to undo the fades ourselves.
+* Ensure that custom game options don't break Recorded Battles. We should probably find a way to store the battle-related CGOs that are in effect during a Recorded Battle, with the data for said recorded battle.
+* Fairy type
+* Physical/special split
 
 ### Cheat/debug menus
 * Field Debug Menu
@@ -201,6 +204,20 @@ Add new options:
 ### Overworld
 * Support for dynamic overworld palettes
 * Modify the tile IDs used by overworld dialog boxes, overlapping the ID ranges of mutually-exclusive boxes, so we can use tile IDs closer to the end of VRAM. This will free up more tile IDs for use by overworld tilesets.
+
+### Pokemon forms
+* Deoxys (selectable form *a la* Gen IV, instead of fixed per-game-version form *a la* Gen III)
+* Regional forms
+  * Alolan
+  * Galarian
+  * Hisuian
+  * Paldean
+* Non-core-series variations by species
+  * Arbok pattern variants ([see Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Arbok_variants))
+  * Magikarp scale patterns and colors, from Magikarp Jump ([see Bulbapedia](https://bulbapedia.bulbagarden.net/wiki/Variant_Pok%C3%A9mon#Magikarp))
+  * Can we make newly-hatched Vulpix have a single white tail, per its Pokedex entry? (Perhaps we could gate the sprite out based on level.)
+* Core-series form variations
+  * Burmy, Gastrodon, etc.
 
 ### RTC
 
@@ -236,10 +253,6 @@ It'd be nice if we could modify the core sprite library to support keeping only 
 * Overworld follower Pokemon
 * The ability to independently adjust the volume of sound effects versus music.
 
-### Battles
-
-* Fairy type
-* Physical/special split
 
 ## Pacing
 
@@ -363,6 +376,8 @@ This will require thorough investigation of the battle script engine as well as 
   * Investigate adding format codes (e.g. for species names, move names, common strings like POKeMON and TRAINERS, etc.)
 * Investigate support for more text formatting
   * Italics/oblique
+    * I think italics would ideally be a `TextPrinter` state bool, rather than a whole separate font. Besides, fonts in this game don't support kerning or any other form of overlapping characters, so a pre-designed italic font wouldn't really *work* here.
+    * The vanilla game blits a decompressed font glyph onto the `TextPrinter`'s window tileset using an inline function, `GLYPH_COPY`, in `text.c`. Theoretically, we could add support for programmatically generated oblique fonts by giving that function an `isItalic` parameter, and then having it just blit characters one pixel further to the right once it's past a certain Y-coordinate. Of course, we'd have to be careful to compute string widths and line wrapping properly, by preemptively adding 1px to the computed widths of any lines.
 
 ## UI
 
