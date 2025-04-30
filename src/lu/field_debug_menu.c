@@ -18,7 +18,7 @@
 #include "event_object_lock.h" // ScriptUnfreezeObjectEvents
 #include "event_object_movement.h" // FreezeObjectEvents
 #include "field_player_avatar.h" // PlayerFreeze, StopPlayerAvatar // StartFishing
-#include "script.h" // LockPlayerFieldControls
+#include "script.h" // LockPlayerFieldControls, ScriptContext_SetupScript
 
 // Data
 #include "constants/global.h"
@@ -28,10 +28,15 @@
 // Menu actions
 #include "constants/field_effects.h" // FLDEFF_...
 #include "constants/items.h" // OLD_ROD and friends
+#include "constants/species.h"
 #include "constants/weather.h" // WEATHER_...
 #include "bike.h" // GetOnOffBike
+#include "event_data.h" // FlagSet
+#include "event_scripts.h" // EventScript_...
+#include "field_control_avatar.h" // TrySetDiveWarp
 #include "field_effect.h" // FieldEffectStart
 #include "field_weather.h" // SetNextWeather
+#include "fldeff.h" // SetUpFieldMove_RockSmash and friends
 #include "global.fieldmap.h" // gPlayerAvatar, PLAYER_AVATAR_FLAG_...
 #include "overworld.h" // CB2_ReturnToField, IsOverworldLinkActive
 #include "region_map.h" // CB2_OpenFlyMap
@@ -174,17 +179,35 @@ static const struct FieldDebugMenuAction sFishingRodActions[] = {
    },
 };
 
+static void FieldDebugMenuActionHandler_FieldEffect_Cut(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_Dig(u8 taskId);
+static void FieldDebugMenuActionHandler_FieldEffect_Dive(u8 taskId);
+static u8 FieldDebugMenuActionStateGetter_FieldEffect_Dive(void);
+static void FieldDebugMenuActionHandler_FieldEffect_Flash(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_RockSmash(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_Strength(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_Surf(u8 taskId);
+static void FieldDebugMenuActionHandler_FieldEffect_SweetScent(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_Teleport(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_Waterfall(u8 taskId);
 
 static const struct FieldDebugMenuAction sFieldEffectActions[] = {
    {
+      .label   = gMoveNames[MOVE_CUT],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_Cut,
+   },
+   {
       .label   = gMoveNames[MOVE_DIG],
       .handler = FieldDebugMenuActionHandler_FieldEffect_Dig,
+   },
+   {
+      .label   = gMoveNames[MOVE_DIVE],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_Dive,
+      .state   = FieldDebugMenuActionStateGetter_FieldEffect_Dive,
+   },
+   {
+      .label   = gMoveNames[MOVE_FLASH],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_Flash,
    },
    {
       .label   = gMoveNames[MOVE_ROCK_SMASH],
@@ -197,6 +220,10 @@ static const struct FieldDebugMenuAction sFieldEffectActions[] = {
    {
       .label   = gMoveNames[MOVE_SURF],
       .handler = FieldDebugMenuActionHandler_FieldEffect_Surf,
+   },
+   {
+      .label   = gMoveNames[MOVE_SWEET_SCENT],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_SweetScent,
    },
    {
       .label   = gMoveNames[MOVE_TELEPORT],
@@ -495,25 +522,85 @@ static void FieldDebugMenuActionHandler_Bike_Mach(u8 taskId) {
 //
 // Field effects
 //
+static void FieldDebugMenuActionHandler_FieldEffect_Cut(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   
+   SetUpFieldMove_Cut();
+   gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
+   (gPostMenuFieldCallback)();
+}
 static void FieldDebugMenuActionHandler_FieldEffect_Dig(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
+   
+   Overworld_ResetStateAfterDigEscRope();
    FieldEffectStart(FLDEFF_USE_DIG);
+   gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
+}
+static void FieldDebugMenuActionHandler_FieldEffect_Dive(u8 taskId) {
+   u8 dive_result_type = TrySetDiveWarp();
+   if (dive_result_type == 0) {
+      return;
+   }
+   DestroyFieldDebugMenu(taskId);
+   if (dive_result_type == 1) {
+      // The script checks for a Pokemon that can use the move, so it's not 
+      // what we want here.
+      //ScriptContext_SetupScript(EventScript_UseDiveUnderwater);
+      
+      gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
+      gFieldEffectArguments[0] = 1;
+      FieldEffectStart(FLDEFF_USE_DIVE);
+   } else {
+      // The script checks for a Pokemon that can use the move, so it's not 
+      // what we want here.
+      //ScriptContext_SetupScript(EventScript_UseDive);
+      
+      gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
+      gFieldEffectArguments[0] = 1;
+      FieldEffectStart(FLDEFF_USE_DIVE);
+   }
+}
+static u8 FieldDebugMenuActionStateGetter_FieldEffect_Dive(void) {
+   if (TrySetDiveWarp() == 0) {
+      return MENU_ACTION_STATE_DISABLED;
+   }
+   return MENU_ACTION_STATE_NORMAL;
+}
+static void FieldDebugMenuActionHandler_FieldEffect_Flash(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   
+   SetUpFieldMove_Flash();
+   gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
+   (gPostMenuFieldCallback)();
 }
 static void FieldDebugMenuActionHandler_FieldEffect_RockSmash(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
-   FieldEffectStart(FLDEFF_USE_ROCK_SMASH);
+   
+   SetUpFieldMove_RockSmash();
+   gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
+   (gPostMenuFieldCallback)();
 }
 static void FieldDebugMenuActionHandler_FieldEffect_Strength(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
-   FieldEffectStart(FLDEFF_USE_STRENGTH);
+   
+   FldEff_UseStrength();
+   FlagSet(FLAG_SYS_USE_STRENGTH);
 }
 static void FieldDebugMenuActionHandler_FieldEffect_Surf(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
    FieldEffectStart(FLDEFF_USE_SURF);
 }
+static void FieldDebugMenuActionHandler_FieldEffect_SweetScent(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   FieldEffectStart(FLDEFF_SWEET_SCENT);
+   gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
+}
 static void FieldDebugMenuActionHandler_FieldEffect_Teleport(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
+   
+   Overworld_ResetStateAfterTeleport();
    FieldEffectStart(FLDEFF_USE_TELEPORT);
+   gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
 }
 static void FieldDebugMenuActionHandler_FieldEffect_Waterfall(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
