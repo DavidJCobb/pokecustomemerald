@@ -110,8 +110,10 @@
 
 * Added script commands to facilitate displaying text with automatic word-wrapping performed at run-time.
 
-* Minor, as-yet-untested bugfixes.
+* Activating a PokeCenter with an empty party should no longer lock you in a 256-ball loop. This is mainly relevant when walking through walls.
 
-  * Activating a PokeCenter with an empty party should no longer lock you in a 256-ball loop.
+* `FONT_BOLD` is now usable for Latin text, with a custom bolded version of the normal font.
+
+* Minor, as-yet-untested bugfixes.
 
   * The party menu underflow that allows "glitzer popping" should no longer be possible.

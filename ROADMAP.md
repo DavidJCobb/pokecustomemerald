@@ -156,7 +156,6 @@ Add new options:
   * *Move Pokemon-catching options into here.*
 
 ### Custom game option behavior
-
 * Allow the player to change options mid-playthrough
   * Save the fact that they've made these changes
   * Only allow changing an option when doing so would have an effect
@@ -167,19 +166,15 @@ Add new options:
 ## Engine
 
 ### Battles
-
 * Pokemon Custom Emerald allows the player to voluntarily forfeit trainer battles. Don't allow the player to forfeit story-critical trainer battles (i.e. any battle against a villain).
   * I've added a `CurrentBattleAllowsForfeiting()` function in `battles/battle_allows_forfeiting.c`. Whatever flag I add to indicate these battles can be checked for in there.
 * Battle ambient weather improvements
   * Some weathers fade the color palettes, e.g. rain darkening the battle scene. Make it so that when you enter the Bag or Party menus, these fades are maintained. Currently, the weather fade reverts simultaneously while the screen fades to black, despite us not taking any action to undo the fades ourselves.
 
 ### Cheat/debug menus
-
 * Field Debug Menu
   * Use any field move
-    * Implement Cut.
     * Implement Secret Power.
-    * The Rock Smash option seems to only play the menu, and not actually smash rocks. Fix this.
 * Battles
   * ...
 * Utility
@@ -200,9 +195,12 @@ Add new options:
   * Reassure them that we won't keep track of what they've tried or not tried to do
 
 ### Items
-
 * Investigate separating item IDs into per-bag-pocket ID ranges. This is something we'll want a compiler plug-in to do, but it'd allow bitpacking the player's inventory (which is stored per-pocket) within savedata even more tightly.
   * Depending on how far we can take this, it may also enable expanding the list of Poke Balls without needing all ball item IDs to be consecutive. This would make it considerably easier to add Poke Balls. However, that'll depend on things like redoing how the "mon data" for Poke Balls is stored, among other things.
+
+### Overworld
+* Support for dynamic overworld palettes
+* Modify the tile IDs used by overworld dialog boxes, overlapping the ID ranges of mutually-exclusive boxes, so we can use tile IDs closer to the end of VRAM. This will free up more tile IDs for use by overworld tilesets.
 
 ### RTC
 
@@ -364,8 +362,7 @@ This will require thorough investigation of the battle script engine as well as 
   * Replace capitalization with coloration where appropriate
   * Investigate adding format codes (e.g. for species names, move names, common strings like POKeMON and TRAINERS, etc.)
 * Investigate support for more text formatting
-  * Bold
-  * Italics
+  * Italics/oblique
 
 ## UI
 

@@ -387,6 +387,7 @@ static void PaintFieldDebugMenuActions(u8 taskId) {
          break;
       const struct FieldDebugMenuAction* action = &actions[scroll_pos + i];
       
+      u8 fontId = FONT_NORMAL;
       const u8* colors = sTextColor_Normal;
       if (action->state) {
          switch ((action->state)()) {
@@ -394,6 +395,7 @@ static void PaintFieldDebugMenuActions(u8 taskId) {
                break;
             case MENU_ACTION_STATE_ACTIVE:
                colors = sTextColor_Active;
+               fontId = FONT_BOLD;
                break;
             case MENU_ACTION_STATE_DISABLED:
                colors = sTextColor_Disabled;
@@ -402,7 +404,7 @@ static void PaintFieldDebugMenuActions(u8 taskId) {
       }
       AddTextPrinterParameterized3(
          task->tWindowID,
-         FONT_NORMAL,
+         fontId,
          8, // x
          i * TILES_PER_ROW * TILE_HEIGHT, // y
          colors,
