@@ -3988,7 +3988,8 @@ void BattleTurnPassed(void)
     gBattleMoveDamage = 0;
     gMoveResultFlags = 0;
 
-    for (i = 0; i < 5; i++)
+    // Prep for HandleTurnActionSelectionState.
+    for (i = 0; i < (ACTIONS_CONFIRMED_COUNT - 1); i++)
         gBattleCommunication[i] = 0;
 
     if (gBattleOutcome != 0)

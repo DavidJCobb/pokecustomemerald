@@ -639,24 +639,27 @@ static void AnimTask_FlashHealthboxOnLevelUp_Step(u8 taskId)
     }
 }
 
+#define tState data[0]
+#define tScale data[10]
+
 void AnimTask_SwitchOutShrinkMon(u8 taskId)
 {
     u8 spriteId;
 
     spriteId = gBattlerSpriteIds[gBattleAnimAttacker];
-    switch (gTasks[taskId].data[0])
+    switch (gTasks[taskId].tState)
     {
     case 0:
         PrepareBattlerSpriteForRotScale(spriteId, ST_OAM_OBJ_NORMAL);
-        gTasks[taskId].data[10] = 0x100;
-        gTasks[taskId].data[0]++;
+        gTasks[taskId].tScale = 0x100;
+        gTasks[taskId].tState++;
         break;
     case 1:
-        gTasks[taskId].data[10] += 0x30;
-        SetSpriteRotScale(spriteId, gTasks[taskId].data[10], gTasks[taskId].data[10], 0);
+        gTasks[taskId].tScale += 0x30;
+        SetSpriteRotScale(spriteId, gTasks[taskId].tScale, gTasks[taskId].tScale, 0);
         SetBattlerSpriteYOffsetFromYScale(spriteId);
-        if (gTasks[taskId].data[10] >= 0x2D0)
-            gTasks[taskId].data[0]++;
+        if (gTasks[taskId].tScale >= 0x2D0)
+            gTasks[taskId].tState++;
         break;
     case 2:
         ResetSpriteRotScale(spriteId);
@@ -665,6 +668,9 @@ void AnimTask_SwitchOutShrinkMon(u8 taskId)
         break;
     }
 }
+
+#undef tState
+#undef tScale
 
 void AnimTask_SwitchOutBallEffect(u8 taskId)
 {
@@ -782,7 +788,7 @@ void AnimTask_ThrowBall(u8 taskId)
 static void AnimTask_ThrowBall_Step(u8 taskId)
 {
     u8 spriteId = gTasks[taskId].tSpriteId;
-    if ((u16)gSprites[spriteId].sDuration == 0xFFFF)
+    if ((u16)gSprites[spriteId].sDuration == 0xFFFF) // check for deliberate underflow to -1
         DestroyAnimVisualTask(taskId);
 }
 

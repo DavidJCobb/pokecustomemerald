@@ -54,6 +54,7 @@ Several fields have a similar purpose but are located far apart from one another
 | `gLastResultingMoves` | An array, mapping battler IDs to the ID of the last move they actually used (i.e. `gCurrentMove` if the Pokemon doesn't disobey). |
 | `gLockedMoves` | An array, mapping a battler ID to the ID of a move it's been locked into using. When it comes time for the battler to actually attack, this will overwrite `gChosenMove` and `gCurrentMove` if the battler has `STATUS2_MULTIPLETURNS` or `STATUS2_RECHARGE` (see `HandleAction_UseMove`). |
 | `gMoveToLearn` | Used throughout all move-learning code, both during and outside of battles, to keep track of what move a Pokemon is being given an opportunity to learn. |
+| `gPauseCounterBattle` | Pause timer for the `pause` and `waitmessage` script commands. |
 | `gPaydayMoney` |
 | `gSentPokesToOpponent` | <p>An array of two bitmasks &mdash; one per enemy that can be simultaneously present on the field. The masks track which of the player's Pokemon have been fielded in battle against a given opponent. This is updated by `OpponentSwitchInResetSentPokesToOpponentValue`, and used by the `getexp` battle script command to know which of the player's Pokemon to award EXP to when an opponent is defeated.</p><p>Because this only tracks state for the opponent's two battle positions, one can infer that should the opponent switch a Pokemon out and back in, this state would be cleared for that Pokemon. That is: suppose the opponent sends out Pikachu, you send out Misdreavus, you switch out to Gastly, the opponent switches to Wobbuffet, and then the opponent switches back to Pikachu: your Misdreavus would no longer count as having been fielded against that Pikachu.</p> |
 | `gSideStatuses` | An array of status flags -- one bitmask per side of the battlefield (player and enemy). |
@@ -66,7 +67,7 @@ Several fields have a similar purpose but are located far apart from one another
 | `gBattlerAttacker` |
 | `gBattlerFainted` | State variable for latent `HandleFaintedMonActions` function. Also exposed to battle scripts: it can be queried directly by commands like `jumpifbytenotequal`, and is checked by `BattleScript_LinkHandleFaintedMonMultiple`. |
 | `gBattlerTarget` |
-| `gEffectBattler` |
+| `gEffectBattler` | The battler to which a move effect (`MOVE_EFFECT_...`) is being applied. This can be the attacker or the target. In cases where the target has an ability that inflicts statuses on contact, the attacker is considered the "effect battler." |
 | `gChosenMove` | The move that `gBattlerAttacker` has initiated using. This can be the move they've chosen to use; *or* if they're locked into a move (e.g. Rage, Encore), it'll be that move; *or*, if they have no usable moves, it'll be Struggle. |
 | `gCurrentMove` | By default, this is equal to `gChosenMove`. However, if using one move results in another move being used (e.g. using Mirror Move), this will equal that other used move. |
 
@@ -387,6 +388,100 @@ Fields:
 | 0x24 | `windowsType` | Either `B_WIN_TYPE_NORMAL` or `B_WIN_TYPE_ARENA`. This isn't accessed by any battle scripts, but it's stored here nonetheless, being used by a lot of UI-related battle engine code. The Battle Arena has unique dialog graphics for showing the Mind/Skill/Body scoreboard mid-battle, and this value determines whether any of the windows and other UI resources for those are loaded. |
 | 0x25 | `multiplayerId` | The player's multiplayer ID (i.e. which of the up to four linked consoles they're on). This isn't accessed by any battle scripts, but it's stored here nonetheless, being used by lots of C code. |
 | 0x26 | `specialTrainerBattleType` | Set by `DoSpecialTrainerBattle`, and read by `HandleSpecialTrainerBattleEnd` to know what post-battle clean-up to perform (e.g. for the Battle Frontier or for Secret Bases). This isn't accessed by any battle scripts, but it's stored here nonetheless. |
+
+
+## `gBattleCommunication`
+
+A byte array, whose indices and size (`BATTLE_COMMUNICATION_ENTRIES_COUNT`) are defined in `/include/constants/battle_script_commands.h`.
+
+Despite its name, this object doesn't appear to ever be sent over a multiplayer link. Rather, it seems to be a dumping ground for miscellaneous latent state, as well as a smaller amount of non-latent, but global, state.
+
+| Index | Index constant | Description |
+| -: | :- | :- |
+| 0 | `MULTIUSE_STATE` | Several latent functions use this as a state variable. This includes the following script commands: `displaydexinfo`; `trygivecaughtmonnick`; `yesnobox`. Additionally, some scripts, such as `BattleScript_DamagingWeatherContinues`, use this as a scratch variable (e.g. a loop index), and some native processes (particularly in battle startup) use it as a latent state variable too.< |
+| 0 | *unnamed* | Within `HandleTurnActionSelectionState`, the action state of battler 0. Initialized to 0 by `BattleTurnPassed`. |
+| 1 | `CURSOR_POSITION` | Cursor position for the yes/no boxes shown by `AskRecordBattle`, `yesnoboxlearnmove`, `yesnoboxstoplearningmove`, `yesnobox`, and `trygivecaughtmonnick`, as well as for move-learning yes/no prompts at the end of the evolution cutscene. For scripted yes/no boxes, this is left over after the boxes are closed, and read by scripts to know what selection the user made. |
+| 1 | `TASK_ID` | Task ID for `displaydexinfo`. The script command waits for the task to be destroyed. |
+| 1 | `SPRITES_INIT_STATE1` | Used by `BattleInitAllSprites` (`battle_gfx_sfx_util.c`), which sets up healthbox and shadow sprites for a battler. State enum for that latent process. |
+| 1 | *unnamed* | `BattleIntroGetMonsData` is latent and needs to query all battlers' controllers for the battlers' Pokemon data. This state value is used to track which battler we're currently querying data for. |
+| 1 | *unnamed* | Within `HandleTurnActionSelectionState`, the action state of battler 1. Initialized to 0 by `BattleTurnPassed`. |
+| 2 | `SPRITES_INIT_STATE2` | Used by `BattleInitAllSprites` (`battle_gfx_sfx_util.c`), which sets up healthbox and shadow sprites for a battler. ID of the battler to set up sprites for. |
+| 2 | *unnamed* | A graphics task ID for the evolution cutscene. |
+| 2 | *unnamed* | Within `HandleTurnActionSelectionState`, the action state of battler 2. Initialized to 0 by `BattleTurnPassed`. |
+| 3 | `MOVE_EFFECT_BYTE` | Values are `MOVE_EFFECT_...` constants, potentially OR'd with a couple flags in the high bits. Battle script commands rely on this byte to carry out move effects (via `SetMoveEffect` and other internal helpers). |
+| 3 | *unnamed* | Within `HandleTurnActionSelectionState`, the action state of battler 3. Initialized to 0 by `BattleTurnPassed`. |
+| 4 | `ACTIONS_CONFIRMED_COUNT` | <p>State for `HandleTurnActionSelectionState`, counting how many battle controllers have committed to a given action for the current turn. This has the lifetime of latent state (i.e. it's in a global), but is used as a local variable, being initialized to zero immediately when `HandleTurnActionSelectionState` begins. It is, however, read by other processes, including some battle controllers.</p><p>Initialized to 0 by `BattleTurnPassed`.</p> |
+| 5 | `MULTISTRING_CHOOSER` | The `printfromtable` script command takes a string table as an argument, and consults this byte to know (by index) what string in the table to print. Both native code and scripts (via `cMULTISTRING_CHOOSER`) will set this value before (directly or indirectly) invoking the command. |
+| 6 | `MISS_TYPE` | Used throughout the battle script commands and engine while processing a move, to track whether that move has missed/failed (and if so, what battle message should display, e.g. `B_MSG_PROTECTED` if the move failed due to the target using Protect). Initialized to zero at the start of `HandleAction_UseMove`. |
+| 7 | `MSG_DISPLAY` | Boolean. The `waitmessage` command uses this to know whether a message has been displayed and has not yet been waited on using `waitmessage` specifically. Script commands that print messages will set this to 1 (unless they specifically don't want `waitmessage` to react to the message, e.g. `attackstring`), and then `waitmessage` will check it, delay if it's 1, and then set it to 0. |
+
+This object and its contents could perhaps be expressed as a jumble of structs and unions:
+
+```c
+extern union BattleCommunication {
+   struct {
+      u8 state;
+      u8 sprite_init_state;
+      u8 sprite_init_battler;
+   } battle_setup;
+   struct { // HandleTurnActionSelectionState
+      u8 battler_action[MAX_BATTLERS_COUNT];
+      u8 actions_confirmed_count;
+   };
+   struct { // displaydexinfo
+      u8 state;
+      u8 task_id;
+   } displaydexinfo;
+   struct { // yesnobox and friends
+      u8 state;
+      u8 cursor_position;
+   } yesnobox;
+   struct { // miscellaneous
+      u8 multiuse_state;
+      u8 yesnobox_selection; // leftover from yesnobox::cursor_position; checked by scripts
+      u8 evolution_graphics_task_id;
+      u8 current_move_effect;
+      u8 last_actions_confirmed_count; // leftover from HandleTurnActionSelectionState; read by some battle controllers
+      u8 multistring_chooser;
+      u8 miss_type;
+      u8 battle_message_not_yet_waited_on;
+   };
+} gBattleCommunication;
+```
+
+### `MULTIUSE_STATE` (0)
+
+This is used as a latent state variable in the following places. Unless otherwise noted, it's initialized to zero.
+
+| Usage site | Initialized at | Notes |
+| :- | :- | :- |
+| `CB2_PreInitMultiBattle`<br/>`CB2_PreInitIngamePlayerPartnerBattle` | `CB2_InitBattle` |
+| `CB2_HandleStartBattle`<br/>`CB2_HandleStartMultiPartnerBattle`<br/>`CB2_HandleStartMultiBattle` | `CB2_InitBattle` or `CB2_InitBattleInternal` |
+| `BattleIntroGetMonsData` | `BeginBattleIntro` (via `BattleStartClearSetData`) | `BattleStartClearSetData` sets the whole byte array to zero, and then `BeginBattleIntro` sets byte 1 to zero. The `BattleIntroGetMonsData` function uses this as a "run once" bool to know whether it's emitted a battle controller message for the current battler. |
+| `AskRecordBattle` | `CB2_InitAskRecordBattle` |
+| `BattlePalace_TryEscapeStatus` |  | This function is the implementation for the `VARIOUS_PALACE_TRY_ESCAPE_STATUS` script command. |
+| `EndLinkBattleInSteps` | `CB2_InitEndLinkBattle` |
+| `displaydexinfo` | The calling script. | The script command needs to fade the screen for transitions between the battle UI and the Pokedex UI, and wait for the Pokedex UI to be displayed. The UI itself is handled by a separate task (see `TASK_ID`). |
+| `yesnobox`<br/>`yesnoboxlearnmove`<br/>`yesnoboxstoplearningmove`<br/>`trygivecaughtmonnick` | The calling script. | All of these script commands can show yes/no menus, and use `MULTIUSE_STATE` to manage the state of those menus. |
+
+It may appear as though `CB2_PreInitIngamePlayerPartnerBattle` initializes the variable to 2 when setting up `CB2_InitBattleInternal`, but `CB2_InitBattleInternal` never uses the variable and always sets it to zero before proceeding. The more likely explanation is that `CB2_PreInitIngamePlayerPartnerBattle` (which itself uses the variable) sets the variable to a value it won't respond to, possibly as a (completely unnecessary) "just in case" measure.
+
+### `MOVE_EFFECT_BYTE` (3)
+
+"Move effects" are non-damaging effects that a move can have on the user or the target, such as altering stats, inflicting a status condition, curing a status condition, stealing an item, or more. They're defined in the `MOVE_EFFECT_...` macros, and are functionally an enum with the high bits acting as flags.
+
+Move effects are queued by writing them into `gBattleCommunication[MOVE_EFFECT_BYTE]`, and then executing a battle script command. The misleadingly named `seteffectprimary` and `seteffectsecondary` commands execute and then reset the queued move effect, via the (also misleadingly named) `SetMoveEffect` internal helper function. Most move scripts will work this way, but some native code also works this way; for example, status-on-contact abilities like Effect Spore will set the value and then invoke a script that just runs `waitstate; seteffectsecondary; return`.
+
+Set to zero by `MoveValuesCleanUp`, which is called unconditionally by the `movevaluescleanup` script command and conditionally by `moveend`. (During a Double Battle, if you use a multi-target move, the game processes that as if you've used the move multiple times in a single turn, once on each target. The `moveend` script command is what actually triggers the "multiple" uses.)
+
+### `ACTIONS_CONFIRMED_COUNT` (4)
+
+`HandleTurnActionSelectionState` uses this as a local variable, but since it's an entry in `gBattleCommunication`, its value is "left behind" so that other parts of the codebase can read it. Those other parts include `ChooseActionInBattlePalace`, part of the "recorded player" battle controller, which uses it to wait until half of the battlers on the field have confirmed actions before then confirming its own action.
+
+### `MISS_TYPE` (6)
+
+Set to zero by `MoveValuesCleanUp`, which is called unconditionally by the `movevaluescleanup` script command and conditionally by `moveend` (for multi-target moves; `moveend` is what actually handles the process of making a move hit both targets and not just one).
+
 
 
 

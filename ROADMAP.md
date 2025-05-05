@@ -19,11 +19,6 @@
 
 ## Custom Game Options
 
-UI changes:
-
-* Add an optional pointer to `CGOptionMenuItem::values::integral`. When non-null, it should point to a struct which can optionally define a format string *or* override individual numeric values with strings.
-  * Use case: Mirage Island rarity option ("%u / 16", with additional "Always" and "Never" options).
-
 Flow changes:
 
 * Change the flow for starting a new game.
