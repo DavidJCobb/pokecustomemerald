@@ -195,6 +195,7 @@ Add new options:
 ### Items
 * Investigate separating item IDs into per-bag-pocket ID ranges. This is something we'll want a compiler plug-in to do, but it'd allow bitpacking the player's inventory (which is stored per-pocket) within savedata even more tightly.
   * Depending on how far we can take this, it may also enable expanding the list of Poke Balls without needing all ball item IDs to be consecutive. This would make it considerably easier to add Poke Balls. However, that'll depend on things like redoing how the "mon data" for Poke Balls is stored, among other things.
+* Using a Rare Candy on a Lv.100 Pokemon that evolves via level-ups should consume the item and begin an evolution cutscene, unless the Pokemon is holding an Everstone.
 
 ### Overworld
 * Support for dynamic overworld palettes

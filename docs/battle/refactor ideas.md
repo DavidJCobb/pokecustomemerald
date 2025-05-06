@@ -127,8 +127,8 @@ struct BattleStruct {
          BattlerID focus_punch_current_battler; // formerly BattleStruct::focusPunchBattlerId
       } CheckFocusPunch_ClearVarsBeforeTurnStarts;
       struct {
-         u8 current_effect;  // formerly BattleStruct::turnEffectsTracker
-         u8 current_battler; // formerly BattleStruct::turnEffectsBattlerId
+         u8        current_effect;  // formerly BattleStruct::turnEffectsTracker
+         BattlerID current_battler; // formerly BattleStruct::turnEffectsBattlerId
       } DoBattlerEndTurnEffects;
       struct {
          u8 current_battlefield_side; // formerly BattleStruct::turnSideTracker
@@ -185,13 +185,16 @@ struct BattleStruct {
             u8  possible_recipients; // formerly BattleStruct::sentInPokes. one bit per party slot.
             u16 total_exp;           // formerly BattleStruct::expValue
          } getexp;
+         struct {
+            u8 nickname[POKEMON_NAME_LENGTH + 1]; // formerly BattleStruct::caughtMonNick
+         } trygivecaughtmonnick;
       } script_commands;
       struct { // BattleStruct::latent_state::controllers
          struct {
             struct {
                u8        ability_preventing_switchout; // formerly BattleStruct::abilityPreventingSwitchout
                BattlerID battler_preventing_switchout; // formerly BattleStruct::battlerPreventingSwitchout
-               u8 previous_selected_party_slot; // formerly BattleStruct::prevSelectedPartySlot
+               u8        previous_selected_party_slot; // formerly BattleStruct::prevSelectedPartySlot
             } party_menu_state;
          } player;
          struct {
@@ -245,7 +248,6 @@ struct BattleStruct {
    u8 moneyMultiplier;
    u8 battlerPartyOrders[MAX_BATTLERS_COUNT][PARTY_SIZE / 2];
    u8 runTries;
-   u8 caughtMonNick[POKEMON_NAME_LENGTH + 1];
    u8 stringMoveType;
    u8 absentBattlerFlags;
    u8 palaceFlags; // First 4 bits are "is <= 50% HP and not asleep" for each battler, last 4 bits are selected moves to pass to AI
@@ -336,30 +338,104 @@ extern struct BattlerStateNonHeap gBattlerStates[MAX_BATTLERS_COUNT];
 // NOTE: The members of this struct have hard-coded offsets
 //       in include/constants/battle_script_commands.h
 struct BattleScripting {
-   s32   painSplitHp;
-   s32   bideDmg;
-   u8    multihitString[6];
-   u8    dmgMultiplier;
-   u8    twoTurnsMoveStringId;
-   u8    animArg1;
-   u8    animArg2;
-   u16   tripleKickPower;
-   u8    moveendState;
-   u8    battlerWithAbility;
-   u8    multihitMoveEffect;
-   u8    battler;
-   u8    animTurn;
-   u8    animTargetsHit;
-   u8    statChanger;
-   bool8 statAnimPlayed;
-   u8    getexpState;
-   u8    battleStyle;
-   u8    drawlvlupboxState;
-   u8    learnMoveState;
-   u8    pursuitDoublesAttacker;
-   u8    levelUpHP;
-   u8    specialTrainerBattleType;
+   // Battle configuration and state which needs to be easily visible to scripts.
+   u8 battle_style;
+   u8 special_trainer_battle_type; // OW scripts need to be able to set this before a battle starts
+   
+   // State set by native code when invoking a script, and forwarded by that script to 
+   // other places.
+   u8 animation_args[2]; // formerly animArg1 and animArg2
+   
+   // Latent state for script commands. Often initialized by 
+   // battle scripts before invoking those commands (directly 
+   // or indirectly).
+   struct {
+      struct {
+         u8 current_turn; // formerly animTurn
+         u8 targets_hit;  // formerly animTargetsHit
+      } attackanimation; // also tampered with by removelightscreenreflect
+      struct {
+         u8 state; // formerly drawlvlupboxState
+      } drawlvlupbox;
+      struct {
+         u8 state; // formerly getexpState
+      } getexp;
+      struct {
+         u8 state; // formerly moveendState
+      } moveend;
+      struct {
+         bool8 already_played; // formerly statAnimPlayed // init'd by scripts
+      } playstatchangeanimation;
+      struct {
+         u8 state; // formerly learnMoveState
+      } yesnoboxlearnmove_or_cancel;
+   } script_command_latent_state;
+   
+   u8 current_stat_change; // formerly statChanger // set by scripts; read by several script commands
+   
+   struct {
+      s32 pain_split_hp;      // scratch variable for scripts
+      s32 queued_bide_damage;
+      u16 triple_kick_power;  // scratch variable for scripts
+      
+      // Used by BattleScript_MultiHitLoop, with the intention that it be initialized 
+      // (by scripts that jump there) to whatever move effect a multi-hit move should 
+      // have. The loop is shared by many moves that have a variable number of hits.
+      u8 current_multi_hit_effect; // formerly multihitMoveEffect
+      
+      // Used by BattleScriptFirstChargingTurn, with the intention that it be initial-
+      // ized (by scripts that jump there) to whatever multi-string index a two-turn 
+      // charging move should use to print the charge-up message.
+      u8 two_turn_move_charging_string_index; // formerly twoTurnsMoveStringId
+      
+      // A buffer used to store the stringified hit count. The `initmultihitstring` 
+      // script command generates the text, and then scripts eventually copy the 
+      // string data to gBattleTextBuff1. The hit count is only available at the 
+      // start of multi-hit processing, but is only displayed at the end, so buffering 
+      // the text here at the start will guarantee that it doesn't get clobbered if 
+      // anything else buffers to gBattleTextBuff1... but it doesn't look like anything 
+      // ever actually *would* buffer there, so theoretically, we don't actually need 
+      // to keep this buffer. We should look into removing it.
+      u8 multi_hit_count_string[6]; // formerly multihitString
+   } move_state;
+   
+   struct {
+      BattlerID battler_with_ability; // set by jumpifability
+      
+      union { // formerly gBattleCommunication[0]
+         bool8 is_battler_fainted;              // VARIOUS_GET_BATTLER_FAINTED
+         bool8 is_running_impossible;           // VARIOUS_IS_RUNNING_IMPOSSIBLE
+         bool8 should_print_palace_flavor_text; // VARIOUS_PALACE_FLAVOR_TEXT
+      };
+   } script_command_results;
+   
+   
+   
+   
+   u8 damage_multiplier; // formerly dmgMultiplier
+   
+   u8 battler;
+   
+   // TODO: This isn't even battle state. It's set during the common function that 
+   // handles all level-ups (including in battles), but it's only used when processing 
+   // item effects that heal level-up HP. Specifically, Rare Candies are flagged as not 
+   // only increasing a Pokemon's level, but also healing an amount of HP by which the 
+   // Pokemon's max HP has increased. You can't use Rare Candies outside of battle.
+   //
+   // We should move this state somewhere else, but finding a better home for it would 
+   // require digging into the global state related to item usage.
+   u8 levelUpHP;
+   
+   // Additions:
+   u8 current_move_effect; // formerly gBattleCommuncation[MOVE_EFFECT_BYTE]
 };
+/*
+   Naming conventions changed to snake-case for consistency with the above 
+   refactor. Fields reordered by category.
+   
+   We can also remove `pursuitDoublesAttacker` and the unused `pursuitdoubles` 
+   script command, its only user.
+*/
 ```
 
 
