@@ -428,7 +428,7 @@ struct BattleScripting {
    
    // Additions:
    u8 current_move_effect; // formerly gBattleCommuncation[MOVE_EFFECT_BYTE]
-};
+} gBattleScripting;
 /*
    Naming conventions changed to snake-case for consistency with the above 
    refactor. Fields reordered by category.
@@ -436,6 +436,17 @@ struct BattleScripting {
    We can also remove `pursuitDoublesAttacker` and the unused `pursuitdoubles` 
    script command, its only user.
 */
+
+struct BattleCurrentTurn {
+   struct {
+      u8        actions[MAX_BATTLER_COUNT];  // replaces gActionsByTurnOrder
+      BattlerID battlers[MAX_BATTLER_COUNT]; // replaces gBattlersByTurnOrder
+   } turn_order;
+   struct {
+      u8 current_turn_action;    // replaces gCurrentTurnActionNumber
+      u8 current_action_func_id; // replaces gCurrentActionFuncId
+   } action_exec_latent_state;
+} gCurrentTurn;
 ```
 
 
