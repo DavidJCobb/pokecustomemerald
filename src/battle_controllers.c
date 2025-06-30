@@ -1122,7 +1122,7 @@ void BtlController_EmitMoveAnimation(u8 bufferId, u16 move, u8 turnOfMove, u16 m
     sBattleBuffersTransferData[8] = (dmg & 0x00FF0000) >> 16;
     sBattleBuffersTransferData[9] = (dmg & 0xFF000000) >> 24;
     sBattleBuffersTransferData[10] = friendship;
-    sBattleBuffersTransferData[11] = multihit;
+    sBattleBuffersTransferData[11] = multihit & 0x7F;
     if (WEATHER_HAS_EFFECT2)
     {
         sBattleBuffersTransferData[12] = gBattleWeather;
@@ -1586,4 +1586,35 @@ void BtlController_EmitEndLinkBattle(u8 bufferId, u8 battleOutcome)
     sBattleBuffersTransferData[3] = gSaveBlock2Ptr->frontier.disableRecordBattle;
     sBattleBuffersTransferData[5] = sBattleBuffersTransferData[4] = RecordedBattle_BufferNewBattlerData(&sBattleBuffersTransferData[6]);
     PrepareBufferDataTransfer(bufferId, sBattleBuffersTransferData, sBattleBuffersTransferData[4] + 6);
+}
+
+void BtlController_EmitAttackStringAndAnimation(u8 bufferId, u16 move, u8 turnOfMove, u16 movePower, s32 dmg, u8 friendship, struct DisableStruct *disableStructPtr, u8 multihit)
+{
+    sBattleBuffersTransferData[0] = CONTROLLER_MOVEANIMATION;
+    sBattleBuffersTransferData[1] = move;
+    sBattleBuffersTransferData[2] = (move & 0xFF00) >> 8;
+    sBattleBuffersTransferData[3] = turnOfMove;
+    sBattleBuffersTransferData[4] = movePower;
+    sBattleBuffersTransferData[5] = (movePower & 0xFF00) >> 8;
+    sBattleBuffersTransferData[6] = dmg;
+    sBattleBuffersTransferData[7] = (dmg & 0x0000FF00) >> 8;
+    sBattleBuffersTransferData[8] = (dmg & 0x00FF0000) >> 16;
+    sBattleBuffersTransferData[9] = (dmg & 0xFF000000) >> 24;
+    sBattleBuffersTransferData[10] = friendship;
+    sBattleBuffersTransferData[11] = multihit & 0x7F;
+    sBattleBuffersTransferData[11] |= (1 << 7); // "also play attack string" flag
+    if (WEATHER_HAS_EFFECT2)
+    {
+        sBattleBuffersTransferData[12] = gBattleWeather;
+        sBattleBuffersTransferData[13] = (gBattleWeather & 0xFF00) >> 8;
+    }
+    else
+    {
+        sBattleBuffersTransferData[12] = 0;
+        sBattleBuffersTransferData[13] = 0;
+    }
+    sBattleBuffersTransferData[14] = 0;
+    sBattleBuffersTransferData[15] = 0;
+    memcpy(&sBattleBuffersTransferData[16], disableStructPtr, sizeof(struct DisableStruct));
+    PrepareBufferDataTransfer(bufferId, sBattleBuffersTransferData, 16 + sizeof(struct DisableStruct));
 }

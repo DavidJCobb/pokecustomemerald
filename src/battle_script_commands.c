@@ -582,7 +582,8 @@ void (*const gBattleScriptingCommandsTable[])(void) =
     Cmd_finishaction,                            //0xF6
     Cmd_finishturn,                              //0xF7
     Cmd_trainerslideout,                         //0xF8
-    Cmd_lu_extensions                            //0xF9 // EXTENSION
+    Cmd_lu_extensions,                           //0xF9 // EXTENSION
+    Cmd_attackstringandanimation,                //0xFA // EXTENSION
 };
 
 struct StatFractions
@@ -10477,4 +10478,76 @@ static void Cmd_lu_extensions(void) {
          }
          return;
    }
+}
+
+static void Cmd_attackstringandanimation(void) {
+   if (gBattleControllerExecFlags)
+      return;
+   
+   bool should_play_message = TRUE;
+   if (gHitMarker & (HITMARKER_NO_ATTACKSTRING | HITMARKER_ATTACKSTRING_PRINTED)) {
+      should_play_message = FALSE;
+   }
+   
+
+   if ((gHitMarker & HITMARKER_NO_ANIMATIONS) && (gCurrentMove != MOVE_TRANSFORM && gCurrentMove != MOVE_SUBSTITUTE)) {
+      if (should_play_message) {
+         PrepareStringBattle(STRINGID_USEDMOVE, gBattlerAttacker);
+         gHitMarker |= HITMARKER_ATTACKSTRING_PRINTED;
+      }
+      BattleScriptPush(gBattlescriptCurrInstr + 1);
+      gBattlescriptCurrInstr = BattleScript_Pausex20;
+      gBattleScripting.animTurn++;
+      gBattleScripting.animTargetsHit++;
+      return;
+   }
+   if (
+      (gBattleMoves[gCurrentMove].target & (MOVE_TARGET_BOTH | MOVE_TARGET_FOES_AND_ALLY | MOVE_TARGET_DEPENDS))
+      && gBattleScripting.animTargetsHit
+   ) {
+      if (should_play_message) {
+         PrepareStringBattle(STRINGID_USEDMOVE, gBattlerAttacker);
+         gHitMarker |= HITMARKER_ATTACKSTRING_PRINTED;
+      }
+      gBattlescriptCurrInstr++;
+      return;
+   }
+   if (gMoveResultFlags & MOVE_RESULT_NO_EFFECT) {
+      if (should_play_message) {
+         PrepareStringBattle(STRINGID_USEDMOVE, gBattlerAttacker);
+         gHitMarker |= HITMARKER_ATTACKSTRING_PRINTED;
+      }
+      BattleScriptPush(gBattlescriptCurrInstr + 1);
+      gBattlescriptCurrInstr = BattleScript_Pausex20;
+      return;
+   }
+
+   //
+   // The animation can play successfully.
+   //
+
+   gActiveBattler = gBattlerAttacker;
+
+   u8 multihit;
+   if (gBattleMons[gBattlerTarget].status2 & STATUS2_SUBSTITUTE) {
+      multihit = gMultiHitCounter;
+   } else if (gMultiHitCounter != 0 && gMultiHitCounter != 1) {
+      if (gBattleMons[gBattlerTarget].hp <= gBattleMoveDamage)
+         multihit = 1;
+      else
+         multihit = gMultiHitCounter;
+   } else {
+      multihit = gMultiHitCounter;
+   }
+   if (should_play_message) {
+      BtlController_EmitAttackStringAndAnimation(B_COMM_TO_CONTROLLER, gCurrentMove, gBattleScripting.animTurn, gBattleMovePower, gBattleMoveDamage, gBattleMons[gBattlerAttacker].friendship, &gDisableStructs[gBattlerAttacker], multihit);
+      gHitMarker |= HITMARKER_ATTACKSTRING_PRINTED;
+   } else {
+      BtlController_EmitMoveAnimation(B_COMM_TO_CONTROLLER, gCurrentMove, gBattleScripting.animTurn, gBattleMovePower, gBattleMoveDamage, gBattleMons[gBattlerAttacker].friendship, &gDisableStructs[gBattlerAttacker], multihit);
+   }
+
+   gBattleScripting.animTurn++;
+   gBattleScripting.animTargetsHit++;
+   MarkBattlerForControllerExec(gBattlerAttacker);
+   gBattlescriptCurrInstr++;
 }

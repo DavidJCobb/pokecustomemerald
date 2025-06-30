@@ -243,7 +243,7 @@ BattleScript_HitFromAtkCanceler::
 BattleScript_HitFromAccCheck::
 	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE
 BattleScript_HitFromAtkString::
-	attackstring
+	@attackstring
 	ppreduce
 BattleScript_HitFromCritCalc::
 	critcalc
@@ -251,7 +251,8 @@ BattleScript_HitFromCritCalc::
 	typecalc
 	adjustnormaldamage
 BattleScript_HitFromAtkAnimation::
-	attackanimation
+	@attackanimation
+   attackstringandanimation @ ADDED
 	waitanimation
 	effectivenesssound
 	hitanimation BS_TARGET

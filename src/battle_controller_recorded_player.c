@@ -164,6 +164,7 @@ static void RecordedPlayerDummy(void)
 void SetControllerToRecordedPlayer(void)
 {
     gBattlerControllerFuncs[gActiveBattler] = RecordedPlayerBufferRunCommand;
+    BtlController_CommonStartupBehavior();
 }
 
 static void RecordedPlayerBufferRunCommand(void)
@@ -445,20 +446,9 @@ static void SwitchIn_TryShinyAnim(void)
     }
 }
 
-static void RecordedPlayerBufferExecCompleted(void)
-{
-    gBattlerControllerFuncs[gActiveBattler] = RecordedPlayerBufferRunCommand;
-    if (gBattleTypeFlags & BATTLE_TYPE_LINK)
-    {
-        u8 playerId = GetMultiplayerId();
-
-        PrepareBufferDataTransferLink(B_COMM_CONTROLLER_IS_DONE, 4, &playerId);
-        gBattleBufferA[gActiveBattler][0] = CONTROLLER_TERMINATOR_NOP;
-    }
-    else
-    {
-        gBattleControllerExecFlags &= ~gBitTable[gActiveBattler];
-    }
+static void RecordedPlayerBufferExecCompleted(void) {
+   gBattlerControllerFuncs[gActiveBattler] = RecordedPlayerBufferRunCommand;
+   BtlController_CommonCompletionBehavior();
 }
 
 static void RecordedPlayerHandleGetMonData(void)

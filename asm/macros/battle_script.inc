@@ -1446,3 +1446,7 @@
    .byte  \comparand
 	.4byte \jumpptr
    .endm
+
+	.macro attackstringandanimation
+	.byte 0xFA
+	.endm

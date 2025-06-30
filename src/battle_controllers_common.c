@@ -8,12 +8,14 @@
 #include "battle_message.h" // BattlePutTextOnWindow, BufferStringBattle
 #include "constants/battle_anim.h"
 
+#define CURRENT_LATENT_STATE gBattleStruct->battleControllerLatentState[gActiveBattler]
+
 static u32 ExtractStateDword(u8 index) {
-   u16* first = gBattleStruct->battleControllerLatentState[gActiveBattler][index];
+   u16* first = CURRENT_LATENT_STATE[index];
    return (u32)first[0] | (u32)first[1];
 }
 static void StoreStateDword(u8 index, u32 dword) {
-   u16* first = gBattleStruct->battleControllerLatentState[gActiveBattler][index];
+   u16* first = CURRENT_LATENT_STATE[index];
    first[0] = (u16)dword;
    first[1] = (u16)(dword >> 16);
 }
@@ -35,6 +37,33 @@ static void BtlController_CompleteOnInactiveTextPrinter(void) {
       return;
    SendControllerCompletionFunc on_complete = (SendControllerCompletionFunc)ExtractStateDword(0);
    on_complete();
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+//    PUBLIC HELPERS
+// ---------------------------------------------------------------------------------------------------------------
+
+extern void BtlController_CommonStartupBehavior(void) {
+   //
+   // Clear latent state, so we can use it to hold latent task phase enums and 
+   // not just callbacks and such.
+   //
+   memset(CURRENT_LATENT_STATE, 0, sizeof(CURRENT_LATENT_STATE));
+}
+extern void BtlController_CommonCompletionBehavior(void) {
+   if (gBattleTypeFlags & BATTLE_TYPE_LINK) {
+      u8 playerId = GetMultiplayerId();
+
+      PrepareBufferDataTransferLink(B_COMM_CONTROLLER_IS_DONE, 4, &playerId);
+      gBattleBufferA[gActiveBattler][0] = CONTROLLER_TERMINATOR_NOP;
+   } else {
+      gBattleControllerExecFlags &= ~gBitTable[gActiveBattler];
+   }
+   //
+   // Clear latent state, so we can use it to hold latent task phase enums and 
+   // not just callbacks and such.
+   //
+   memset(CURRENT_LATENT_STATE, 0, sizeof(CURRENT_LATENT_STATE));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -92,10 +121,16 @@ extern void BtlController_HandleReturnMonToBall(SendControllerCompletionFunc on_
    gBattlerControllerFuncs[gActiveBattler] = DoSwitchOutAnimation;
 }
 
-// Latent handler for BtlController_HandleMoveAnimation
-static void BtlController_DoMoveAnimation(void) {
+#define lAttackStringState CURRENT_LATENT_STATE[4]
+enum {
+   ATTACKSTRINGSTATE_UNCHECKED = 0,
+   ATTACKSTRINGSTATE_CHECKED,
+   ATTACKSTRINGSTATE_PRINTED,
+};
+// Latent handlers for BtlController_HandleMoveAnimation
+static void DoMoveAnimation(void) {
    u16 move     = gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8);
-   u8  multihit = gBattleBufferA[gActiveBattler][11];
+   u8  multihit = gBattleBufferA[gActiveBattler][11] & 0x7F;
 
    switch (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState) {
       case 0:
@@ -131,15 +166,33 @@ static void BtlController_DoMoveAnimation(void) {
             CopyAllBattleSpritesInvisibilities();
             TrySetBehindSubstituteSpriteBit(gActiveBattler, gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8));
             gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 0;
-            {
+            if (lAttackStringState == ATTACKSTRINGSTATE_PRINTED) {
+               gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 4;
+            } else {
                SendControllerCompletionFunc on_complete = (SendControllerCompletionFunc)ExtractStateDword(0);
                on_complete();
             }
          }
          break;
+      case 4:
+         BtlController_CompleteOnInactiveTextPrinter();
+         break;
    }
 }
 extern bool BtlController_HandleMoveAnimation(SendControllerCompletionFunc on_complete) {
+   if (lAttackStringState == ATTACKSTRINGSTATE_UNCHECKED) {
+      lAttackStringState = ATTACKSTRINGSTATE_CHECKED;
+      bool wants_attack_string = (gBattleBufferA[gActiveBattler][11] >> 7) != 0;
+      if (wants_attack_string) {
+         gBattle_BG0_X = 0;
+         gBattle_BG0_Y = 0;
+         BufferStringBattle(STRINGID_USEDMOVE);
+         BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MSG);
+         BattleArena_DeductSkillPoints(gActiveBattler, STRINGID_USEDMOVE);
+         lAttackStringState = ATTACKSTRINGSTATE_PRINTED;
+      }
+   }
+   
    if (!IsBattleSEPlaying(gActiveBattler)) {
       u16 move = gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8);
 
@@ -157,11 +210,12 @@ extern bool BtlController_HandleMoveAnimation(SendControllerCompletionFunc on_co
       
       StoreStateDword(0, (u32)on_complete);
       gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 0;
-      gBattlerControllerFuncs[gActiveBattler] = BtlController_DoMoveAnimation;
+      gBattlerControllerFuncs[gActiveBattler] = DoMoveAnimation;
       return true;
    }
    return false;
 }
+#undef lAttackStringState
 
 extern void BtlController_HandlePrintString(SendControllerCompletionFunc on_complete) {
    u16* stringId = (u16*)(&gBattleBufferA[gActiveBattler][2]);
@@ -214,7 +268,7 @@ static void CompleteOnFinishedStatusAnimation(void) {
    }
 }
 extern void BtlController_HandleStatusIconUpdate(SendControllerCompletionFunc on_complete) {
-   if (IsBattleSEPlaying(gActiveBattler)))
+   if (IsBattleSEPlaying(gActiveBattler))
       return;
    
    UpdateHealthboxAttribute(gHealthboxSpriteIds[gActiveBattler], GetActiveBattlerPokemonData(), HEALTHBOX_STATUS_ICON);
@@ -224,7 +278,7 @@ extern void BtlController_HandleStatusIconUpdate(SendControllerCompletionFunc on
    gBattlerControllerFuncs[gActiveBattler] = CompleteOnFinishedStatusAnimation;
 }
 extern void BtlController_HandleStatusAnimation(SendControllerCompletionFunc on_complete) {
-   if (IsBattleSEPlaying(gActiveBattler)))
+   if (IsBattleSEPlaying(gActiveBattler))
       return;
    
    InitAndLaunchChosenStatusAnimation(

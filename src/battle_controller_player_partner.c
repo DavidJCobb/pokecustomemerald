@@ -179,6 +179,7 @@ static void PlayerPartnerDummy(void)
 void SetControllerToPlayerPartner(void)
 {
     gBattlerControllerFuncs[gActiveBattler] = PlayerPartnerBufferRunCommand;
+    BtlController_CommonStartupBehavior();
 }
 
 static void PlayerPartnerBufferRunCommand(void)
@@ -530,20 +531,9 @@ static void SwitchIn_TryShinyAnim(void)
     }
 }
 
-static void PlayerPartnerBufferExecCompleted(void)
-{
-    gBattlerControllerFuncs[gActiveBattler] = PlayerPartnerBufferRunCommand;
-    if (gBattleTypeFlags & BATTLE_TYPE_LINK)
-    {
-        u8 playerId = GetMultiplayerId();
-
-        PrepareBufferDataTransferLink(B_COMM_CONTROLLER_IS_DONE, 4, &playerId);
-        gBattleBufferA[gActiveBattler][0] = CONTROLLER_TERMINATOR_NOP;
-    }
-    else
-    {
-        gBattleControllerExecFlags &= ~gBitTable[gActiveBattler];
-    }
+static void PlayerPartnerBufferExecCompleted(void) {
+   gBattlerControllerFuncs[gActiveBattler] = PlayerPartnerBufferRunCommand;
+   BtlController_CommonCompletionBehavior();
 }
 
 static void PlayerPartnerHandleGetMonData(void)

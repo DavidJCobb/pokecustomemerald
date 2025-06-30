@@ -3,6 +3,11 @@
 
 typedef void(*)() SendControllerCompletionFunc;
 
+extern void BtlController_CommonStartupBehavior(void);
+extern void BtlController_CommonCompletionBehavior(void);
+
+// -----------------------------------------------------------------------------
+
 extern void BtlController_HandleReturnMonToBall(SendControllerCompletionFunc);
 
 // Returns true if an animation begins playing. Some controllers, such 

@@ -157,6 +157,7 @@ static void UNUSED SpriteCB_Null4(void)
 void SetControllerToSafari(void)
 {
     gBattlerControllerFuncs[gActiveBattler] = SafariBufferRunCommand;
+    BtlController_CommonStartupBehavior();
 }
 
 static void SafariBufferRunCommand(void)
@@ -282,20 +283,9 @@ static void CompleteWhenChosePokeblock(void)
     }
 }
 
-static void SafariBufferExecCompleted(void)
-{
-    gBattlerControllerFuncs[gActiveBattler] = SafariBufferRunCommand;
-    if (gBattleTypeFlags & BATTLE_TYPE_LINK)
-    {
-        u8 playerId = GetMultiplayerId();
-
-        PrepareBufferDataTransferLink(B_COMM_CONTROLLER_IS_DONE, 4, &playerId);
-        gBattleBufferA[gActiveBattler][0] = CONTROLLER_TERMINATOR_NOP;
-    }
-    else
-    {
-        gBattleControllerExecFlags &= ~gBitTable[gActiveBattler];
-    }
+static void SafariBufferExecCompleted(void) {
+   gBattlerControllerFuncs[gActiveBattler] = SafariBufferRunCommand;
+   BtlController_CommonCompletionBehavior();
 }
 
 static void UNUSED CompleteOnFinishedStatusAnimation(void)
