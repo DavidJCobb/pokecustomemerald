@@ -25,6 +25,8 @@
 #include "constants/songs.h"
 #include "constants/rgb.h"
 
+#include "battle_controllers_common.h"
+
 static void SafariHandleGetMonData(void);
 static void SafariHandleGetRawMonData(void);
 static void SafariHandleSetMonData(void);
@@ -239,12 +241,6 @@ static void CompleteOnBattlerSpriteCallbackDummy(void)
         SafariBufferExecCompleted();
 }
 
-static void CompleteOnInactiveTextPrinter(void)
-{
-    if (!IsTextPrinterActive(B_WIN_MSG))
-        SafariBufferExecCompleted();
-}
-
 static void CompleteOnHealthboxSpriteCallbackDummy(void)
 {
     if (gSprites[gHealthboxSpriteIds[gActiveBattler]].callback == SpriteCallbackDummy)
@@ -284,12 +280,6 @@ static void CompleteWhenChosePokeblock(void)
         BtlController_EmitOneReturnValue(B_COMM_TO_ENGINE, gSpecialVar_ItemId);
         SafariBufferExecCompleted();
     }
-}
-
-static void CompleteOnFinishedBattleAnimation(void)
-{
-    if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animFromTableActive)
-        SafariBufferExecCompleted();
 }
 
 static void SafariBufferExecCompleted(void)
@@ -417,16 +407,8 @@ static void SafariHandleMoveAnimation(void)
     SafariBufferExecCompleted();
 }
 
-static void SafariHandlePrintString(void)
-{
-    u16 *stringId;
-
-    gBattle_BG0_X = 0;
-    gBattle_BG0_Y = 0;
-    stringId = (u16 *)(&gBattleBufferA[gActiveBattler][2]);
-    BufferStringBattle(*stringId);
-    BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MSG);
-    gBattlerControllerFuncs[gActiveBattler] = CompleteOnInactiveTextPrinter;
+static void SafariHandlePrintString(void) {
+   BtlController_HandlePrintString(SafariBufferExecCompleted);
 }
 
 static void SafariHandlePrintSelectionString(void)
@@ -585,47 +567,24 @@ static void SafariHandleCantSwitch(void)
     SafariBufferExecCompleted();
 }
 
-static void SafariHandlePlaySE(void)
-{
-    s8 pan;
-
-    if (GetBattlerSide(gActiveBattler) == B_SIDE_PLAYER)
-        pan = SOUND_PAN_ATTACKER;
-    else
-        pan = SOUND_PAN_TARGET;
-
-    PlaySE12WithPanning(gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8), pan);
-    SafariBufferExecCompleted();
+static void SafariHandlePlaySE(void) {
+   BtlController_HandlePlaySE();
+   SafariBufferExecCompleted();
 }
 
-static void SafariHandlePlayFanfareOrBGM(void)
-{
-    if (gBattleBufferA[gActiveBattler][3])
-    {
-        BattleStopLowHpSound();
-        PlayBGM(gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8));
-    }
-    else
-    {
-        PlayFanfare(gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8));
-    }
-
-    SafariBufferExecCompleted();
+static void SafariHandlePlayFanfareOrBGM(void) {
+   BtlController_HandlePlayFanfareOrBGM();
+   SafariBufferExecCompleted();
 }
 
-static void SafariHandleFaintingCry(void)
-{
-    u16 species = GetMonData(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], MON_DATA_SPECIES);
-
-    PlayCry_Normal(species, 25);
-    SafariBufferExecCompleted();
+static void SafariHandleFaintingCry(void) {
+   BtlController_HandleFaintingCry();
+   SafariBufferExecCompleted();
 }
 
-static void SafariHandleIntroSlide(void)
-{
-    HandleIntroSlide(gBattleBufferA[gActiveBattler][1]);
-    gIntroSlideFlags |= 1;
-    SafariBufferExecCompleted();
+static void SafariHandleIntroSlide(void) {
+   BtlController_HandleIntroSlide();
+   SafariBufferExecCompleted();
 }
 
 static void SafariHandleIntroTrainerBallThrow(void)
@@ -656,15 +615,8 @@ static void SafariHandleSpriteInvisibility(void)
     SafariBufferExecCompleted();
 }
 
-static void SafariHandleBattleAnimation(void)
-{
-    u8 animationId = gBattleBufferA[gActiveBattler][1];
-    u16 argument = gBattleBufferA[gActiveBattler][2] | (gBattleBufferA[gActiveBattler][3] << 8);
-
-    if (TryHandleLaunchBattleTableAnimation(gActiveBattler, gActiveBattler, gActiveBattler, animationId, argument))
-        SafariBufferExecCompleted();
-    else
-        gBattlerControllerFuncs[gActiveBattler] = CompleteOnFinishedBattleAnimation;
+static void SafariHandleBattleAnimation(void) {
+   BtlController_HandleBattleAnimation(RecordedPlayerBufferExecCompleted, FALSE);
 }
 
 static void SafariHandleLinkStandbyMsg(void)

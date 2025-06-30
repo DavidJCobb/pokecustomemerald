@@ -26,6 +26,8 @@
 #include "constants/battle_intro.h"
 #include "constants/songs.h"
 
+#include "battle_controllers_common.h"
+
 static void RecordedPlayerHandleGetMonData(void);
 static void RecordedPlayerHandleGetRawMonData(void);
 static void RecordedPlayerHandleSetMonData(void);
@@ -90,7 +92,6 @@ static void SwitchIn_WaitAndEnd(void);
 static u32 CopyRecordedPlayerMonData(u8 monId, u8 *dst);
 static void SetRecordedPlayerMonData(u8 monId);
 static void StartSendOutAnim(u8 battler, bool8 dontClearSubstituteBit);
-static void DoSwitchOutAnimation(void);
 static void RecordedPlayerDoMoveAnimation(void);
 static void Task_StartSendOutAnim(u8 taskId);
 static void EndDrawPartyStatusSummary(void);
@@ -386,31 +387,6 @@ static void FreeMonSpriteAfterSwitchOutAnim(void)
     }
 }
 
-static void CompleteOnInactiveTextPrinter(void)
-{
-    if (!IsTextPrinterActive(B_WIN_MSG))
-        RecordedPlayerBufferExecCompleted();
-}
-
-static void DoHitAnimBlinkSpriteEffect(void)
-{
-    u8 spriteId = gBattlerSpriteIds[gActiveBattler];
-
-    if (gSprites[spriteId].data[1] == 32)
-    {
-        gSprites[spriteId].data[1] = 0;
-        gSprites[spriteId].invisible = FALSE;
-        gDoingBattleAnim = FALSE;
-        RecordedPlayerBufferExecCompleted();
-    }
-    else
-    {
-        if ((gSprites[spriteId].data[1] % 4) == 0)
-            gSprites[spriteId].invisible ^= 1;
-        gSprites[spriteId].data[1]++;
-    }
-}
-
 static void SwitchIn_ShowSubstitute(void)
 {
     if (gSprites[gHealthboxSpriteIds[gActiveBattler]].callback == SpriteCallbackDummy)
@@ -483,18 +459,6 @@ static void RecordedPlayerBufferExecCompleted(void)
     {
         gBattleControllerExecFlags &= ~gBitTable[gActiveBattler];
     }
-}
-
-static void CompleteOnFinishedStatusAnimation(void)
-{
-    if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].statusAnimActive)
-        RecordedPlayerBufferExecCompleted();
-}
-
-static void CompleteOnFinishedBattleAnimation(void)
-{
-    if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animFromTableActive)
-        RecordedPlayerBufferExecCompleted();
 }
 
 static void RecordedPlayerHandleGetMonData(void)
@@ -1143,41 +1107,8 @@ static void StartSendOutAnim(u8 battler, bool8 dontClearSubstituteBit)
     gSprites[gBattleControllerData[battler]].data[0] = DoPokeballSendOutAnimation(0, POKEBALL_PLAYER_SENDOUT);
 }
 
-static void RecordedPlayerHandleReturnMonToBall(void)
-{
-    if (gBattleBufferA[gActiveBattler][1] == 0)
-    {
-        gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 0;
-        gBattlerControllerFuncs[gActiveBattler] = DoSwitchOutAnimation;
-    }
-    else
-    {
-        FreeSpriteOamMatrix(&gSprites[gBattlerSpriteIds[gActiveBattler]]);
-        DestroySprite(&gSprites[gBattlerSpriteIds[gActiveBattler]]);
-        SetHealthboxSpriteInvisible(gHealthboxSpriteIds[gActiveBattler]);
-        RecordedPlayerBufferExecCompleted();
-    }
-}
-
-static void DoSwitchOutAnimation(void)
-{
-    switch (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState)
-    {
-    case 0:
-        if (gBattleSpritesDataPtr->battlerData[gActiveBattler].behindSubstitute)
-            InitAndLaunchSpecialAnimation(gActiveBattler, gActiveBattler, gActiveBattler, B_ANIM_SUBSTITUTE_TO_MON);
-
-        gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 1;
-        break;
-    case 1:
-        if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].specialAnimActive)
-        {
-            gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 0;
-            InitAndLaunchSpecialAnimation(gActiveBattler, gActiveBattler, gActiveBattler, B_ANIM_SWITCH_OUT_PLAYER_MON);
-            gBattlerControllerFuncs[gActiveBattler] = FreeMonSpriteAfterSwitchOutAnim;
-        }
-        break;
-    }
+static void RecordedPlayerHandleReturnMonToBall(void) {
+   BtlController_HandleReturnMonToBall(RecordedPlayerBufferExecCompleted);
 }
 
 #define sSpeedX data[0]
@@ -1320,90 +1251,12 @@ static void RecordedPlayerHandlePause(void)
     RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandleMoveAnimation(void)
-{
-    if (!IsBattleSEPlaying(gActiveBattler))
-    {
-        u16 move = gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8);
-
-        gAnimMoveTurn = gBattleBufferA[gActiveBattler][3];
-        gAnimMovePower = gBattleBufferA[gActiveBattler][4] | (gBattleBufferA[gActiveBattler][5] << 8);
-        gAnimMoveDmg = gBattleBufferA[gActiveBattler][6] | (gBattleBufferA[gActiveBattler][7] << 8) | (gBattleBufferA[gActiveBattler][8] << 16) | (gBattleBufferA[gActiveBattler][9] << 24);
-        gAnimFriendship = gBattleBufferA[gActiveBattler][10];
-        gWeatherMoveAnim = gBattleBufferA[gActiveBattler][12] | (gBattleBufferA[gActiveBattler][13] << 8);
-        gAnimDisableStructPtr = (struct DisableStruct *)&gBattleBufferA[gActiveBattler][16];
-        gTransformedPersonalities[gActiveBattler] = gAnimDisableStructPtr->transformedMonPersonality;
-        if (IsMoveWithoutAnimation(move, gAnimMoveTurn)) // always returns FALSE
-        {
-            RecordedPlayerBufferExecCompleted();
-        }
-        else
-        {
-            gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 0;
-            gBattlerControllerFuncs[gActiveBattler] = RecordedPlayerDoMoveAnimation;
-        }
-    }
+static void RecordedPlayerHandleMoveAnimation(void) {
+   BtlController_HandleMoveAnimation(RecordedPlayerBufferExecCompleted);
 }
 
-static void RecordedPlayerDoMoveAnimation(void)
-{
-    u16 move = gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8);
-    u8 multihit = gBattleBufferA[gActiveBattler][11];
-
-    switch (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState)
-    {
-    case 0:
-        if (gBattleSpritesDataPtr->battlerData[gActiveBattler].behindSubstitute
-            && !gBattleSpritesDataPtr->battlerData[gActiveBattler].flag_x8)
-        {
-            gBattleSpritesDataPtr->battlerData[gActiveBattler].flag_x8 = 1;
-            InitAndLaunchSpecialAnimation(gActiveBattler, gActiveBattler, gActiveBattler, B_ANIM_SUBSTITUTE_TO_MON);
-        }
-        gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 1;
-        break;
-    case 1:
-        if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].specialAnimActive)
-        {
-            SetBattlerSpriteAffineMode(ST_OAM_AFFINE_OFF);
-            DoMoveAnim(move);
-            gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 2;
-        }
-        break;
-    case 2:
-        gAnimScriptCallback();
-        if (!gAnimScriptActive)
-        {
-            SetBattlerSpriteAffineMode(ST_OAM_AFFINE_NORMAL);
-            if (gBattleSpritesDataPtr->battlerData[gActiveBattler].behindSubstitute && multihit < 2)
-            {
-                InitAndLaunchSpecialAnimation(gActiveBattler, gActiveBattler, gActiveBattler, B_ANIM_MON_TO_SUBSTITUTE);
-                gBattleSpritesDataPtr->battlerData[gActiveBattler].flag_x8 = 0;
-            }
-            gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 3;
-        }
-        break;
-    case 3:
-        if (!gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].specialAnimActive)
-        {
-            CopyAllBattleSpritesInvisibilities();
-            TrySetBehindSubstituteSpriteBit(gActiveBattler, gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8));
-            gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState = 0;
-            RecordedPlayerBufferExecCompleted();
-        }
-        break;
-    }
-}
-
-static void RecordedPlayerHandlePrintString(void)
-{
-    u16 *stringId;
-
-    gBattle_BG0_X = 0;
-    gBattle_BG0_Y = 0;
-    stringId = (u16 *)(&gBattleBufferA[gActiveBattler][2]);
-    BufferStringBattle(*stringId);
-    BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MSG);
-    gBattlerControllerFuncs[gActiveBattler] = CompleteOnInactiveTextPrinter;
+static void RecordedPlayerHandlePrintString(void) {
+   BtlController_HandlePrintString(RecordedPlayerBufferExecCompleted);
 }
 
 static void RecordedPlayerHandlePrintSelectionString(void)
@@ -1471,29 +1324,23 @@ static void RecordedPlayerHandleCmd23(void)
     RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandleHealthBarUpdate(void)
-{
-    s16 hpVal;
-
-    LoadBattleBarGfx(0);
-    hpVal = gBattleBufferA[gActiveBattler][2] | (gBattleBufferA[gActiveBattler][3] << 8);
-
-    if (hpVal != INSTANT_HP_BAR_DROP)
-    {
-        u32 maxHP = GetMonData(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], MON_DATA_MAX_HP);
-        u32 curHP = GetMonData(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], MON_DATA_HP);
-
-        SetBattleBarStruct(gActiveBattler, gHealthboxSpriteIds[gActiveBattler], maxHP, curHP, hpVal);
-    }
-    else
-    {
-        u32 maxHP = GetMonData(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], MON_DATA_MAX_HP);
-
-        SetBattleBarStruct(gActiveBattler, gHealthboxSpriteIds[gActiveBattler], maxHP, 0, hpVal);
-        UpdateHpTextInHealthbox(gHealthboxSpriteIds[gActiveBattler], 0, HP_CURRENT);
-    }
-
-    gBattlerControllerFuncs[gActiveBattler] = CompleteOnHealthbarDone;
+static void RecordedPlayerHandleHealthBarUpdate_CustomComplete(void) {
+   HandleLowHpMusicChange(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], gActiveBattler);
+   RecordedPlayerBufferExecCompleted();
+}
+static void RecordedPlayerHandleHealthBarUpdate(void) {
+   //
+   // We use a custom "complete" callback here so we can update the 
+   // low HP alarm. Otherwise, 90% of the logic is shared with any 
+   // typical controller.
+   //
+   // Part of the reason we haven't built the low HP behavior into 
+   // the common logic is so we can tell the player and their NPC 
+   // ally apart. In vanilla Emerald, the low HP alarm plays when 
+   // either one has low HP, but we may want to be able to change 
+   // it so that the alarm only plays for the player's own Pokemon.
+   //
+   BtlController_HandleHealthBarUpdate(RecordedPlayerHandleHealthBarUpdate_CustomComplete);
 }
 
 static void RecordedPlayerHandleExpUpdate(void)
@@ -1501,27 +1348,12 @@ static void RecordedPlayerHandleExpUpdate(void)
     RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandleStatusIconUpdate(void)
-{
-    if (!IsBattleSEPlaying(gActiveBattler))
-    {
-        u8 battler;
-
-        UpdateHealthboxAttribute(gHealthboxSpriteIds[gActiveBattler], &gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], HEALTHBOX_STATUS_ICON);
-        battler = gActiveBattler;
-        gBattleSpritesDataPtr->healthBoxesData[battler].statusAnimActive = 0;
-        gBattlerControllerFuncs[gActiveBattler] = CompleteOnFinishedStatusAnimation;
-    }
+static void RecordedPlayerHandleStatusIconUpdate(void) {
+   BtlController_HandleStatusIconUpdate(RecordedPlayerBufferExecCompleted);
 }
 
-static void RecordedPlayerHandleStatusAnimation(void)
-{
-    if (!IsBattleSEPlaying(gActiveBattler))
-    {
-        InitAndLaunchChosenStatusAnimation(gBattleBufferA[gActiveBattler][1],
-                        gBattleBufferA[gActiveBattler][2] | (gBattleBufferA[gActiveBattler][3] << 8) | (gBattleBufferA[gActiveBattler][4] << 16) | (gBattleBufferA[gActiveBattler][5] << 24));
-        gBattlerControllerFuncs[gActiveBattler] = CompleteOnFinishedStatusAnimation;
-    }
+static void RecordedPlayerHandleStatusAnimation(void) {
+   BtlController_HandleStatusAnimation(RecordedPlayerBufferExecCompleted);
 }
 
 static void RecordedPlayerHandleStatusXor(void)
@@ -1593,19 +1425,8 @@ static void RecordedPlayerHandleToggleUnkFlag(void)
     RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandleHitAnimation(void)
-{
-    if (gSprites[gBattlerSpriteIds[gActiveBattler]].invisible == TRUE)
-    {
-        RecordedPlayerBufferExecCompleted();
-    }
-    else
-    {
-        gDoingBattleAnim = TRUE;
-        gSprites[gBattlerSpriteIds[gActiveBattler]].data[1] = 0;
-        DoHitAnimHealthboxEffect(gActiveBattler);
-        gBattlerControllerFuncs[gActiveBattler] = DoHitAnimBlinkSpriteEffect;
-    }
+static void RecordedPlayerHandleHitAnimation(void) {
+   BtlController_HandleHitAnimation(RecordedPlayerBufferExecCompleted);
 }
 
 static void RecordedPlayerHandleCantSwitch(void)
@@ -1613,47 +1434,24 @@ static void RecordedPlayerHandleCantSwitch(void)
     RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandlePlaySE(void)
-{
-    s8 pan;
-
-    if (GetBattlerSide(gActiveBattler) == B_SIDE_PLAYER)
-        pan = SOUND_PAN_ATTACKER;
-    else
-        pan = SOUND_PAN_TARGET;
-
-    PlaySE12WithPanning(gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8), pan);
-    RecordedPlayerBufferExecCompleted();
+static void RecordedPlayerHandlePlaySE(void) {
+   BtlController_HandlePlaySE();
+   RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandlePlayFanfareOrBGM(void)
-{
-    if (gBattleBufferA[gActiveBattler][3])
-    {
-        BattleStopLowHpSound();
-        PlayBGM(gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8));
-    }
-    else
-    {
-        PlayFanfare(gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8));
-    }
-
-    RecordedPlayerBufferExecCompleted();
+static void RecordedPlayerHandlePlayFanfareOrBGM(void) {
+   BtlController_HandlePlayFanfareOrBGM();
+   RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandleFaintingCry(void)
-{
-    u16 species = GetMonData(&gPlayerParty[gBattlerPartyIndexes[gActiveBattler]], MON_DATA_SPECIES);
-
-    PlayCry_ByMode(species, -25, CRY_MODE_FAINT);
-    RecordedPlayerBufferExecCompleted();
+static void RecordedPlayerHandleFaintingCry(void) {
+   BtlController_HandleFaintingCry();
+   RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandleIntroSlide(void)
-{
-    HandleIntroSlide(gBattleBufferA[gActiveBattler][1]);
-    gIntroSlideFlags |= 1;
-    RecordedPlayerBufferExecCompleted();
+static void RecordedPlayerHandleIntroSlide(void) {
+   BtlController_HandleIntroSlide();
+   RecordedPlayerBufferExecCompleted();
 }
 
 static void RecordedPlayerHandleIntroTrainerBallThrow(void)
@@ -1765,28 +1563,13 @@ static void RecordedPlayerHandleEndBounceEffect(void)
     RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandleSpriteInvisibility(void)
-{
-    if (IsBattlerSpritePresent(gActiveBattler))
-    {
-        gSprites[gBattlerSpriteIds[gActiveBattler]].invisible = gBattleBufferA[gActiveBattler][1];
-        CopyBattleSpriteInvisibility(gActiveBattler);
-    }
-    RecordedPlayerBufferExecCompleted();
+static void RecordedPlayerHandleSpriteInvisibility(void) {
+   BtlController_HandleSpriteInvisibility();
+   RecordedPlayerBufferExecCompleted();
 }
 
-static void RecordedPlayerHandleBattleAnimation(void)
-{
-    if (!IsBattleSEPlaying(gActiveBattler))
-    {
-        u8 animationId = gBattleBufferA[gActiveBattler][1];
-        u16 argument = gBattleBufferA[gActiveBattler][2] | (gBattleBufferA[gActiveBattler][3] << 8);
-
-        if (TryHandleLaunchBattleTableAnimation(gActiveBattler, gActiveBattler, gActiveBattler, animationId, argument))
-            RecordedPlayerBufferExecCompleted();
-        else
-            gBattlerControllerFuncs[gActiveBattler] = CompleteOnFinishedBattleAnimation;
-    }
+static void RecordedPlayerHandleBattleAnimation(void) {
+   BtlController_HandleBattleAnimation(RecordedPlayerBufferExecCompleted, TRUE);
 }
 
 static void RecordedPlayerHandleLinkStandbyMsg(void)
