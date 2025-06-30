@@ -772,8 +772,6 @@ bool8 WriteSaveBlock1Sector(void) {
    return finished;
 }
 
-
-
 #define tState         data[0]
 #define tTimer         data[1]
 #define tInBattleTower data[2]
