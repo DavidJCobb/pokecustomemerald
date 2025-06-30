@@ -149,8 +149,8 @@ EventScript_FoundTMHM::
 	@ STR_VAR_3: the bag pocket name
 	@
 	loadword 0, gText_lu_FoundAndPocketedOneTMHM
-	pyramid_inchallenge
-	call_if_eq VAR_RESULT, TRUE, EventScript_FoundTMHM_PrepTextIfBattlePyramid
+	pyramid_getlocation
+	call_if_eq VAR_RESULT, PYRAMID_LOCATION_FLOOR, EventScript_FoundTMHM_PrepTextIfBattlePyramid
 	lu_message_wordwrapped 0
 	return
 
@@ -160,8 +160,8 @@ EventScript_FoundTMHM_PrepTextIfBattlePyramid::
 
 EventScript_FoundItem::
 	loadword 0, gText_lu_FoundAndPocketedOneItem
-	pyramid_inchallenge
-	call_if_eq VAR_RESULT, TRUE, EventScript_FoundItem_PrepTextIfBattlePyramid
+	pyramid_getlocation
+	call_if_eq VAR_RESULT, PYRAMID_LOCATION_FLOOR, EventScript_FoundItem_PrepTextIfBattlePyramid
 	lu_message_wordwrapped 0
 	return
 

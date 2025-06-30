@@ -67,18 +67,20 @@
          }
       },
       {
+         "files": [
+            "flags-2.dat",
+            "flags-3.dat",
+            "maps.dat"
+         ],
          "shared": {
             "flags-0.dat": 1,
             "flags-1.dat": 1,
-            "flags-2.dat": 1,
-            "flags-3.dat": 1,
             "flags-4.dat": 1,
             "flags-5.dat": 1,
             "flags-6.dat": 1,
             "flags-7.dat": 1,
             "game-stats.dat": 1,
             "items.dat": 1,
-            "maps.dat": 1,
             "misc.dat": 1,
             "moves.dat": 1,
             "natures.dat": 1,

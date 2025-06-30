@@ -1995,8 +1995,12 @@
             <struct name="previousCoords" type="Coords16" />
             <integer name="facingDirection" type="u16" c-bitfield-offset="192" c-bitfield-width="4" />
             <integer name="movementDirection" type="u16" c-bitfield-offset="196" c-bitfield-width="4" />
-            <integer name="rangeX" type="u16" c-bitfield-offset="200" c-bitfield-width="4" />
-            <integer name="rangeY" type="u16" c-bitfield-offset="204" c-bitfield-width="4" />
+            <struct name="range">
+               <members>
+                  <integer name="rangeX" type="u16" c-bitfield-offset="0" c-bitfield-width="4" />
+                  <integer name="rangeY" type="u16" c-bitfield-offset="4" c-bitfield-width="4" />
+               </members>
+            </struct>
             <integer name="fieldEffectSpriteId" type="u8" />
             <integer name="warpArrowSpriteId" type="u8" />
             <integer name="movementActionId" type="u8" />
@@ -2050,8 +2054,8 @@
             <struct value="previousCoords" type="Coords16" />
             <integer value="facingDirection" type="u16" bitcount="4" />
             <integer value="movementDirection" type="u16" bitcount="4" />
-            <integer value="rangeX" type="u16" bitcount="4" />
-            <integer value="rangeY" type="u16" bitcount="4" />
+            <integer value="range.rangeX" type="u16" bitcount="4" />
+            <integer value="range.rangeY" type="u16" bitcount="4" />
             <integer value="fieldEffectSpriteId" type="u8" bitcount="8" />
             <integer value="warpArrowSpriteId" type="u8" bitcount="8" />
             <integer value="movementActionId" type="u8" bitcount="8" />
@@ -2603,7 +2607,7 @@
             <integer name="magic" type="u8" />
             <integer name="mapGroup" type="MapGroupIndex" />
             <integer name="mapNum" type="MapIndexInGroup" />
-            <integer name="objectId" type="u8" />
+            <integer name="localId" type="u8" />
             <integer name="script" type="u8[995]">
                <array-rank extent="995" />
             </integer>
@@ -2612,7 +2616,7 @@
             <integer value="magic" type="u8" bitcount="8" />
             <integer value="mapGroup" type="MapGroupIndex" bitcount="8" />
             <integer value="mapNum" type="MapIndexInGroup" bitcount="8" />
-            <integer value="objectId" type="u8" bitcount="8" />
+            <integer value="localId" type="u8" bitcount="8" />
             <loop array="script" start="0" count="995" counter-var="__a">
                <integer value="script[__a]" type="u8" bitcount="8" />
             </loop>

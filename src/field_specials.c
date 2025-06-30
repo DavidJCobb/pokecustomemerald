@@ -4269,6 +4269,6 @@ u8 Script_TryGainNewFanFromCounter(void)
 void UseAnotherRepel(void) {
    u16 itemType = VarGet(VAR_REPEL_ITEM_TYPE);
    RemoveBagItem(itemType, 1);
-   VarSet(VAR_REPEL_STEP_COUNT, ItemId_GetHoldEffectParam(itemType));
+   VarSet(VAR_REPEL_STEP_COUNT, GetItemHoldEffectParam(itemType));
    PlaySE(SE_REPEL);
 }

@@ -168,12 +168,12 @@ static u16 GetPyramidBagItemCount(u16 itemId) {
    return total;
 }
 u16 GetBagItemCount(u16 itemId) {
-   if (ItemId_GetPocket(itemId) == 0)
+   if (GetItemPocket(itemId) == 0)
       return 0;
-   if (InBattlePyramid() || FlagGet(FLAG_STORING_ITEMS_IN_PYRAMID_BAG) == TRUE)
+   if (CurrentBattlePyramidLocation() != PYRAMID_LOCATION_NONE || FlagGet(FLAG_STORING_ITEMS_IN_PYRAMID_BAG) == TRUE)
       return GetPyramidBagItemCount(itemId);
    
-   u8  pocket = ItemId_GetPocket(itemId) - 1;
+   u8  pocket = GetItemPocket(itemId) - 1;
    u16 total  = 0;
    for(u8 i = 0; i < gBagPockets[pocket].capacity; ++i) {
       if (gBagPockets[pocket].itemSlots[i].itemId != itemId)
