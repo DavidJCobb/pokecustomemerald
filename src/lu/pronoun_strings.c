@@ -52,12 +52,12 @@ static const u8 sPronounString_Neuter_Reflexive[]     = _("itself");
 static const u8 sPronounString_Neuter_SubjectIs[]     = _("it's");
 MAKE_PRONOUN_LIST(Neuter)
 
-static const u8 sPronounString_NeuterCap_Subject[]       = _("it");
-static const u8 sPronounString_NeuterCap_Object[]        = _("it");
-static const u8 sPronounString_NeuterCap_Possessive[]    = _("its");
-static const u8 sPronounString_NeuterCap_PossessiveInd[] = _("its");
-static const u8 sPronounString_NeuterCap_Reflexive[]     = _("itself");
-static const u8 sPronounString_NeuterCap_SubjectIs[]     = _("it's");
+static const u8 sPronounString_NeuterCap_Subject[]       = _("It");
+static const u8 sPronounString_NeuterCap_Object[]        = _("It");
+static const u8 sPronounString_NeuterCap_Possessive[]    = _("Its");
+static const u8 sPronounString_NeuterCap_PossessiveInd[] = _("Its");
+static const u8 sPronounString_NeuterCap_Reflexive[]     = _("Itself");
+static const u8 sPronounString_NeuterCap_SubjectIs[]     = _("It's");
 MAKE_PRONOUN_LIST(NeuterCap)
 
 static const u8 sPronounString_Epicene_Subject[]       = _("they");

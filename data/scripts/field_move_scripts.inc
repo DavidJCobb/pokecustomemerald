@@ -46,8 +46,7 @@ EventScript_CancelCut::
 	end
 
 Text_WantToCut:
-	.string "This tree looks like it can be\n"
-	.string "CUT down!\p"
+	.string "This tree looks like it can be CUT down!\n"
 	.string "Would you like to CUT it?$"
 
 Text_MonUsedFieldMove:
@@ -165,9 +164,8 @@ EventScript_CancelStrength::
 	end
 
 Text_WantToStrength:
-	.string "It's a big boulder, but a POKéMON\n"
-	.string "may be able to push it aside.\p"
-	.string "Would you like to use STRENGTH?$"
+	.string "It's a big boulder, but a POKéMON may be\n"
+	.string "able to push it aside. Use STRENGTH?$"
 
 Text_MonUsedStrength:
 	.string "{STR_VAR_1} used STRENGTH!\p"
