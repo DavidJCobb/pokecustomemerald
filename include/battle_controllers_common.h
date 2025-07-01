@@ -1,7 +1,9 @@
 #ifndef GUARD_LU_BATTLE_CONTROLLER_COMMON
 #define GUARD_LU_BATTLE_CONTROLLER_COMMON
+#include <stdbool.h>
+#include "gba/types.h"
 
-typedef void(*)() SendControllerCompletionFunc;
+typedef void(*SendControllerCompletionFunc)();
 
 extern void BtlController_CommonStartupBehavior(void);
 extern void BtlController_CommonCompletionBehavior(void);

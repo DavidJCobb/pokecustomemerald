@@ -199,6 +199,11 @@ static void CompleteOnBattlerSpriteCallbackDummy(void)
         PlayerPartnerBufferExecCompleted();
 }
 
+static void CompleteOnInactiveTextPrinter(void) {
+   if (!IsTextPrinterActive(B_WIN_MSG))
+      PlayerPartnerBufferExecCompleted();
+}
+
 static void FreeTrainerSpriteAfterSlide(void)
 {
     if (gSprites[gBattlerSpriteIds[gActiveBattler]].callback == SpriteCallbackDummy)

@@ -330,6 +330,7 @@ static void Cmd_finishaction(void);
 static void Cmd_finishturn(void);
 static void Cmd_trainerslideout(void);
 static void Cmd_lu_extensions(void);
+static void Cmd_attackstringandanimation(void);
 
 void (*const gBattleScriptingCommandsTable[])(void) =
 {
@@ -10484,11 +10485,12 @@ static void Cmd_attackstringandanimation(void) {
    if (gBattleControllerExecFlags)
       return;
    
-   bool should_play_message = TRUE;
+   bool8 should_play_message = TRUE;
    if (gHitMarker & (HITMARKER_NO_ATTACKSTRING | HITMARKER_ATTACKSTRING_PRINTED)) {
       should_play_message = FALSE;
    }
    
+   gActiveBattler = gBattlerAttacker;
 
    if ((gHitMarker & HITMARKER_NO_ANIMATIONS) && (gCurrentMove != MOVE_TRANSFORM && gCurrentMove != MOVE_SUBSTITUTE)) {
       if (should_play_message) {
@@ -10525,8 +10527,6 @@ static void Cmd_attackstringandanimation(void) {
    //
    // The animation can play successfully.
    //
-
-   gActiveBattler = gBattlerAttacker;
 
    u8 multihit;
    if (gBattleMons[gBattlerTarget].status2 & STATUS2_SUBSTITUTE) {

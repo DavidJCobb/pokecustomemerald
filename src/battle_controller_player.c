@@ -2361,6 +2361,7 @@ static void PlayerHandlePause(void)
 
 static void PlayerHandleMoveAnimation(void) {
    if (BtlController_HandleMoveAnimation(PlayerBufferExecCompleted)) {
+      u16 move = gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8);
       gWeatherMoveAnim      = gBattleBufferA[gActiveBattler][12] | (gBattleBufferA[gActiveBattler][13] << 8);
       gAnimDisableStructPtr = (struct DisableStruct *)&gBattleBufferA[gActiveBattler][16];
       

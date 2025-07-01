@@ -1570,7 +1570,7 @@ static void LinkOpponentHandleSpriteInvisibility(void) {
    LinkOpponentBufferExecCompleted();
 }
 
-static void LinkOpponentHandleBattleAnimation(void)
+static void LinkOpponentHandleBattleAnimation(void) {
    BtlController_HandleBattleAnimation(LinkOpponentBufferExecCompleted, TRUE);
 }
 

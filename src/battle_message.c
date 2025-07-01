@@ -1959,12 +1959,16 @@ static const struct BattleWindowText *const sBattleTextOnWindowsInfo[] =
 
 static const u8 sRecordedBattleTextSpeeds[] = {8, 4, 1, 0};
 
-void BufferStringBattle(u16 stringID)
+
+void BufferStringBattle(u16 stringID) {
+   BufferStringBattleWithData(stringID, (struct BattleMsgData *)(&gBattleBufferA[gActiveBattler][4]));
+}
+void BufferStringBattleWithData(u16 stringID, struct BattleMsgData* data)
 {
     s32 i;
     const u8 *stringPtr = NULL;
 
-    gBattleMsgDataPtr = (struct BattleMsgData *)(&gBattleBufferA[gActiveBattler][4]);
+    gBattleMsgDataPtr = data;
     gLastUsedItem = gBattleMsgDataPtr->lastItem;
     gLastUsedAbility = gBattleMsgDataPtr->lastAbility;
     gBattleScripting.battler = gBattleMsgDataPtr->scrActive;

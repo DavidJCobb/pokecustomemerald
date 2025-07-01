@@ -606,7 +606,7 @@ static void SafariHandleSpriteInvisibility(void)
 }
 
 static void SafariHandleBattleAnimation(void) {
-   BtlController_HandleBattleAnimation(RecordedPlayerBufferExecCompleted, FALSE);
+   BtlController_HandleBattleAnimation(SafariBufferExecCompleted, FALSE);
 }
 
 static void SafariHandleLinkStandbyMsg(void)

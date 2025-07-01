@@ -224,6 +224,7 @@ struct BattleMsgData
 };
 
 void BufferStringBattle(u16 stringID);
+void BufferStringBattleWithData(u16 stringID, struct BattleMsgData*);
 u32 BattleStringExpandPlaceholdersToDisplayedString(const u8 *src);
 u32 BattleStringExpandPlaceholders(const u8 *src, u8 *dst);
 void BattlePutTextOnWindow(const u8 *text, u8 windowId);

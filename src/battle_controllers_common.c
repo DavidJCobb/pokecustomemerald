@@ -2,20 +2,29 @@
 #include "global.h"
 #include "battle.h"
 #include "battle_anim.h"
-#include "battle_arena" // BattleArena_DeductSkillPoints
+#include "battle_arena.h" // BattleArena_DeductSkillPoints
 #include "battle_controllers.h"
 #include "battle_gfx_sfx_util.h"
+#include "battle_interface.h"
 #include "battle_message.h" // BattlePutTextOnWindow, BufferStringBattle
+#include "data.h" // gMoveNames
+#include "link.h" // GetMultiplayerId
+#include "sound.h"
+#include "string_util.h" // StringCopy
+#include "text.h" // IsTextPrinterActive
+#include "util.h" // gBitTable
 #include "constants/battle_anim.h"
+#include "constants/battle_string_ids.h" // STRINGID_USEDMOVE
+#include "constants/sound.h" // CRY_MODE_FAINT
 
 #define CURRENT_LATENT_STATE gBattleStruct->battleControllerLatentState[gActiveBattler]
 
 static u32 ExtractStateDword(u8 index) {
-   u16* first = CURRENT_LATENT_STATE[index];
-   return (u32)first[0] | (u32)first[1];
+   u16* first = &CURRENT_LATENT_STATE[index];
+   return (u32)first[0] | ((u32)first[1] << 16);
 }
 static void StoreStateDword(u8 index, u32 dword) {
-   u16* first = CURRENT_LATENT_STATE[index];
+   u16* first = &CURRENT_LATENT_STATE[index];
    first[0] = (u16)dword;
    first[1] = (u16)(dword >> 16);
 }
@@ -32,7 +41,7 @@ struct Pokemon* GetActiveBattlerPokemonData(void) {
 
 // ---------------------------------------------------------------------------------------------------------------
 
-static void BtlController_CompleteOnInactiveTextPrinter(void) {
+static void CompleteOnInactiveTextPrinter(void) {
    if (IsTextPrinterActive(B_WIN_MSG))
       return;
    SendControllerCompletionFunc on_complete = (SendControllerCompletionFunc)ExtractStateDword(0);
@@ -89,7 +98,7 @@ static void FreeMonSpriteAfterSwitchOutAnim(void) {
    SendControllerCompletionFunc on_complete = (SendControllerCompletionFunc)ExtractStateDword(0);
    on_complete();
 }
-static void DoSwitchOutAnimation(SendControllerCompletionFunc on_complete) {
+static void DoSwitchOutAnimation() {
    switch (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animationState) {
       case 0:
          if (gBattleSpritesDataPtr->battlerData[gActiveBattler].behindSubstitute) {
@@ -175,7 +184,7 @@ static void DoMoveAnimation(void) {
          }
          break;
       case 4:
-         BtlController_CompleteOnInactiveTextPrinter();
+         CompleteOnInactiveTextPrinter();
          break;
    }
 }
@@ -186,9 +195,16 @@ extern bool BtlController_HandleMoveAnimation(SendControllerCompletionFunc on_co
       if (wants_attack_string) {
          gBattle_BG0_X = 0;
          gBattle_BG0_Y = 0;
-         BufferStringBattle(STRINGID_USEDMOVE);
+         
+         u16 move = gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8);
+         struct BattleMsgData data = {
+            .currentMove = move,
+            .moveType    = TYPE_MYSTERY,
+         };
+         BufferStringBattleWithData(STRINGID_USEDMOVE, &data);
          BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MSG);
          BattleArena_DeductSkillPoints(gActiveBattler, STRINGID_USEDMOVE);
+         
          lAttackStringState = ATTACKSTRINGSTATE_PRINTED;
       }
    }
@@ -226,7 +242,7 @@ extern void BtlController_HandlePrintString(SendControllerCompletionFunc on_comp
    BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MSG);
    
    StoreStateDword(0, (u32)on_complete);
-   gBattlerControllerFuncs[gActiveBattler] = BtlController_CompleteOnInactiveTextPrinter;
+   gBattlerControllerFuncs[gActiveBattler] = CompleteOnInactiveTextPrinter;
    
    BattleArena_DeductSkillPoints(gActiveBattler, *stringId);
 }

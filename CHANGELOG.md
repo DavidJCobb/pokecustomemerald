@@ -104,6 +104,8 @@
 
 * As mentioned above, "weather continues" messages no longer display, since the "battle ambient weather" feature feels like an acceptable substitute.
 
+* When you use most moves, the "Pokemon used Move!" message will begin to display at the same time that the battle animation begins to play.
+
 ### Vanilla bug-fixes and engine improvements
 
 * Slight refactor to the options menu, to support scrolling. This makes it slightly easier to add a few new options, but since each option's current value is still stored in task data, a further refactor will be needed to add terribly many more.
