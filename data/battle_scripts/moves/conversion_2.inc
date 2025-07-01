@@ -1,0 +1,9 @@
+BattleScript_EffectConversion2::
+	attackcanceler
+	ppreduce
+	settypetorandomresistance BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
+	waitanimation
+	printstring STRINGID_PKMNCHANGEDTYPE
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd

@@ -1,0 +1,14 @@
+BattleScript_EffectTeleport::
+	attackcanceler
+	attackstring
+	ppreduce
+	jumpifbattletype BATTLE_TYPE_TRAINER, BattleScript_ButItFailed
+	getifcantrunfrombattle BS_ATTACKER
+	jumpifbyte CMP_EQUAL, gBattleCommunication, BATTLE_RUN_FORBIDDEN, BattleScript_ButItFailed
+	jumpifbyte CMP_EQUAL, gBattleCommunication, BATTLE_RUN_FAILURE, BattleScript_PrintAbilityMadeIneffective
+	attackanimation
+	waitanimation
+	printstring STRINGID_PKMNFLEDFROMBATTLE
+	waitmessage B_WAIT_TIME_LONG
+	setoutcomeonteleport BS_ATTACKER
+	goto BattleScript_MoveEnd

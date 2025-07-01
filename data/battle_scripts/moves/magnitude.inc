@@ -1,0 +1,10 @@
+BattleScript_EffectMagnitude::
+	attackcanceler
+	attackstring
+	ppreduce
+	selectfirstvalidtarget
+	magnitudedamagecalculation
+	pause B_WAIT_TIME_SHORT
+	printstring STRINGID_MAGNITUDESTRENGTH
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_HitsAllWithUndergroundBonusLoop

@@ -1,0 +1,12 @@
+BattleScript_EffectMimic::
+	attackcanceler
+	attackstring
+	ppreduce
+	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_ButItFailed
+	accuracycheck BattleScript_ButItFailed, NO_ACC_CALC_CHECK_LOCK_ON
+	mimicattackcopy BattleScript_ButItFailed
+	attackanimation
+	waitanimation
+	printstring STRINGID_PKMNLEARNEDMOVE2
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd

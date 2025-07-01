@@ -1,0 +1,10 @@
+BattleScript_EffectHalveTypeDamage::
+	attackcanceler
+	attackstring
+	ppreduce
+	settypebasedhalvers BattleScript_ButItFailed
+	attackanimation
+	waitanimation
+	printfromtable gSportsUsedStringIds
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd

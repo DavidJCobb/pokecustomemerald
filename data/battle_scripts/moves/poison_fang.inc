@@ -1,0 +1,3 @@
+BattleScript_EffectPoisonFang::
+	setmoveeffect MOVE_EFFECT_TOXIC
+	goto BattleScript_EffectHit

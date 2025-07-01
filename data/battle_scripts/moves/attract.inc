@@ -1,0 +1,10 @@
+BattleScript_EffectAttract::
+	attackcanceler
+	ppreduce
+	accuracycheck BattleScript_Failed_AtkStringNoPPReduce, ACC_CURR_MOVE
+	tryinfatuating BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
+	waitanimation
+	printstring STRINGID_PKMNFELLINLOVE
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd

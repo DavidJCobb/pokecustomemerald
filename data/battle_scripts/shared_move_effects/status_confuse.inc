@@ -1,0 +1,30 @@
+BattleScript_EffectConfuse::
+	attackcanceler
+	ppreduce
+	jumpifability BS_TARGET, ABILITY_OWN_TEMPO,  BattleScript_OwnTempoPrevents
+	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_Failed_AtkStringNoPPReduce
+	jumpifstatus2 BS_TARGET, STATUS2_CONFUSION,  BattleScript_AlreadyConfused
+	accuracycheck BattleScript_Failed_AtkStringNoPPReduce, ACC_CURR_MOVE
+	jumpifsideaffecting BS_TARGET, SIDE_STATUS_SAFEGUARD, BattleScript_SafeguardProtectedWithAtkString
+	attackstringandanimation
+	waitanimation
+	setmoveeffect MOVE_EFFECT_CONFUSION
+	seteffectprimary
+	resultmessage
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd
+
+BattleScript_AlreadyConfused::
+	attackstring
+	setalreadystatusedmoveattempt BS_ATTACKER
+	pause B_WAIT_TIME_SHORT
+	printstring STRINGID_PKMNALREADYCONFUSED
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd
+
+BattleScript_OwnTempoPrevents::
+	attackstring
+	pause B_WAIT_TIME_SHORT
+	printstring STRINGID_PKMNPREVENTSCONFUSIONWITH
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd

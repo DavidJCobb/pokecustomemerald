@@ -1,0 +1,6 @@
+BattleScript_EffectLightScreen::
+	attackcanceler
+	attackstring
+	ppreduce
+	setlightscreen
+	goto BattleScript_PrintReflectLightScreenSafeguardString

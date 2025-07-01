@@ -1,0 +1,3 @@
+BattleScript_EffectEruption::
+	scaledamagebyhealthratio
+	goto BattleScript_EffectHit

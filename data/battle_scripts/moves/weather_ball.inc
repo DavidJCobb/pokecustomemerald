@@ -1,0 +1,3 @@
+BattleScript_EffectWeatherBall::
+	setweatherballtype
+	goto BattleScript_EffectHit

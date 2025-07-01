@@ -1,0 +1,5 @@
+BattleScript_EffectFakeOut::
+	attackcanceler
+	jumpifnotfirstturn BattleScript_FailedFromAtkString
+	setmoveeffect MOVE_EFFECT_FLINCH | MOVE_EFFECT_CERTAIN
+	goto BattleScript_EffectHit

@@ -1,0 +1,6 @@
+BattleScript_EffectReturn::
+BattleScript_EffectFrustration::
+	attackcanceler
+	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE
+	friendshiptodamagecalculation
+	goto BattleScript_HitFromAtkString

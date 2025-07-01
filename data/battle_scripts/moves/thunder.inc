@@ -1,0 +1,4 @@
+BattleScript_EffectThunder::
+	setmoveeffect MOVE_EFFECT_PARALYSIS
+	orword gHitMarker, HITMARKER_IGNORE_ON_AIR
+	goto BattleScript_EffectHit

@@ -1,0 +1,8 @@
+BattleScript_EffectSmellingsalt::
+	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_EffectHit
+	setmoveeffect MOVE_EFFECT_REMOVE_PARALYSIS | MOVE_EFFECT_CERTAIN
+	jumpifstatus BS_TARGET, STATUS1_PARALYSIS, BattleScript_SmellingsaltDoubleDmg
+	goto BattleScript_EffectHit
+BattleScript_SmellingsaltDoubleDmg:
+	setbyte sDMG_MULTIPLIER, 2
+	goto BattleScript_EffectHit

@@ -1,0 +1,3 @@
+BattleScript_EffectThief::
+	setmoveeffect MOVE_EFFECT_STEAL_ITEM
+	goto BattleScript_EffectHit

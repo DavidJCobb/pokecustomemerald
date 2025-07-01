@@ -1,0 +1,3 @@
+BattleScript_EffectHiddenPower::
+	hiddenpowercalc
+	goto BattleScript_EffectHit

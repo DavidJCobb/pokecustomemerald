@@ -1,0 +1,11 @@
+BattleScript_EffectRefresh::
+	attackcanceler
+	attackstring
+	ppreduce
+	cureifburnedparalysedorpoisoned BattleScript_ButItFailed
+	attackanimation
+	waitanimation
+	printstring STRINGID_PKMNSTATUSNORMAL
+	waitmessage B_WAIT_TIME_LONG
+	updatestatusicon BS_ATTACKER
+	goto BattleScript_MoveEnd

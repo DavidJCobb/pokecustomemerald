@@ -1,0 +1,46 @@
+BattleScript_EffectEarthquake::
+	attackcanceler
+	attackstring
+	ppreduce
+	selectfirstvalidtarget
+BattleScript_HitsAllWithUndergroundBonusLoop::
+	movevaluescleanup
+	jumpifnostatus3 BS_TARGET, STATUS3_UNDERGROUND, BattleScript_HitsAllNoUndergroundBonus
+	orword gHitMarker, HITMARKER_IGNORE_UNDERGROUND
+	setbyte sDMG_MULTIPLIER, 2
+	goto BattleScript_DoHitAllWithUndergroundBonus
+BattleScript_HitsAllNoUndergroundBonus::
+	bicword gHitMarker, HITMARKER_IGNORE_UNDERGROUND
+	setbyte sDMG_MULTIPLIER, 1
+BattleScript_DoHitAllWithUndergroundBonus::
+	accuracycheck BattleScript_HitAllWithUndergroundBonusMissed, ACC_CURR_MOVE
+	critcalc
+	damagecalc
+	typecalc
+	adjustnormaldamage
+	attackanimation
+	waitanimation
+	effectivenesssound
+	hitanimation BS_TARGET
+	waitstate
+	healthbarupdate BS_TARGET
+	datahpupdate BS_TARGET
+	critmessage
+	waitmessage B_WAIT_TIME_LONG
+	resultmessage
+	waitmessage B_WAIT_TIME_LONG
+	printstring STRINGID_EMPTYSTRING3
+	waitmessage 1
+	tryfaintmon BS_TARGET
+	moveendto MOVEEND_NEXT_TARGET
+	jumpifnexttargetvalid BattleScript_HitsAllWithUndergroundBonusLoop
+	end
+BattleScript_HitAllWithUndergroundBonusMissed::
+	pause B_WAIT_TIME_SHORT
+	typecalc
+	effectivenesssound
+	resultmessage
+	waitmessage B_WAIT_TIME_LONG
+	moveendto MOVEEND_NEXT_TARGET
+	jumpifnexttargetvalid BattleScript_HitsAllWithUndergroundBonusLoop
+	end

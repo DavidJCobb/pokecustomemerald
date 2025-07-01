@@ -1,0 +1,26 @@
+BattleScript_EffectRest::
+	attackcanceler
+	attackstring
+	ppreduce
+	jumpifstatus BS_ATTACKER, STATUS1_SLEEP, BattleScript_RestIsAlreadyAsleep
+	jumpifcantmakeasleep BattleScript_RestCantSleep
+	trysetrest BattleScript_AlreadyAtFullHp
+	pause B_WAIT_TIME_SHORT
+	printfromtable gRestUsedStringIds
+	waitmessage B_WAIT_TIME_LONG
+	updatestatusicon BS_ATTACKER
+	waitstate
+	goto BattleScript_PresentHealTarget
+
+BattleScript_RestCantSleep::
+	pause B_WAIT_TIME_LONG
+	printfromtable gUproarAwakeStringIds
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd
+
+BattleScript_RestIsAlreadyAsleep::
+	setalreadystatusedmoveattempt BS_ATTACKER
+	pause B_WAIT_TIME_SHORT
+	printstring STRINGID_PKMNALREADYASLEEP2
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd

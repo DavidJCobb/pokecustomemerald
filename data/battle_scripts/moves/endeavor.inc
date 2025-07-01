@@ -1,0 +1,13 @@
+BattleScript_EffectEndeavor::
+	attackcanceler
+	attackstring
+	ppreduce
+	setdamagetohealthdifference BattleScript_ButItFailed
+	copyword gHpDealt, gBattleMoveDamage
+	accuracycheck BattleScript_MoveMissedPause, ACC_CURR_MOVE
+	typecalc
+	jumpifmovehadnoeffect BattleScript_HitFromAtkAnimation
+	bicbyte gMoveResultFlags, MOVE_RESULT_SUPER_EFFECTIVE | MOVE_RESULT_NOT_VERY_EFFECTIVE
+	copyword gBattleMoveDamage, gHpDealt
+	adjustsetdamage
+	goto BattleScript_HitFromAtkAnimation

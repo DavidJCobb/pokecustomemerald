@@ -1,0 +1,11 @@
+BattleScript_EffectSkillSwap::
+	attackcanceler
+	attackstring
+	ppreduce
+	accuracycheck BattleScript_ButItFailed, NO_ACC_CALC_CHECK_LOCK_ON
+	tryswapabilities BattleScript_ButItFailed
+	attackanimation
+	waitanimation
+	printstring STRINGID_PKMNSWAPPEDABILITIES
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd

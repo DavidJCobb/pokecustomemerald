@@ -1,0 +1,20 @@
+BattleScript_EffectBatonPass::
+	attackcanceler
+	ppreduce
+	jumpifbattletype BATTLE_TYPE_ARENA, BattleScript_Failed_AtkStringNoPPReduce
+	jumpifcantswitch SWITCH_IGNORE_ESCAPE_PREVENTION | BS_ATTACKER, BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
+	waitanimation
+	openpartyscreen BS_ATTACKER, BattleScript_Failed_AtkStringNoPPReduce
+	switchoutabilities BS_ATTACKER
+	waitstate
+	switchhandleorder BS_ATTACKER, 2
+	returntoball BS_ATTACKER
+	getswitchedmondata BS_ATTACKER
+	switchindataupdate BS_ATTACKER
+	hpthresholds BS_ATTACKER
+	printstring STRINGID_SWITCHINMON
+	switchinanim BS_ATTACKER, TRUE
+	waitstate
+	switchineffects BS_ATTACKER
+	goto BattleScript_MoveEnd

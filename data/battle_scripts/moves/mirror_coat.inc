@@ -1,0 +1,9 @@
+BattleScript_EffectMirrorCoat::
+	attackcanceler
+	mirrorcoatdamagecalculator BattleScript_FailedFromAtkString
+	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE
+	attackstring
+	ppreduce
+	typecalc2
+	adjustsetdamage
+	goto BattleScript_HitFromAtkAnimation

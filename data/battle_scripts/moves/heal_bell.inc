@@ -1,0 +1,22 @@
+BattleScript_EffectHealBell::
+	attackcanceler
+	attackstring
+	ppreduce
+	healpartystatus
+	waitstate
+	attackanimation
+	waitanimation
+	printfromtable gPartyStatusHealStringIds
+	waitmessage B_WAIT_TIME_LONG
+	jumpifnotmove MOVE_HEAL_BELL, BattleScript_PartyHealEnd
+	jumpifbyte CMP_NO_COMMON_BITS, cMULTISTRING_CHOOSER, B_MSG_BELL_SOUNDPROOF_ATTACKER, BattleScript_CheckHealBellMon2Unaffected
+	printstring STRINGID_PKMNSXBLOCKSY
+	waitmessage B_WAIT_TIME_LONG
+BattleScript_CheckHealBellMon2Unaffected::
+	jumpifbyte CMP_NO_COMMON_BITS, cMULTISTRING_CHOOSER, B_MSG_BELL_SOUNDPROOF_PARTNER, BattleScript_PartyHealEnd
+	printstring STRINGID_PKMNSXBLOCKSY2
+	waitmessage B_WAIT_TIME_LONG
+BattleScript_PartyHealEnd::
+	updatestatusicon BS_ATTACKER_WITH_PARTNER
+	waitstate
+	goto BattleScript_MoveEnd

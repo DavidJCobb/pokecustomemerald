@@ -1,0 +1,3 @@
+BattleScript_EffectRevenge::
+	doubledamagedealtifdamaged
+	goto BattleScript_EffectHit

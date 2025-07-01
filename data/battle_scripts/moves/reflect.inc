@@ -1,0 +1,11 @@
+BattleScript_EffectReflect::
+	attackcanceler
+	attackstring
+	ppreduce
+	setreflect
+BattleScript_PrintReflectLightScreenSafeguardString::
+	attackanimation
+	waitanimation
+	printfromtable gReflectLightScreenSafeguardStringIds
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd
