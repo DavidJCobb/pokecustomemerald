@@ -1,13 +1,12 @@
 BattleScript_EffectNightmare::
 	attackcanceler
-	attackstring
 	ppreduce
-	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_ButItFailed
-	jumpifstatus2 BS_TARGET, STATUS2_NIGHTMARE, BattleScript_ButItFailed
+	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_Failed_AtkStringNoPPReduce
+	jumpifstatus2 BS_TARGET, STATUS2_NIGHTMARE, BattleScript_Failed_AtkStringNoPPReduce
 	jumpifstatus BS_TARGET, STATUS1_SLEEP, BattleScript_NightmareWorked
-	goto BattleScript_ButItFailed
+	goto BattleScript_Failed_AtkStringNoPPReduce
 BattleScript_NightmareWorked::
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	setmoveeffect MOVE_EFFECT_NIGHTMARE
 	seteffectprimary

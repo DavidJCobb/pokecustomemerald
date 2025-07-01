@@ -1,10 +1,9 @@
 BattleScript_EffectDisable::
 	attackcanceler
-	attackstring
 	ppreduce
-	accuracycheck BattleScript_ButItFailed, ACC_CURR_MOVE
-	disablelastusedattack BattleScript_ButItFailed
-	attackanimation
+	accuracycheck BattleScript_Failed_AtkStringNoPPReduce, ACC_CURR_MOVE
+	disablelastusedattack BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNMOVEWASDISABLED
 	waitmessage B_WAIT_TIME_LONG

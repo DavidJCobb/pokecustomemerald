@@ -2,10 +2,9 @@ BattleScript_EffectFlatter::
 	attackcanceler
 	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_MakeMoveMissed
 	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE
-	attackstring
 	ppreduce
-	jumpifconfusedandstatmaxed STAT_SPATK, BattleScript_ButItFailed
-	attackanimation
+	jumpifconfusedandstatmaxed STAT_SPATK, BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	setstatchanger STAT_SPATK, 1, FALSE
 	statbuffchange STAT_CHANGE_ALLOW_PTR, BattleScript_FlatterTryConfuse

@@ -1,9 +1,8 @@
 BattleScript_EffectDestinyBond::
 	attackcanceler
-	attackstring
 	ppreduce
 	setdestinybond
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNTRYINGTOTAKEFOE
 	waitmessage B_WAIT_TIME_LONG

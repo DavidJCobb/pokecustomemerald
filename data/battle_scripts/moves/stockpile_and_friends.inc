@@ -1,9 +1,8 @@
 BattleScript_EffectStockpile::
 	attackcanceler
-	attackstring
 	ppreduce
 	stockpile
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	printfromtable gStockpileUsedStringIds
 	waitmessage B_WAIT_TIME_LONG

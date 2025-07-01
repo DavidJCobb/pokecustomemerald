@@ -1,10 +1,9 @@
 BattleScript_EffectSpite::
 	attackcanceler
-	attackstring
 	ppreduce
-	accuracycheck BattleScript_ButItFailed, ACC_CURR_MOVE
-	tryspiteppreduce BattleScript_ButItFailed
-	attackanimation
+	accuracycheck BattleScript_Failed_AtkStringNoPPReduce, ACC_CURR_MOVE
+	tryspiteppreduce BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNREDUCEDPP
 	waitmessage B_WAIT_TIME_LONG

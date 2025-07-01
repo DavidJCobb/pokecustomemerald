@@ -1,11 +1,10 @@
 BattleScript_EffectMemento::
 	attackcanceler
 	jumpifbyte CMP_EQUAL, cMISS_TYPE, B_MSG_PROTECTED, BattleScript_MementoTargetProtect
-	attackstring
 	ppreduce
-	trymemento BattleScript_ButItFailed
+	trymemento BattleScript_Failed_AtkStringNoPPReduce
 	setatkhptozero
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_EffectMementoPrintNoEffect
 	setbyte sSTAT_ANIM_PLAYED, FALSE

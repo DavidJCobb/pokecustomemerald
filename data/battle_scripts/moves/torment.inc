@@ -1,10 +1,9 @@
 BattleScript_EffectTorment::
 	attackcanceler
-	attackstring
 	ppreduce
-	accuracycheck BattleScript_ButItFailed, ACC_CURR_MOVE
-	settorment BattleScript_ButItFailed
-	attackanimation
+	accuracycheck BattleScript_Failed_AtkStringNoPPReduce, ACC_CURR_MOVE
+	settorment BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNSUBJECTEDTOTORMENT
 	waitmessage B_WAIT_TIME_LONG

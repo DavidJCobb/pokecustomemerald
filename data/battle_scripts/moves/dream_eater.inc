@@ -9,13 +9,12 @@ BattleScript_DreamEaterNoEffect:
 	goto BattleScript_WasntAffected
 BattleScript_DreamEaterWorked:
 	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE
-	attackstring
 	ppreduce
 	critcalc
 	damagecalc
 	typecalc
 	adjustnormaldamage
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	effectivenesssound
 	hitanimation BS_TARGET

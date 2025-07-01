@@ -1,10 +1,9 @@
 BattleScript_EffectHealBell::
 	attackcanceler
-	attackstring
 	ppreduce
 	healpartystatus
 	waitstate
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	printfromtable gPartyStatusHealStringIds
 	waitmessage B_WAIT_TIME_LONG

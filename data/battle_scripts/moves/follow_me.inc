@@ -1,9 +1,8 @@
 BattleScript_EffectFollowMe::
 	attackcanceler
-	attackstring
 	ppreduce
 	setforcedtarget
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNCENTERATTENTION
 	waitmessage B_WAIT_TIME_LONG

@@ -1,10 +1,9 @@
 BattleScript_EffectTaunt::
 	attackcanceler
-	attackstring
 	ppreduce
-	accuracycheck BattleScript_ButItFailed, ACC_CURR_MOVE
-	settaunt BattleScript_ButItFailed
-	attackanimation
+	accuracycheck BattleScript_Failed_AtkStringNoPPReduce, ACC_CURR_MOVE
+	settaunt BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNFELLFORTAUNT
 	waitmessage B_WAIT_TIME_LONG

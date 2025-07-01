@@ -104,7 +104,66 @@
 
 * As mentioned above, "weather continues" messages no longer display, since the "battle ambient weather" feature feels like an acceptable substitute.
 
-* When you use most moves, the "Pokemon used Move!" message will begin to display at the same time that the battle animation begins to play.
+* When you use most moves, the "Pokemon used Move!" message will begin to display at the same time that the battle animation begins to play. The change should apply to all moves *except* for the following, which need special attention:
+  * Curse (non-Ghost)
+  * Defense Curl
+  * Dragon Dance
+  * Dragon Rage
+  * Earthquake
+  * Endeavor
+  * Explosion
+  * Fury Cutter
+  * Leech Seed
+  * Light Screen
+  * Low Kick
+  * Magnitude
+  * Metronome
+  * Mimic
+  * Mirror Coat
+  * Mirror Move
+  * Nature Power
+  * Present
+  * Psywave
+  * Razor Wind
+  * Reflect
+  * Rest
+  * Rollout
+  * Safeguard
+  * Skull Bash
+  * Sky Attack
+  * Sleep Talk
+  * SmellingSalt
+  * Snore
+  * Softboiled
+  * Solar Beam
+  * Sonicboom
+  * Spit Up
+  * Swallow
+  * Super Fang
+  * Teeter Dance
+  * Teleport
+  * Tickle
+  * Transform
+  * Triple Kick
+  * Twineedle
+  * Uproar
+  * Will-O-Wisp
+  * Yawn
+  * Multi-hit moves
+  * Recover-from-sunlight moves
+    * Moonlight
+    * Morning Sun
+    * Synthesis
+  * Protect-like moves
+    * Detect
+    * Endure
+    * Protect
+  * Moves that use the attacker's level as the damage value
+  * Moves that heal the target
+    * Present (when not damaging)
+    * Softboiled
+  * All stat-change animations
+  
 
 ### Vanilla bug-fixes and engine improvements
 

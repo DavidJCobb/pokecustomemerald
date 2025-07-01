@@ -1,10 +1,9 @@
 BattleScript_EffectPainSplit::
 	attackcanceler
-	attackstring
 	ppreduce
-	accuracycheck BattleScript_ButItFailed, NO_ACC_CALC_CHECK_LOCK_ON
-	painsplitdmgcalc BattleScript_ButItFailed
-	attackanimation
+	accuracycheck BattleScript_Failed_AtkStringNoPPReduce, NO_ACC_CALC_CHECK_LOCK_ON
+	painsplitdmgcalc BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	orword gHitMarker, HITMARKER_IGNORE_SUBSTITUTE
 	healthbarupdate BS_ATTACKER

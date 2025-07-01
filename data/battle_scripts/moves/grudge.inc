@@ -1,9 +1,8 @@
 BattleScript_EffectGrudge::
 	attackcanceler
-	attackstring
 	ppreduce
-	trysetgrudge BattleScript_ButItFailed
-	attackanimation
+	trysetgrudge BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNWANTSGRUDGE
 	waitmessage B_WAIT_TIME_LONG

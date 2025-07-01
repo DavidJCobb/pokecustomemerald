@@ -1,10 +1,9 @@
 BattleScript_EffectEncore::
 	attackcanceler
 	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE
-	attackstring
 	ppreduce
-	trysetencore BattleScript_ButItFailed
-	attackanimation
+	trysetencore BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNGOTENCORE
 	waitmessage B_WAIT_TIME_LONG

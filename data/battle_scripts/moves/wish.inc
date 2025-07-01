@@ -1,9 +1,8 @@
 BattleScript_EffectWish::
 	attackcanceler
-	attackstring
 	ppreduce
-	trywish 0, BattleScript_ButItFailed
-	attackanimation
+	trywish 0, BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	goto BattleScript_MoveEnd
 

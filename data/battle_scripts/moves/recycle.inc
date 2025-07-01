@@ -1,9 +1,8 @@
 BattleScript_EffectRecycle::
 	attackcanceler
-	attackstring
 	ppreduce
-	tryrecycleitem BattleScript_ButItFailed
-	attackanimation
+	tryrecycleitem BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_XFOUNDONEY
 	waitmessage B_WAIT_TIME_LONG

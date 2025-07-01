@@ -1,9 +1,8 @@
 BattleScript_EffectSnatch::
 	attackcanceler
 	trysetsnatch BattleScript_FailedFromAtkString
-	attackstring
 	ppreduce
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	pause B_WAIT_TIME_SHORT
 	printstring STRINGID_PKMNWAITSFORTARGET

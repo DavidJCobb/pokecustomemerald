@@ -1,10 +1,9 @@
 BattleScript_EffectSketch::
 	attackcanceler
-	attackstring
 	ppreduce
-	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_ButItFailed
-	copymovepermanently BattleScript_ButItFailed
-	attackanimation
+	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_Failed_AtkStringNoPPReduce
+	copymovepermanently BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNSKETCHEDMOVE
 	waitmessage B_WAIT_TIME_LONG

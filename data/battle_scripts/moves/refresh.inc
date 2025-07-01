@@ -1,9 +1,8 @@
 BattleScript_EffectRefresh::
 	attackcanceler
-	attackstring
 	ppreduce
-	cureifburnedparalysedorpoisoned BattleScript_ButItFailed
-	attackanimation
+	cureifburnedparalysedorpoisoned BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNSTATUSNORMAL
 	waitmessage B_WAIT_TIME_LONG

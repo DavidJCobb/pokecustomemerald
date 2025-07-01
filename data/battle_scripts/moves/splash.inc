@@ -1,8 +1,7 @@
 BattleScript_EffectSplash::
 	attackcanceler
-	attackstring
 	ppreduce
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	incrementgamestat GAME_STAT_USED_SPLASH
 	printstring STRINGID_BUTNOTHINGHAPPENED

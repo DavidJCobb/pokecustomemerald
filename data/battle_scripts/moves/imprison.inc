@@ -1,9 +1,8 @@
 BattleScript_EffectImprison::
 	attackcanceler
-	attackstring
 	ppreduce
-	tryimprison BattleScript_ButItFailed
-	attackanimation
+	tryimprison BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNSEALEDOPPONENTMOVE
 	waitmessage B_WAIT_TIME_LONG

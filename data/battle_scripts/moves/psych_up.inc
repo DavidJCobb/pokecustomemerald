@@ -1,9 +1,8 @@
 BattleScript_EffectPsychUp::
 	attackcanceler
-	attackstring
 	ppreduce
-	copyfoestats BattleScript_ButItFailed
-	attackanimation
+	copyfoestats BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNCOPIEDSTATCHANGES
 	waitmessage B_WAIT_TIME_LONG

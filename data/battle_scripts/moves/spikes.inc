@@ -1,9 +1,8 @@
 BattleScript_EffectSpikes::
 	attackcanceler
 	trysetspikes BattleScript_FailedFromAtkString
-	attackstring
 	ppreduce
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_SPIKESSCATTERED
 	waitmessage B_WAIT_TIME_LONG

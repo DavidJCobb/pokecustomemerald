@@ -1,9 +1,8 @@
 BattleScript_EffectFutureSight::
 	attackcanceler
-	attackstring
 	ppreduce
-	trysetfutureattack BattleScript_ButItFailed
-	attackanimation
+	trysetfutureattack BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printfromtable gFutureMoveUsedStringIds
 	waitmessage B_WAIT_TIME_LONG

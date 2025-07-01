@@ -1,9 +1,8 @@
 BattleScript_EffectMagicCoat::
 	attackcanceler
 	trysetmagiccoat BattleScript_FailedFromAtkString
-	attackstring
 	ppreduce
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNSHROUDEDITSELF
 	waitmessage B_WAIT_TIME_LONG

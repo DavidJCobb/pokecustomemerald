@@ -1,9 +1,8 @@
 BattleScript_EffectPerishSong::
 	attackcanceler
-	attackstring
 	ppreduce
-	trysetperishsong BattleScript_ButItFailed
-	attackanimation
+	trysetperishsong BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_FAINTINTHREE
 	waitmessage B_WAIT_TIME_LONG

@@ -1,9 +1,8 @@
 BattleScript_EffectMist::
 	attackcanceler
-	attackstring
 	ppreduce
 	setmist
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	printfromtable gMistUsedStringIds
 	waitmessage B_WAIT_TIME_LONG

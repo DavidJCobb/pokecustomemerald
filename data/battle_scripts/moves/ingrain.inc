@@ -1,9 +1,8 @@
 BattleScript_EffectIngrain::
 	attackcanceler
-	attackstring
 	ppreduce
-	trysetroots BattleScript_ButItFailed
-	attackanimation
+	trysetroots BattleScript_Failed_AtkStringNoPPReduce
+	attackstringandanimation
 	waitanimation
 	printstring STRINGID_PKMNPLANTEDROOTS
 	waitmessage B_WAIT_TIME_LONG

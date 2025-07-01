@@ -255,8 +255,74 @@ It'd be nice if we could modify the core sprite library to support keeping only 
 
 ### Battles
 
-* Concurrent animations and text for stat changes.
-  * Separate battle script commands trigger the animation and the text, and both work by broadcasting messages to the battle controllers and waiting for a response. Changing this flow risks breaking vanilla link compatibility, and would require a unified message for battle controllers (i.e. "message, animation, and optional minimum duration").
+* Concurrent animations and text for moves and for stat changes.
+  * Curse (non-Ghost)
+  * Defense Curl
+  * Dragon Dance
+  * Dragon Rage
+  * Earthquake
+  * Endeavor
+  * Explosion
+  * Fury Cutter
+  * Leech Seed
+  * Light Screen
+  * Low Kick
+  * Magnitude
+  * Metronome
+  * Mimic
+  * Mirror Coat
+  * Mirror Move
+  * Nature Power
+  * Present
+  * Psywave
+  * Razor Wind
+  * Reflect
+  * Rest
+  * Rollout
+  * Safeguard
+  * Skull Bash
+  * Sky Attack
+  * Sleep Talk
+  * SmellingSalt
+  * Snore
+  * Softboiled
+  * Solar Beam
+  * Sonicboom
+  * Spit Up
+  * Swallow
+  * Super Fang
+  * Teeter Dance
+  * Teleport
+  * Tickle
+  * Transform
+  * Triple Kick
+  * Twineedle
+  * Uproar
+  * Will-O-Wisp
+  * Yawn
+  * Multi-hit moves
+  * Recover-from-sunlight moves
+    * Moonlight
+    * Morning Sun
+    * Synthesis
+  * Protect-like moves
+    * Detect
+    * Endure
+    * Protect
+  * Moves that use the attacker's level as the damage value
+  * Moves that heal the target
+    * Present (when not damaging)
+    * Softboiled
+  * All stat-change animations
+* Synch more battle animations with message text
+  * Status animations
+    * Attract (before move)
+    * Burn (end-of-turn damage)
+    * Confusion (before move)
+    * Freeze
+    * Paralysis (move use failure)
+    * Poison (end-of-turn damage)
+    * Sleep (move use failure)
 * Health bar changes should animate in proportion with the damage done. When a Lv. 100 Mewtwo annihilates some bug in Viridian Forest, the health bar should drain rapidly both to emphasize the sheer power of the hit and to avoid keeping players waiting as they swat trivial foes out of their way.
   
 #### Coalesced battle text
