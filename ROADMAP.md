@@ -455,6 +455,9 @@ This will require thorough investigation of the battle script engine as well as 
 #### Dialogue
 
 * A UI widget to display the name of the speaking NPC.
+* Textbox backgrounds
+  * Sign
+  * *There's a "MSGBOX_SIGN" option for displaying message boxes, but it only determines the box's* behavior*, i.e. whether you can dismiss it with the D-Pad or whether you* must *press A/B.*
 * Unit portraits
 
 ### Battles
