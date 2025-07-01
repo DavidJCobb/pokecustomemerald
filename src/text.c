@@ -23,15 +23,18 @@ static u16 FontFunc_ShortCopy2(struct TextPrinter *);
 static u16 FontFunc_ShortCopy3(struct TextPrinter *);
 static u16 FontFunc_Narrow(struct TextPrinter *);
 static u16 FontFunc_SmallNarrow(struct TextPrinter *);
+static u16 FontFunc_BattleUI(struct TextPrinter *);
 static u16 FontFunc_Bold(struct TextPrinter *);
 static void DecompressGlyph_Small(u16, bool32);
 static void DecompressGlyph_Normal(u16, bool32);
 static void DecompressGlyph_Short(u16, bool32);
 static void DecompressGlyph_Narrow(u16, bool32);
 static void DecompressGlyph_SmallNarrow(u16, bool32);
+static void DecompressGlyph_BattleUI(u16, bool32);
 static void DecompressGlyph_Bold(u16, bool32);
 static u32 GetGlyphWidth_Small(u16, bool32);
 static u32 GetGlyphWidth_Normal(u16, bool32);
+static u32 GetGlyphWidth_BattleUI(u16, bool32);
 static u32 GetGlyphWidth_Bold(u16, bool32);
 static u32 GetGlyphWidth_Short(u16, bool32);
 static u32 GetGlyphWidth_Narrow(u16, bool32);
@@ -92,6 +95,7 @@ static const struct GlyphWidthFunc sGlyphWidthFuncs[] =
     { FONT_BRAILLE,      GetGlyphWidth_Braille },
     { FONT_NARROW,       GetGlyphWidth_Narrow },
     { FONT_SMALL_NARROW, GetGlyphWidth_SmallNarrow },
+    { FONT_BATTLE_UI,    GetGlyphWidth_BattleUI },
     { FONT_BOLD,         GetGlyphWidth_Bold }
 };
 
@@ -211,8 +215,8 @@ static const struct FontInfo sFontInfos[] =
         .bgColor = 1,
         .shadowColor = 3,
     },
-    [FONT_BOLD] = {
-        .fontFunction = FontFunc_Bold,
+    [FONT_BATTLE_UI] = {
+        .fontFunction = FontFunc_BattleUI,
         .maxLetterWidth = 12,
         .maxLetterHeight = 8,
         .letterSpacing = 0,
@@ -220,6 +224,16 @@ static const struct FontInfo sFontInfos[] =
         .fgColor = 1,
         .bgColor = 2,
         .shadowColor = 15,
+    },
+    [FONT_BOLD] = {
+        .fontFunction = FontFunc_Bold,
+        .maxLetterWidth = 12,
+        .maxLetterHeight = 8,
+        .letterSpacing = 0,
+        .lineSpacing = 0,
+        .fgColor = 2,
+        .bgColor = 1,
+        .shadowColor = 3,
     }
 };
 
@@ -234,6 +248,7 @@ static const u8 sMenuCursorDimensions[][2] =
     [FONT_BRAILLE]      = { 8,  16 },
     [FONT_NARROW]       = { 8,  15 },
     [FONT_SMALL_NARROW] = { 8,   8 },
+    [FONT_BATTLE_UI]    = { 8,  15 },
     [FONT_BOLD]         = { 8,  15 },
 };
 
@@ -772,6 +787,18 @@ static u16 FontFunc_SmallNarrow(struct TextPrinter *textPrinter)
     return RenderText(textPrinter);
 }
 
+static u16 FontFunc_BattleUI(struct TextPrinter *textPrinter)
+{
+    struct TextPrinterSubStruct *subStruct = (struct TextPrinterSubStruct *)(&textPrinter->subStructFields);
+
+    if (subStruct->hasFontIdBeenSet == FALSE)
+    {
+        subStruct->fontId = FONT_BATTLE_UI;
+        subStruct->hasFontIdBeenSet = TRUE;
+    }
+    return RenderText(textPrinter);
+}
+
 static u16 FontFunc_Bold(struct TextPrinter *textPrinter)
 {
     struct TextPrinterSubStruct *subStruct = (struct TextPrinterSubStruct *)(&textPrinter->subStructFields);
@@ -1142,6 +1169,9 @@ static u16 RenderText(struct TextPrinter *textPrinter)
             break;
         case FONT_NORMAL:
             DecompressGlyph_Normal(currChar, textPrinter->japanese);
+            break;
+        case FONT_BATTLE_UI:
+            DecompressGlyph_BattleUI(currChar, textPrinter->japanese);
             break;
         case FONT_BOLD:
             DecompressGlyph_Bold(currChar, textPrinter->japanese);
@@ -1516,7 +1546,7 @@ s32 GetStringWidth(u8 fontId, const u8 *str, s16 letterSpacing)
 }
 
 // for battle UI
-u8 RenderTextHandleBold(u8 *pixels, u8 fontId, u8 *str)
+u8 RenderBattleInterfaceText(u8 *pixels, u8 fontId, u8 *str)
 {
     u8 shadowColor;
     u8 *strLocal;
@@ -1605,8 +1635,8 @@ u8 RenderTextHandleBold(u8 *pixels, u8 fontId, u8 *str)
         default:
             switch (fontId)
             {
-            case FONT_BOLD:
-                DecompressGlyph_Bold(temp, TRUE);
+            case FONT_BATTLE_UI:
+                DecompressGlyph_BattleUI(temp, TRUE);
                 break;
             case FONT_NORMAL:
             default:
@@ -1909,6 +1939,25 @@ static u32 GetGlyphWidth_Normal(u16 glyphId, bool32 isJapanese)
         return 8;
     else
         return gFontNormalLatinGlyphWidths[glyphId];
+}
+
+static void DecompressGlyph_BattleUI(u16 glyphId, bool32 isJapanese)
+{
+    const u16 *glyphs;
+    
+    glyphs = sFontBoldJapaneseGlyphs + (0x100 * (glyphId >> 4)) + (0x8 * (glyphId & 0xF));
+    DecompressGlyphTile(glyphs, gCurGlyph.gfxBufferTop);
+    DecompressGlyphTile(glyphs + 0x80, gCurGlyph.gfxBufferBottom);
+    gCurGlyph.width = 8;
+    gCurGlyph.height = 12;
+}
+
+static u32 GetGlyphWidth_BattleUI(u16 glyphId, bool32 isJapanese)
+{
+    if (isJapanese == TRUE)
+        return 8;
+    else
+        return gFontBoldLatinGlyphWidths[glyphId];
 }
 
 static u32 GetGlyphWidth_Bold(u16 glyphId, bool32 isJapanese)

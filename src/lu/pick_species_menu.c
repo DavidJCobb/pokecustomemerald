@@ -610,7 +610,7 @@ static void PaintMenuHeader(void) {
       title = gText_lu_PickSpeciesMenu_DefaultTitle;
    }
    FillWindowPixelBuffer(WIN_HEADER, PIXEL_FILL(1));
-   AddTextPrinterParameterized(WIN_HEADER, FONT_NORMAL, title, 8, 1, TEXT_SKIP_DRAW, NULL);
+   AddTextPrinterParameterized(WIN_HEADER, FONT_BOLD, title, 8, 1, TEXT_SKIP_DRAW, NULL);
    CopyWindowToVram(WIN_HEADER, COPYWIN_FULL);
 }
 
