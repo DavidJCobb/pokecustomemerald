@@ -39,6 +39,16 @@ Flow changes:
 Add new options:
 
 * Battling
+  * Badge Boosts
+    * Enabled (Yes/No)
+    * *[Badge Name]* boost
+      * Attack modifier (*signed range*)
+      * Defense modifier (*signed range*)
+      * Special Attack modifier (*signed range*)
+      * Special Attack modifier (*signed range*)
+      * Speed modifier (*signed range*)
+      * Typed damage modifier (*signed range*)
+        * In Gen II only, badges would boost the power of moves that matched the gym's type by 12.5%.
   * Cap player party levels
     * Constant maximum
       * "The player cannot train any Pokemon past this level. Pokemon obtained above this level will be reduced to this level."
@@ -88,6 +98,17 @@ Add new options:
     * Dupes Clause Shiny Exception (None/Replace Prior/Always Allow)
       * Replace Prior: "If you encounter a Shiny Pokemon after having already obtained a Pokemon of the same species, you may catch the shiny and replace the other Pokemon. The replaced Pokemon will be treated as if it has fainted."
   * Deactivation (Never/After Champion/After Rayquaza/After All Legendaries)
+* Pokemon centers
+  * Monetary cost to heal
+  * Cap on Pokemon Center use count
+    * Initial count
+    * Add uses after every trainer battle (*amount*)
+    * Add uses after every Gym battle (*amount*)
+    * Add uses after every rival battle (*amount*)
+    * Add uses after every Elite Four run (*amount*)
+    * Add uses after every legendary caught or defeated (*amount*)
+  * Disable other healing NPCs (No/Recurring/All)
+    * *"Recurring" disables all reusable overworld heals, e.g. the house north of the desert, while leaving one-time scripted/cutscene heals enabled. (But we should probably come up with a list of both such heals first. I don't actually remember if there* are *one-time scripted heals in this specific game.)*
 * Pokemon types
   * Control player types
     * Enabled (Yes/No)
