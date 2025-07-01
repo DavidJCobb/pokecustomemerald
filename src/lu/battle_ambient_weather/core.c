@@ -44,3 +44,6 @@ extern void StopBattleAmbientWeatherAnim(bool8 instant) {
       StopBattleAmbientWeatherAnim_Sunny(instant);
    }
 }
+extern bool8 IsBattleAmbientWeatherPlaying(void) {
+   return gAmbientWeatherTaskId != TASK_NONE;
+}

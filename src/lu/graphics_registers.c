@@ -15,6 +15,11 @@ extern void ResetScreenWindows(void) {
    SetGpuReg(REG_OFFSET_WINOUT, 0);
 }
 
+extern void GetBlendRegisters(struct ColorEffectParams* dst) {
+   dst->bldcnt   = GetGpuReg(REG_OFFSET_BLDCNT);
+   dst->bldalpha = GetGpuReg(REG_OFFSET_BLDALPHA);
+   dst->bldy     = GetGpuReg(REG_OFFSET_BLDY);
+}
 extern void SetBlendRegisters(const struct ColorEffectParams* src) {
    SetGpuReg(REG_OFFSET_BLDCNT,   src->bldcnt);
    SetGpuReg(REG_OFFSET_BLDALPHA, src->bldalpha);

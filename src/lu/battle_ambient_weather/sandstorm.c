@@ -16,6 +16,8 @@
 #include "graphics.h" // gBattleAnimBgImage_Sandstorm and friends
 #include "battle_anim.h" // GetBattlePalettesMask
 
+#include "lu/graphics_registers.h"
+
 #include "gba/isagbprint.h"
 
 static void TaskHandler(u8 taskId);
@@ -48,6 +50,7 @@ enum {
 #define sFractionalX data[3] // 256ths of a pixel
 #define sFractionalY data[4] // 256ths of a pixel
 #define sMirroredX   data[5]
+#define sExitingFast data[6]
 
 void StartBattleAmbientWeatherAnim_Sandstorm(void) {
    gAmbientWeatherTaskId = CreateTask(TaskHandler, 2);
@@ -281,10 +284,26 @@ static void AnimFlyingSandCrescent(struct Sprite *sprite) {
       DestroySprite(sprite);
       return;
    }
+   struct Task* task = &gTasks[gAmbientWeatherTaskId];
+   
    if (sprite->sState == 0) {
       SetSubspriteTables(sprite, sFlyingSandSubspriteTable);
       sprite->sState++;
    } else {
+      if (task->tState >= TASKSTATE_TEARDOWN_REQUESTED) {
+         if (!sprite->sExitingFast) {
+            sprite->sExitingFast = TRUE;
+            //
+            // Hurry the sand drifts off-screen.
+            //
+            sprite->sVelocityX *= 2;
+            sprite->sVelocityY *= 2;
+            //
+            // Fade them out, too.
+            //
+            sprite->oam.objMode = ST_OAM_OBJ_BLEND;
+         }
+      }
       sprite->sFractionalX += sprite->sVelocityX;
       sprite->sFractionalY += sprite->sVelocityY;
       sprite->x2 += (sprite->sFractionalX >> 8);
@@ -300,8 +319,17 @@ static void AnimFlyingSandCrescent(struct Sprite *sprite) {
       } else if (sprite->x + sprite->x2 < -SPRITE_OFFSCREEN_X_END) {
          offscreen = TRUE;
       }
+      if (task->tState >= TASKSTATE_TEARDOWN_REQUESTED) {
+         struct ColorEffectParams blend_params;
+         GetBlendRegisters(&blend_params);
+         if (blend_params.bldcnt && blend_params.alpha.target1Coefficient == 0) {
+            //
+            // The sand drifts are fully transparent.
+            //
+            offscreen = TRUE;
+         }
+      }
       if (offscreen) {
-         struct Task* task = &gTasks[gAmbientWeatherTaskId];
          if (task->tState >= TASKSTATE_TEARDOWN_REQUESTED) {
             DebugPrintf("[Battle Ambient Weather][Sandstorm] Destroying a sprite.");
             FreeSpriteOamMatrix(sprite);

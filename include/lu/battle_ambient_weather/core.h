@@ -6,5 +6,6 @@
 extern void InitBattleAmbientWeather(void);
 extern void StartBattleAmbientWeatherAnim(void);
 extern void StopBattleAmbientWeatherAnim(bool8 instant);
+extern bool8 IsBattleAmbientWeatherPlaying(void);
 
 #endif

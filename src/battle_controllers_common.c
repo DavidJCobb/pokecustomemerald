@@ -17,6 +17,8 @@
 #include "constants/battle_string_ids.h" // STRINGID_USEDMOVE
 #include "constants/sound.h" // CRY_MODE_FAINT
 
+#include "lu/battle_ambient_weather/core.h"
+
 #define CURRENT_LATENT_STATE gBattleStruct->battleControllerLatentState[gActiveBattler]
 
 static u32 ExtractStateDword(u8 index) {
@@ -209,7 +211,7 @@ extern bool BtlController_HandleMoveAnimation(SendControllerCompletionFunc on_co
       }
    }
    
-   if (!IsBattleSEPlaying(gActiveBattler)) {
+   if (!IsBattleSEPlaying(gActiveBattler) && !IsBattleAmbientWeatherPlaying()) {
       u16 move = gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8);
 
       gAnimMoveTurn         = gBattleBufferA[gActiveBattler][3];

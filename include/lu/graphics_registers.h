@@ -114,6 +114,7 @@ enum {
 extern void ResetBlendRegisters(void);
 extern void ResetScreenWindows(void);
 
+extern void GetBlendRegisters(struct ColorEffectParams*);
 extern void SetBlendRegisters(const struct ColorEffectParams*);
 extern void SetScreenWindowParams(const struct ScreenWindowParams*);
 
