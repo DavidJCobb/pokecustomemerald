@@ -92,7 +92,7 @@ BattleScript_SunlightFaded::
 	end2
 
 BattleScript_OverworldWeatherStarts::
-	printfromtable gWeatherStartsStringIds
-	waitmessage B_WAIT_TIME_LONG
-	playanimation_var BS_ATTACKER, sB_ANIM_ARG1
+	@printfromtable gWeatherStartsStringIds
+	@waitmessage B_WAIT_TIME_LONG
+	@playanimation_var BS_ATTACKER, sB_ANIM_ARG1
 	end3
