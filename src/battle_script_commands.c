@@ -8432,9 +8432,9 @@ static void Cmd_tryspiteppreduce(void)
 
             PREPARE_MOVE_BUFFER(gBattleTextBuff1, gLastMoves[gBattlerTarget])
 
-            ConvertIntToDecimalStringN(gBattleTextBuff2, ppToDeduct, STR_CONV_MODE_LEFT_ALIGN, 1);
+            ConvertIntToDecimalStringN(gBattleTextBuff3, ppToDeduct, STR_CONV_MODE_LEFT_ALIGN, 1);
 
-            PREPARE_BYTE_NUMBER_BUFFER(gBattleTextBuff2, 1, ppToDeduct)
+            PREPARE_BYTE_NUMBER_BUFFER(gBattleTextBuff3, 1, ppToDeduct)
 
             gBattleMons[gBattlerTarget].pp[i] -= ppToDeduct;
             gActiveBattler = gBattlerTarget;

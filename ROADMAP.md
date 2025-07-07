@@ -276,9 +276,9 @@ It'd be nice if we could modify the core sprite library to support keeping only 
 
 ### Battles
 
+* The dialogue for sending out a Pokemon should play in unison with the ball-throw/send-out animation.
 * Concurrent animations and text for moves and for stat changes.
   * Curse (non-Ghost)
-  * Defense Curl
   * Dragon Dance
   * Dragon Rage
   * Earthquake

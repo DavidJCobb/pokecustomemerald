@@ -106,7 +106,6 @@
 
 * When you use most moves, the "Pokemon used Move!" message will begin to display at the same time that the battle animation begins to play. The change should apply to all moves *except* for the following, which need special attention:
   * Curse (non-Ghost)
-  * Defense Curl
   * Dragon Dance
   * Dragon Rage
   * Earthquake

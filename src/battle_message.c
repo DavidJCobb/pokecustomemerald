@@ -2160,8 +2160,6 @@ void BufferStringBattleWithData(u16 stringID, struct BattleMsgData* data)
         }
         break;
     case STRINGID_USEDMOVE: // Pokémon used a move msg
-        ChooseMoveUsedParticle(gBattleTextBuff1); // buff1 doesn't appear in the string, leftover from japanese move names
-
         if (gBattleMsgDataPtr->currentMove >= MOVES_COUNT)
             StringCopy(gBattleTextBuff2, sATypeMove_Table[*(&gBattleStruct->stringMoveType)]);
         else
