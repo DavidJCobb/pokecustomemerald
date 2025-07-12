@@ -5,10 +5,12 @@
 
 extern const u8 gText_lu_FieldDebugMenu_DisableTrainerLOS[];
 extern const u8 gText_lu_FieldDebugMenu_DisableWildEncounters[];
+extern const u8 gText_lu_FieldDebugMenu_EnableNationalDex[];
 extern const u8 gText_lu_FieldDebugMenu_FastTravel[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyBike[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyFieldMove[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod[];
+extern const u8 gText_lu_FieldDebugMenu_ViewPokedexEntry[];
 extern const u8 gText_lu_FieldDebugMenu_SetTime[];
 extern const u8 gText_lu_FieldDebugMenu_SetWeather[];
 extern const u8 gText_lu_FieldDebugMenu_TestBattleTransition[];

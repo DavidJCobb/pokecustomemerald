@@ -139,6 +139,8 @@ struct MenuStackFrame {
 
 struct MenuState {
    struct MenuStackFrame breadcrumbs[MAX_MENU_TRAVERSAL_DEPTH];
+   u8 saved_cursor_positions[MAX_MENU_TRAVERSAL_DEPTH];
+   
    u8 task_id;
    u8 cursor_pos;
    u8 menu_view;
@@ -413,9 +415,11 @@ static void ResetMenuState(void) {
    
    sMenuState->breadcrumbs[0].name       = gText_lu_CGO_menuTitle;
    sMenuState->breadcrumbs[0].menu_items = sTopLevelMenu;
+   sMenuState->saved_cursor_positions[0] = 0;
    for(i = 1; i < MAX_MENU_TRAVERSAL_DEPTH; ++i) {
       sMenuState->breadcrumbs[i].name       = NULL;
       sMenuState->breadcrumbs[i].menu_items = NULL;
+      sMenuState->saved_cursor_positions[i] = 0;
    }
    sMenuState->cursor_pos = 0;
    sMenuState->menu_view  = MENUVIEW_OPEN;
@@ -445,6 +449,7 @@ static void EnterSubmenu(const u8* submenu_name, const struct CGOptionMenuItem* 
       if (sMenuState->breadcrumbs[i].menu_items == NULL) {
          sMenuState->breadcrumbs[i].name       = submenu_name;
          sMenuState->breadcrumbs[i].menu_items = submenu_items;
+         sMenuState->saved_cursor_positions[i] = 0;
          success = TRUE;
          break;
       }
@@ -454,6 +459,9 @@ static void EnterSubmenu(const u8* submenu_name, const struct CGOptionMenuItem* 
       return;
    }
    
+   if (i > 0) {
+      sMenuState->saved_cursor_positions[i - 1] = sMenuState->cursor_pos;
+   }
    sMenuState->cursor_pos = 0;
    
    PlaySE(SOUND_EFFECT_SUBMENU_ENTER);
@@ -469,6 +477,7 @@ static bool8 TryExitSubmenu() { // returns FALSE if at top-level menu
       if (sMenuState->breadcrumbs[i].menu_items != NULL) {
          sMenuState->breadcrumbs[i].name       = NULL;
          sMenuState->breadcrumbs[i].menu_items = NULL;
+         sMenuState->saved_cursor_positions[i] = 0;
          success = TRUE;
          break;
       }
@@ -477,7 +486,11 @@ static bool8 TryExitSubmenu() { // returns FALSE if at top-level menu
       return FALSE; // in top-level menu
    }
    
-   sMenuState->cursor_pos = 0; // TODO: use the scroll offset of the last entered submenu
+   if (i > 0) {
+      sMenuState->cursor_pos = sMenuState->saved_cursor_positions[i - 1];
+   } else {
+      sMenuState->cursor_pos = 0;
+   }
    
    PlaySE(SOUND_EFFECT_SUBMENU_EXIT);
    UpdateDisplayedMenuName();

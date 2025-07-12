@@ -32,7 +32,7 @@
 #include "constants/weather.h" // WEATHER_...
 #include "battle_transition.h"
 #include "bike.h" // GetOnOffBike
-#include "event_data.h" // FlagSet
+#include "event_data.h" // EnableNationalPokedex, FlagSet
 #include "event_scripts.h" // EventScript_...
 #include "field_control_avatar.h" // TrySetDiveWarp
 #include "field_effect.h" // FieldEffectStart
@@ -40,8 +40,10 @@
 #include "fldeff.h" // SetUpFieldMove_RockSmash and friends
 #include "global.fieldmap.h" // gPlayerAvatar, PLAYER_AVATAR_FLAG_...
 #include "overworld.h" // CB2_ReturnToField, IsOverworldLinkActive
+#include "pokedex.h"
 #include "region_map.h" // CB2_OpenFlyMap
 #include "wallclock.h" // CB2_StartWallClock
+#include "lu/pick_species_menu.h"
 
 EWRAM_DATA struct FieldDebugMenuState gFieldDebugMenuState = {0};
 
@@ -67,10 +69,12 @@ static const struct WindowTemplate sWindowTemplate = {
 enum {
    MENU_ACTION_DISABLE_TRAINER_LOS,
    MENU_ACTION_DISABLE_WILD_ENCOUNTERS,
+   MENU_ACTION_ENABLE_NATIONAL_DEX,
    MENU_ACTION_FAST_TRAVEL,
    MENU_ACTION_USE_ANY_BIKE,
    MENU_ACTION_USE_ANY_FIELD_MOVE,
    MENU_ACTION_USE_ANY_FISHING_ROD,
+   MENU_ACTION_VIEW_POKEDEX_ENTRY,
    MENU_ACTION_SET_TIME,
    MENU_ACTION_SET_WEATHER,
    MENU_ACTION_TEST_BATTLE_TRANSITION,
@@ -92,6 +96,8 @@ static u8   FieldDebugMenuActionStateGetter_DisableTrainerLOS(void);
 static void FieldDebugMenuActionHandler_DisableTrainerLOS(u8 taskId);
 static u8   FieldDebugMenuActionStateGetter_DisableWildEncounters(void);
 static void FieldDebugMenuActionHandler_DisableWildEncounters(u8 taskId);
+static u8   FieldDebugMenuActionStateGetter_EnableNationalDex(void);
+static void FieldDebugMenuActionHandler_EnableNationalDex(u8 taskId);
 static void FieldDebugMenuActionHandler_FastTravel(u8 taskId);
 static void FieldDebugMenuActionHandler_SetTime(u8 taskId);
 static void FieldDebugMenuActionHandler_SetWeather(u8 taskId);
@@ -99,6 +105,7 @@ static void FieldDebugMenuActionHandler_BattleTransition(u8 taskId);
 static void FieldDebugMenuActionHandler_UseAnyBike(u8 taskId);
 static void FieldDebugMenuActionHandler_UseAnyFishingRod(u8 taskId);
 static void FieldDebugMenuActionHandler_UseAnyFieldMove(u8 taskId);
+static void FieldDebugMenuActionHandler_ViewPokedexEntry(u8 taskId);
 static u8   FieldDebugMenuActionStateGetter_WalkThroughWalls(void);
 static void FieldDebugMenuActionHandler_WalkThroughWalls(u8 taskId);
 
@@ -118,6 +125,10 @@ static const struct FieldDebugMenuAction sFieldDebugMenuActions[] = {
       .handler = FieldDebugMenuActionHandler_DisableWildEncounters,
       .state   = FieldDebugMenuActionStateGetter_DisableWildEncounters,
    },
+   [MENU_ACTION_ENABLE_NATIONAL_DEX] = {
+      .label   = gText_lu_FieldDebugMenu_EnableNationalDex,
+      .handler = FieldDebugMenuActionHandler_EnableNationalDex,
+   },
    [MENU_ACTION_FAST_TRAVEL] = {
       .label   = gText_lu_FieldDebugMenu_FastTravel,
       .handler = FieldDebugMenuActionHandler_FastTravel,
@@ -133,6 +144,10 @@ static const struct FieldDebugMenuAction sFieldDebugMenuActions[] = {
    [MENU_ACTION_USE_ANY_FISHING_ROD] = {
       .label   = gText_lu_FieldDebugMenu_UseAnyFishingRod,
       .handler = FieldDebugMenuActionHandler_UseAnyFishingRod,
+   },
+   [MENU_ACTION_VIEW_POKEDEX_ENTRY] = {
+      .label   = gText_lu_FieldDebugMenu_ViewPokedexEntry,
+      .handler = FieldDebugMenuActionHandler_ViewPokedexEntry,
    },
    [MENU_ACTION_SET_TIME] = {
       .label   = gText_lu_FieldDebugMenu_SetTime,
@@ -472,6 +487,15 @@ static u8 FieldDebugMenuActionStateGetter_DisableWildEncounters(void) {
 static void FieldDebugMenuActionHandler_DisableWildEncounters(u8 taskId) {
    gFieldDebugMenuState.disable_wild_encounters = !gFieldDebugMenuState.disable_wild_encounters;
 }
+static u8 FieldDebugMenuActionStateGetter_EnableNationalDex(void) {
+   if (IsNationalPokedexEnabled()) {
+      return MENU_ACTION_STATE_DISABLED;
+   }
+   return MENU_ACTION_STATE_NORMAL;
+}
+static void FieldDebugMenuActionHandler_EnableNationalDex(u8 taskId) {
+   EnableNationalPokedex();
+}
 static void FieldDebugMenuActionHandler_FastTravel(u8 taskId) {
    gFieldDebugMenuState.allow_fast_travel_anywhere = TRUE;
    //
@@ -631,6 +655,40 @@ static void FieldDebugMenuActionHandler_UseAnyFishingRod_Good(u8 taskId) {
 static void FieldDebugMenuActionHandler_UseAnyFishingRod_Super(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
    StartFishing(SUPER_ROD);
+}
+
+//
+// View Pokedex entry
+//
+
+static void FieldDebugMenuActionHandler_Task(u8 taskId) {
+   u8 dex_task_id = gTasks[taskId].data[0];
+   if (!gTasks[dex_task_id].isActive) {
+      DestroyTask(taskId);
+      SetMainCallback2(CB2_ReturnToField);
+   }
+}
+
+static void FieldDebugMenuActionHandler_ViewPokedexEntry_Callback(u16 species) {
+   u8 monitor_task_id = CreateTask(FieldDebugMenuActionHandler_Task, 50);
+   if (monitor_task_id == TASK_NONE) {
+      return;
+   }
+   u8 dex_task_id = DisplayCaughtMonDexPage(species, 0, 0);
+   if (dex_task_id == TASK_NONE) {
+      DestroyTask(monitor_task_id);
+      return;
+   }
+   gTasks[monitor_task_id].data[0] = dex_task_id;
+}
+
+static const struct PickSpeciesMenuParams sPickSpeciesMenuParams = {
+   .callback  = FieldDebugMenuActionHandler_ViewPokedexEntry_Callback,
+   .zero_type = PICKSPECIESMENU_ZEROTYPE_NONE,
+};
+static void FieldDebugMenuActionHandler_ViewPokedexEntry(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   ShowPickSpeciesMenu(&sPickSpeciesMenuParams);
 }
 
 //

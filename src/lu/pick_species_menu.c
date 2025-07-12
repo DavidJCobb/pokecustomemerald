@@ -428,7 +428,7 @@ static void CB2_InitPickSpeciesMenu(void) {
          }
          break;
        case 11:
-         BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_BLACK);
+         BeginNormalPaletteFade(PALETTES_ALL, -1, 16, 0, RGB_BLACK);
          SetVBlankCallback(VBlankCB);
          SetMainCallback2(MainCB2);
          return;
