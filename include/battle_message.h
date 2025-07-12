@@ -223,6 +223,8 @@ struct BattleMsgData
     u8 textBuffs[3][TEXT_BUFF_ARRAY_COUNT];
 };
 
+void PreFillBattleMsgData(struct BattleMsgData*);
+
 void BufferStringBattle(u16 stringID);
 void BufferStringBattleWithData(u16 stringID, struct BattleMsgData*);
 u32 BattleStringExpandPlaceholdersToDisplayedString(const u8 *src);

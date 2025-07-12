@@ -194,7 +194,7 @@ static const u8 sText_PkmnTookAim[] = _("{B_ATK_NAME_WITH_PREFIX} took aim\nat {
 static const u8 sText_PkmnSketchedMove[] = _("{B_ATK_NAME_WITH_PREFIX} SKETCHED\n{B_BUFF1}!");
 static const u8 sText_PkmnTryingToTakeFoe[] = _("{B_ATK_NAME_WITH_PREFIX} is trying\nto take {B_ATK_PRONOUN}{PRONOUN_FORM_POSSESSIVE} foe with {B_ATK_PRONOUN}{PRONOUN_FORM_OBJECT}!");
 static const u8 sText_PkmnTookFoe[] = _("{B_DEF_NAME_WITH_PREFIX} took\n{B_ATK_NAME_WITH_PREFIX} with {B_ATK_PRONOUN}{PRONOUN_FORM_SUBJECT}!");
-static const u8 sText_PkmnReducedPP[] = _("Reduced {B_DEF_NAME_WITH_PREFIX}'s\n{B_BUFF1} by {B_BUFF2}!");
+static const u8 sText_PkmnReducedPP[] = _("Reduced {B_DEF_NAME_WITH_PREFIX}'s\n{B_BUFF1} by {B_BUFF3}!");
 static const u8 sText_PkmnStoleItem[] = _("{B_ATK_NAME_WITH_PREFIX} stole\n{B_DEF_NAME_WITH_PREFIX}'s {B_LAST_ITEM}!");
 static const u8 sText_TargetCantEscapeNow[] = _("{B_DEF_NAME_WITH_PREFIX} can't\nescape now!");
 static const u8 sText_PkmnFellIntoNightmare[] = _("{B_DEF_NAME_WITH_PREFIX} fell into\na NIGHTMARE!");
@@ -1959,6 +1959,26 @@ static const struct BattleWindowText *const sBattleTextOnWindowsInfo[] =
 
 static const u8 sRecordedBattleTextSpeeds[] = {8, 4, 1, 0};
 
+void PreFillBattleMsgData(struct BattleMsgData* data) {
+   data->currentMove        = gCurrentMove;
+   data->originallyUsedMove = gChosenMove;
+   data->lastItem           = gLastUsedItem;
+   data->lastAbility        = gLastUsedAbility;
+   data->scrActive          = gBattleScripting.battler;
+   data->bakScriptPartyIdx  = gBattleStruct->scriptPartyIdx;
+   data->hpScale            = gBattleStruct->hpScale;
+   data->itemEffectBattler  = gPotentialItemEffectBattler;
+   data->moveType           = gBattleMoves[gCurrentMove].type;
+
+   for (u8 i = 0; i < MAX_BATTLERS_COUNT; i++)
+      data->abilities[i] = gBattleMons[i].ability;
+   
+   for (u8 i = 0; i < TEXT_BUFF_ARRAY_COUNT; i++) {
+      data->textBuffs[0][i] = gBattleTextBuff1[i];
+      data->textBuffs[1][i] = gBattleTextBuff2[i];
+      data->textBuffs[2][i] = gBattleTextBuff3[i];
+   }
+}
 
 void BufferStringBattle(u16 stringID) {
    BufferStringBattleWithData(stringID, (struct BattleMsgData *)(&gBattleBufferA[gActiveBattler][4]));

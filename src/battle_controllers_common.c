@@ -199,10 +199,12 @@ extern bool BtlController_HandleMoveAnimation(SendControllerCompletionFunc on_co
          gBattle_BG0_Y = 0;
          
          u16 move = gBattleBufferA[gActiveBattler][1] | (gBattleBufferA[gActiveBattler][2] << 8);
-         struct BattleMsgData data = {
-            .currentMove = move,
-            .moveType    = TYPE_MYSTERY,
-         };
+         
+         struct BattleMsgData data;
+         PreFillBattleMsgData(&data);
+         data.currentMove = move;
+         data.moveType    = TYPE_MYSTERY;
+    
          BufferStringBattleWithData(STRINGID_USEDMOVE, &data);
          BattlePutTextOnWindow(gDisplayedStringBattle, B_WIN_MSG);
          BattleArena_DeductSkillPoints(gActiveBattler, STRINGID_USEDMOVE);

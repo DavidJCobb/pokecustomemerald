@@ -1150,24 +1150,8 @@ void BtlController_EmitPrintString(u8 bufferId, u16 stringId)
     sBattleBuffersTransferData[3] = (stringId & 0xFF00) >> 8;
 
     stringInfo = (struct BattleMsgData *)(&sBattleBuffersTransferData[4]);
-    stringInfo->currentMove = gCurrentMove;
-    stringInfo->originallyUsedMove = gChosenMove;
-    stringInfo->lastItem = gLastUsedItem;
-    stringInfo->lastAbility = gLastUsedAbility;
-    stringInfo->scrActive = gBattleScripting.battler;
-    stringInfo->bakScriptPartyIdx = gBattleStruct->scriptPartyIdx;
-    stringInfo->hpScale = gBattleStruct->hpScale;
-    stringInfo->itemEffectBattler = gPotentialItemEffectBattler;
-    stringInfo->moveType = gBattleMoves[gCurrentMove].type;
-
-    for (i = 0; i < MAX_BATTLERS_COUNT; i++)
-        stringInfo->abilities[i] = gBattleMons[i].ability;
-    for (i = 0; i < TEXT_BUFF_ARRAY_COUNT; i++)
-    {
-        stringInfo->textBuffs[0][i] = gBattleTextBuff1[i];
-        stringInfo->textBuffs[1][i] = gBattleTextBuff2[i];
-        stringInfo->textBuffs[2][i] = gBattleTextBuff3[i];
-    }
+    PreFillBattleMsgData(stringInfo);
+    
     PrepareBufferDataTransfer(bufferId, sBattleBuffersTransferData, sizeof(struct BattleMsgData) + 4);
 }
 
@@ -1181,6 +1165,8 @@ void BtlController_EmitPrintSelectionString(u8 bufferId, u16 stringId)
     sBattleBuffersTransferData[2] = stringId;
     sBattleBuffersTransferData[3] = (stringId & 0xFF00) >> 8;
 
+    // Same operation as `PreFillBattleMsgData`, except we skip some fields that 
+    // we know to a certainty shouldn't be used in selection scripts.
     stringInfo = (struct BattleMsgData *)(&sBattleBuffersTransferData[4]);
     stringInfo->currentMove = gCurrentMove;
     stringInfo->originallyUsedMove = gChosenMove;
