@@ -1,0 +1,6 @@
+#ifndef GUARD_BATTLE_TRANSITION_BIG_POKEBALL_H
+#define GUARD_BATTLE_TRANSITION_BIG_POKEBALL_H
+
+void BattleTransitionTaskHandler_BigPokeball(u8);
+
+#endif

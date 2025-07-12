@@ -1,0 +1,6 @@
+#ifndef GUARD_BATTLE_TRANSITION_GRID_SQUARES_H
+#define GUARD_BATTLE_TRANSITION_GRID_SQUARES_H
+
+void BattleTransitionTaskHandler_GridSquares(u8);
+
+#endif

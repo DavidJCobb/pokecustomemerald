@@ -25,22 +25,30 @@
 #include "constants/trainers.h"
 #include "constants/rgb.h"
 
+#include "battle_transition/common.h"
+#include "battle_transition/common_intro.h"
+
+#include "battle_transition/angled_wipes.h"
+#include "battle_transition/aqua_magma.h"
+#include "battle_transition/big_pokeball.h"
+#include "battle_transition/blur.h"
+#include "battle_transition/clockwise_wipe.h"
+#include "battle_transition/grid_squares.h"
+#include "battle_transition/mugshot_champion.h"
+#include "battle_transition/mugshot_drake.h"
+#include "battle_transition/mugshot_glacia.h"
+#include "battle_transition/mugshot_phoebe.h"
+#include "battle_transition/mugshot_sidney.h"
+#include "battle_transition/regi.h"
+#include "battle_transition/ripple.h"
+#include "battle_transition/shuffle.h"
+#include "battle_transition/slice.h"
+#include "battle_transition/swirl.h"
+#include "battle_transition/wave.h"
+
 //
 // Configuration.
 //
-
-// Before any unique transition effect plays, the game rapidly fades back and 
-// forth between full-color and opaque gray. The "increment" options here will 
-// influence the fade speed.
-//
-// Increasing the increment looks really bad and a little seizuriffic.
-//
-// Setting the number of fades to 0 will cause the effect to loop forever.
-#define TRANSITION_INTRO_FADE_TO_GRAY_DELAY       0 // vanilla: 0
-#define TRANSITION_INTRO_FADE_FROM_GRAY_DELAY     0 // vanilla: 0
-#define TRANSITION_INTRO_NUMBER_OF_FADES          1 // vanilla: 3
-#define TRANSITION_INTRO_FADE_TO_GRAY_INCREMENT   2 // vanilla: 2
-#define TRANSITION_INTRO_FADE_FROM_GRAY_INCREMENT 2 // vanilla: 2
 
 #define SLICE_TRANSITION_INITIAL_SPEED 1 // vanilla: 1
 #define SLICE_TRANSITION_INITIAL_ACCEL 1 // vanilla: 1
@@ -51,26 +59,10 @@
 //
 //
 
-#define PALTAG_UNUSED_MUGSHOT 0x100A
-
 #define B_TRANS_DMA_FLAGS (1 | ((DMA_SRC_INC | DMA_DEST_FIXED | DMA_REPEAT | DMA_16BIT | DMA_START_HBLANK | DMA_ENABLE) << 16))
 
 // Used by each transition task to determine which of its functions to call
 #define tState          data[0]
-
-// Below are data defines for InitBlackWipe and UpdateBlackWipe, for the TransitionData data array.
-// These will be re-used by any transitions that use these functions.
-#define tWipeStartX data[0]
-#define tWipeStartY data[1]
-#define tWipeCurrX  data[2]
-#define tWipeCurrY  data[3]
-#define tWipeEndX   data[4]
-#define tWipeEndY   data[5]
-#define tWipeXMove  data[6]
-#define tWipeYMove  data[7]
-#define tWipeXDist  data[8]
-#define tWipeYDist  data[9]
-#define tWipeTemp   data[10]
 
 #define SET_TILE(ptr, posY, posX, tile) \
 {                                       \
@@ -121,28 +113,8 @@ static bool8 Transition_WaitForMain(struct Task *);
 static void LaunchBattleTransitionTask(u8);
 static void Task_BattleTransition(u8);
 static void Task_Intro(u8);
-static void Task_Blur(u8);
-static void Task_Swirl(u8);
-static void Task_Shuffle(u8);
-static void Task_BigPokeball(u8);
 static void Task_PokeballsTrail(u8);
-static void Task_ClockwiseWipe(u8);
-static void Task_Ripple(u8);
-static void Task_Wave(u8);
-static void Task_Slice(u8);
 static void Task_WhiteBarsFade(u8);
-static void Task_GridSquares(u8);
-static void Task_AngledWipes(u8);
-static void Task_Sidney(u8);
-static void Task_Phoebe(u8);
-static void Task_Glacia(u8);
-static void Task_Drake(u8);
-static void Task_Champion(u8);
-static void Task_Aqua(u8);
-static void Task_Magma(u8);
-static void Task_Regice(u8);
-static void Task_Registeel(u8);
-static void Task_Regirock(u8);
 static void Task_Kyogre(u8);
 static void Task_Groudon(u8);
 static void Task_Rayquaza(u8);
@@ -156,41 +128,15 @@ static void Task_FrontierSquares(u8);
 static void Task_FrontierSquaresScroll(u8);
 static void Task_FrontierSquaresSpiral(u8);
 static void VBlankCB_BattleTransition(void);
-static void VBlankCB_Swirl(void);
-static void HBlankCB_Swirl(void);
-static void VBlankCB_Shuffle(void);
-static void HBlankCB_Shuffle(void);
 static void VBlankCB_PatternWeave(void);
 static void VBlankCB_CircularMask(void);
-static void VBlankCB_ClockwiseWipe(void);
-static void VBlankCB_Ripple(void);
-static void HBlankCB_Ripple(void);
 static void VBlankCB_FrontierLogoWave(void);
 static void HBlankCB_FrontierLogoWave(void);
-static void VBlankCB_Wave(void);
-static void VBlankCB_Slice(void);
-static void HBlankCB_Slice(void);
 static void VBlankCB_WhiteBarsFade(void);
 static void VBlankCB_WhiteBarsFade_Blend(void);
 static void HBlankCB_WhiteBarsFade(void);
-static void VBlankCB_AngledWipes(void);
 static void VBlankCB_Rayquaza(void);
-static bool8 Blur_Init(struct Task *);
-static bool8 Blur_Main(struct Task *);
-static bool8 Blur_End(struct Task *);
-static bool8 Swirl_Init(struct Task *);
-static bool8 Swirl_End(struct Task *);
-static bool8 Shuffle_Init(struct Task *);
-static bool8 Shuffle_End(struct Task *);
-static bool8 Aqua_Init(struct Task *);
-static bool8 Aqua_SetGfx(struct Task *);
-static bool8 Magma_Init(struct Task *);
-static bool8 Magma_SetGfx(struct Task *);
 static bool8 FramesCountdown(struct Task *);
-static bool8 Regi_Init(struct Task *);
-static bool8 Regice_SetGfx(struct Task *);
-static bool8 Registeel_SetGfx(struct Task *);
-static bool8 Regirock_SetGfx(struct Task *);
 static bool8 WeatherTrio_BgFadeBlack(struct Task *);
 static bool8 WeatherTrio_WaitFade(struct Task *);
 static bool8 Kyogre_Init(struct Task *);
@@ -201,8 +147,6 @@ static bool8 Groudon_PaletteFlash(struct Task *);
 static bool8 Groudon_PaletteBrighten(struct Task *);
 static bool8 WeatherDuo_FadeOut(struct Task *);
 static bool8 WeatherDuo_End(struct Task *);
-static bool8 BigPokeball_Init(struct Task *);
-static bool8 BigPokeball_SetGfx(struct Task *);
 static bool8 PatternWeave_Blend1(struct Task *);
 static bool8 PatternWeave_Blend2(struct Task *);
 static bool8 PatternWeave_FinishAppear(struct Task *);
@@ -210,34 +154,11 @@ static bool8 PatternWeave_CircularMask(struct Task *);
 static bool8 PokeballsTrail_Init(struct Task *);
 static bool8 PokeballsTrail_Main(struct Task *);
 static bool8 PokeballsTrail_End(struct Task *);
-static bool8 ClockwiseWipe_Init(struct Task *);
-static bool8 ClockwiseWipe_TopRight(struct Task *);
-static bool8 ClockwiseWipe_Right(struct Task *);
-static bool8 ClockwiseWipe_Bottom(struct Task *);
-static bool8 ClockwiseWipe_Left(struct Task *);
-static bool8 ClockwiseWipe_TopLeft(struct Task *);
-static bool8 ClockwiseWipe_End(struct Task *);
-static bool8 Ripple_Init(struct Task *);
-static bool8 Ripple_Main(struct Task *);
-static bool8 Wave_Init(struct Task *);
-static bool8 Wave_Main(struct Task *);
-static bool8 Wave_End(struct Task *);
-static bool8 Slice_Init(struct Task *);
-static bool8 Slice_Main(struct Task *);
-static bool8 Slice_End(struct Task *);
 static bool8 WhiteBarsFade_Init(struct Task *);
 static bool8 WhiteBarsFade_StartBars(struct Task *);
 static bool8 WhiteBarsFade_WaitBars(struct Task *);
 static bool8 WhiteBarsFade_BlendToBlack(struct Task *);
 static bool8 WhiteBarsFade_End(struct Task *);
-static bool8 GridSquares_Init(struct Task *);
-static bool8 GridSquares_Main(struct Task *);
-static bool8 GridSquares_End(struct Task *);
-static bool8 AngledWipes_Init(struct Task *);
-static bool8 AngledWipes_SetWipeData(struct Task *);
-static bool8 AngledWipes_DoWipe(struct Task *);
-static bool8 AngledWipes_TryEnd(struct Task *);
-static bool8 AngledWipes_StartNext(struct Task *);
 static bool8 ShredSplit_Init(struct Task *);
 static bool8 ShredSplit_Main(struct Task *);
 static bool8 ShredSplit_BrokenCheck(struct Task *);
@@ -275,44 +196,16 @@ static bool8 FrontierSquaresScroll_Draw(struct Task *);
 static bool8 FrontierSquaresScroll_SetBlack(struct Task *);
 static bool8 FrontierSquaresScroll_Erase(struct Task *);
 static bool8 FrontierSquaresScroll_End(struct Task *);
-static bool8 Mugshot_Init(struct Task *);
-static bool8 Mugshot_SetGfx(struct Task *);
-static bool8 Mugshot_ShowBanner(struct Task *);
-static bool8 Mugshot_StartOpponentSlide(struct Task *);
-static bool8 Mugshot_WaitStartPlayerSlide(struct Task *);
-static bool8 Mugshot_WaitPlayerSlide(struct Task *);
-static bool8 Mugshot_GradualWhiteFade(struct Task *);
-static bool8 Mugshot_InitFadeWhiteToBlack(struct Task *);
-static bool8 Mugshot_FadeToBlack(struct Task *);
-static bool8 Mugshot_End(struct Task *);
-static void DoMugshotTransition(u8);
-static void Mugshots_CreateTrainerPics(struct Task *);
-static void VBlankCB_Mugshots(void);
-static void VBlankCB_MugshotsFadeOut(void);
-static void HBlankCB_Mugshots(void);
 static void InitTransitionData(void);
 static void FadeScreenBlack(void);
-static void CreateIntroTask(s16, s16, s16, s16, s16);
-static void SetCircularMask(u16 *, s16, s16, s16);
-static void SetSinWave(s16 *, s16, s16, s16, s16, s16);
-static void GetBg0TilemapDst(u16 **);
-static void InitBlackWipe(s16 *, s16, s16, s16, s16, s16, s16);
-static bool8 UpdateBlackWipe(s16 *, bool8, bool8);
 static void SetTrainerPicSlideDirection(s16, s16);
 static void IncrementTrainerPicState(s16);
 static s16 IsTrainerPicSlideDone(s16);
-static bool8 TransitionIntro_FadeToGray(struct Task *);
-static bool8 TransitionIntro_FadeFromGray(struct Task *);
-static bool8 IsIntroTaskDone(void);
 static bool16 UpdateRectangularSpiralLine(const s16 *const *, struct RectangularSpiralLine *);
 static void SpriteCB_FldEffPokeballTrail(struct Sprite *);
-static void SpriteCB_MugshotTrainerPic(struct Sprite *);
 static void SpriteCB_WhiteBarFade(struct Sprite *);
-static bool8 MugshotTrainerPic_Pause(struct Sprite *);
-static bool8 MugshotTrainerPic_Init(struct Sprite *);
-static bool8 MugshotTrainerPic_Slide(struct Sprite *);
-static bool8 MugshotTrainerPic_SlideSlow(struct Sprite *);
-static bool8 MugshotTrainerPic_SlideOffscreen(struct Sprite *);
+static void VBlankCB_ShredSplit(void);
+static void HBlankCB_ShredSplit(void);
 
 static s16 sDebug_RectangularSpiralData;
 static u8 sTestingTransitionId;
@@ -321,25 +214,9 @@ static struct RectangularSpiralLine sRectangularSpiralLines[4];
 
 EWRAM_DATA static struct TransitionData *sTransitionData = NULL;
 
-static const u32 sBigPokeball_Tileset[] = INCBIN_U32("graphics/battle_transitions/big_pokeball.4bpp");
 static const u32 sPokeballTrail_Tileset[] = INCBIN_U32("graphics/battle_transitions/pokeball_trail.4bpp");
 static const u8 sPokeball_Gfx[] = INCBIN_U8("graphics/battle_transitions/pokeball.4bpp");
-static const u32 sEliteFour_Tileset[] = INCBIN_U32("graphics/battle_transitions/elite_four_bg.4bpp");
-static const u8 sUnusedBrendan_Gfx[] = INCBIN_U8("graphics/battle_transitions/unused_brendan.4bpp");
-static const u8 sUnusedLass_Gfx[] = INCBIN_U8("graphics/battle_transitions/unused_lass.4bpp");
 static const u32 sShrinkingBoxTileset[] = INCBIN_U32("graphics/battle_transitions/shrinking_box.4bpp");
-static const u16 sEvilTeam_Palette[] = INCBIN_U16("graphics/battle_transitions/evil_team.gbapal");
-static const u32 sTeamAqua_Tileset[] = INCBIN_U32("graphics/battle_transitions/team_aqua.4bpp.lz");
-static const u32 sTeamAqua_Tilemap[] = INCBIN_U32("graphics/battle_transitions/team_aqua.bin.lz");
-static const u32 sTeamMagma_Tileset[] = INCBIN_U32("graphics/battle_transitions/team_magma.4bpp.lz");
-static const u32 sTeamMagma_Tilemap[] = INCBIN_U32("graphics/battle_transitions/team_magma.bin.lz");
-static const u32 sRegis_Tileset[] = INCBIN_U32("graphics/battle_transitions/regis.4bpp");
-static const u16 sRegice_Palette[] = INCBIN_U16("graphics/battle_transitions/regice.gbapal");
-static const u16 sRegisteel_Palette[] = INCBIN_U16("graphics/battle_transitions/registeel.gbapal");
-static const u16 sRegirock_Palette[] = INCBIN_U16("graphics/battle_transitions/regirock.gbapal");
-static const u32 sRegice_Tilemap[] = INCBIN_U32("graphics/battle_transitions/regice.bin");
-static const u32 sRegisteel_Tilemap[] = INCBIN_U32("graphics/battle_transitions/registeel.bin");
-static const u32 sRegirock_Tilemap[] = INCBIN_U32("graphics/battle_transitions/regirock.bin");
 static const u16 sUnused_Palette[] = INCBIN_U16("graphics/battle_transitions/unused.gbapal");
 static const u32 sKyogre_Tileset[] = INCBIN_U32("graphics/battle_transitions/kyogre.4bpp.lz");
 static const u32 sKyogre_Tilemap[] = INCBIN_U32("graphics/battle_transitions/kyogre.bin.lz");
@@ -372,33 +249,33 @@ static const TaskFunc sTasks_Intro[B_TRANSITION_COUNT] =
 // This task will call the functions that do the transition effects.
 static const TaskFunc sTasks_Main[B_TRANSITION_COUNT] =
 {
-    [B_TRANSITION_BLUR] = Task_Blur,
-    [B_TRANSITION_SWIRL] = Task_Swirl,
-    [B_TRANSITION_SHUFFLE] = Task_Shuffle,
-    [B_TRANSITION_BIG_POKEBALL] = Task_BigPokeball,
+    [B_TRANSITION_BLUR]            = BattleTransitionTaskHandler_Blur,
+    [B_TRANSITION_SWIRL]           = BattleTransitionTaskHandler_Swirl,
+    [B_TRANSITION_SHUFFLE]         = BattleTransitionTaskHandler_Shuffle,
+    [B_TRANSITION_BIG_POKEBALL]    = BattleTransitionTaskHandler_BigPokeball,
     [B_TRANSITION_POKEBALLS_TRAIL] = Task_PokeballsTrail,
-    [B_TRANSITION_CLOCKWISE_WIPE] = Task_ClockwiseWipe,
-    [B_TRANSITION_RIPPLE] = Task_Ripple,
-    [B_TRANSITION_WAVE] = Task_Wave,
-    [B_TRANSITION_SLICE] = Task_Slice,
+    [B_TRANSITION_CLOCKWISE_WIPE]  = BattleTransitionTaskHandler_ClockwiseWipe,
+    [B_TRANSITION_RIPPLE]          = BattleTransitionTaskHandler_Ripple,
+    [B_TRANSITION_WAVE]            = BattleTransitionTaskHandler_Wave,
+    [B_TRANSITION_SLICE]           = BattleTransitionTaskHandler_Slice,
     [B_TRANSITION_WHITE_BARS_FADE] = Task_WhiteBarsFade,
-    [B_TRANSITION_GRID_SQUARES] = Task_GridSquares,
-    [B_TRANSITION_ANGLED_WIPES] = Task_AngledWipes,
-    [B_TRANSITION_SIDNEY] = Task_Sidney,
-    [B_TRANSITION_PHOEBE] = Task_Phoebe,
-    [B_TRANSITION_GLACIA] = Task_Glacia,
-    [B_TRANSITION_DRAKE] = Task_Drake,
-    [B_TRANSITION_CHAMPION] = Task_Champion,
-    [B_TRANSITION_AQUA] = Task_Aqua,
-    [B_TRANSITION_MAGMA] = Task_Magma,
-    [B_TRANSITION_REGICE] = Task_Regice,
-    [B_TRANSITION_REGISTEEL] = Task_Registeel,
-    [B_TRANSITION_REGIROCK] = Task_Regirock,
-    [B_TRANSITION_KYOGRE] = Task_Kyogre,
-    [B_TRANSITION_GROUDON] = Task_Groudon,
-    [B_TRANSITION_RAYQUAZA] = Task_Rayquaza,
-    [B_TRANSITION_SHRED_SPLIT] = Task_ShredSplit,
-    [B_TRANSITION_BLACKHOLE] = Task_Blackhole,
+    [B_TRANSITION_GRID_SQUARES]    = BattleTransitionTaskHandler_GridSquares,
+    [B_TRANSITION_ANGLED_WIPES]    = BattleTransitionTaskHandler_AngledWipes,
+    [B_TRANSITION_SIDNEY]          = BattleTransitionTaskHandler_MugshotSidney,
+    [B_TRANSITION_PHOEBE]          = BattleTransitionTaskHandler_MugshotPhoebe,
+    [B_TRANSITION_GLACIA]          = BattleTransitionTaskHandler_MugshotGlacia,
+    [B_TRANSITION_DRAKE]           = BattleTransitionTaskHandler_MugshotDrake,
+    [B_TRANSITION_CHAMPION]        = BattleTransitionTaskHandler_MugshotChampion,
+    [B_TRANSITION_AQUA]            = BattleTransitionTaskHandler_Aqua,
+    [B_TRANSITION_MAGMA]           = BattleTransitionTaskHandler_Magma,
+    [B_TRANSITION_REGICE]          = BattleTransitionTaskHandler_Regice,
+    [B_TRANSITION_REGISTEEL]       = BattleTransitionTaskHandler_Registeel,
+    [B_TRANSITION_REGIROCK]        = BattleTransitionTaskHandler_Regirock,
+    [B_TRANSITION_KYOGRE]          = Task_Kyogre,
+    [B_TRANSITION_GROUDON]         = Task_Groudon,
+    [B_TRANSITION_RAYQUAZA]        = Task_Rayquaza,
+    [B_TRANSITION_SHRED_SPLIT]     = Task_ShredSplit,
+    [B_TRANSITION_BLACKHOLE]       = Task_Blackhole,
     [B_TRANSITION_BLACKHOLE_PULSATE] = Task_BlackholePulsate,
     [B_TRANSITION_RECTANGULAR_SPIRAL] = Task_RectangularSpiral,
     [B_TRANSITION_FRONTIER_LOGO_WIGGLE] = Task_FrontierLogoWiggle,
@@ -424,87 +301,6 @@ static const TransitionStateFunc sTaskHandlers[] =
     &Transition_WaitForMain
 };
 
-static const TransitionStateFunc sBlur_Funcs[] =
-{
-    Blur_Init,
-    Blur_Main,
-    Blur_End
-};
-
-static const TransitionStateFunc sSwirl_Funcs[] =
-{
-    Swirl_Init,
-    Swirl_End,
-};
-
-static const TransitionStateFunc sShuffle_Funcs[] =
-{
-    Shuffle_Init,
-    Shuffle_End,
-};
-
-static const TransitionStateFunc sAqua_Funcs[] =
-{
-    Aqua_Init,
-    Aqua_SetGfx,
-    PatternWeave_Blend1,
-    PatternWeave_Blend2,
-    PatternWeave_FinishAppear,
-    FramesCountdown,
-    PatternWeave_CircularMask
-};
-
-static const TransitionStateFunc sMagma_Funcs[] =
-{
-    Magma_Init,
-    Magma_SetGfx,
-    PatternWeave_Blend1,
-    PatternWeave_Blend2,
-    PatternWeave_FinishAppear,
-    FramesCountdown,
-    PatternWeave_CircularMask
-};
-
-static const TransitionStateFunc sBigPokeball_Funcs[] =
-{
-    BigPokeball_Init,
-    BigPokeball_SetGfx,
-    PatternWeave_Blend1,
-    PatternWeave_Blend2,
-    PatternWeave_FinishAppear,
-    PatternWeave_CircularMask
-};
-
-static const TransitionStateFunc sRegice_Funcs[] =
-{
-    Regi_Init,
-    Regice_SetGfx,
-    PatternWeave_Blend1,
-    PatternWeave_Blend2,
-    PatternWeave_FinishAppear,
-    PatternWeave_CircularMask
-};
-
-static const TransitionStateFunc sRegisteel_Funcs[] =
-{
-    Regi_Init,
-    Registeel_SetGfx,
-    PatternWeave_Blend1,
-    PatternWeave_Blend2,
-    PatternWeave_FinishAppear,
-    PatternWeave_CircularMask
-};
-
-static const TransitionStateFunc sRegirock_Funcs[] =
-{
-    Regi_Init,
-    Regirock_SetGfx,
-    PatternWeave_Blend1,
-    PatternWeave_Blend2,
-    PatternWeave_FinishAppear,
-    PatternWeave_CircularMask
-};
-
 static const TransitionStateFunc sKyogre_Funcs[] =
 {
     WeatherTrio_BgFadeBlack,
@@ -528,92 +324,6 @@ static const TransitionStateFunc sPokeballsTrail_Funcs[] =
 static const s16 sPokeballsTrail_StartXCoords[2] = { -16, DISPLAY_WIDTH + 16 };
 static const s16 sPokeballsTrail_Delays[NUM_POKEBALL_TRAILS] = {0, 32, 64, 18, 48};
 static const s16 sPokeballsTrail_Speeds[2] = {8, -8};
-
-static const TransitionStateFunc sClockwiseWipe_Funcs[] =
-{
-    ClockwiseWipe_Init,
-    ClockwiseWipe_TopRight,
-    ClockwiseWipe_Right,
-    ClockwiseWipe_Bottom,
-    ClockwiseWipe_Left,
-    ClockwiseWipe_TopLeft,
-    ClockwiseWipe_End
-};
-
-static const TransitionStateFunc sRipple_Funcs[] =
-{
-    Ripple_Init,
-    Ripple_Main
-};
-
-static const TransitionStateFunc sWave_Funcs[] =
-{
-    Wave_Init,
-    Wave_Main,
-    Wave_End
-};
-
-static const TransitionStateFunc sMugshot_Funcs[] =
-{
-    Mugshot_Init,
-    Mugshot_SetGfx,
-    Mugshot_ShowBanner,
-    Mugshot_StartOpponentSlide,
-    Mugshot_WaitStartPlayerSlide,
-    Mugshot_WaitPlayerSlide,
-    Mugshot_GradualWhiteFade,
-    Mugshot_InitFadeWhiteToBlack,
-    Mugshot_FadeToBlack,
-    Mugshot_End
-};
-
-static const u8 sMugshotsTrainerPicIDsTable[MUGSHOTS_COUNT] =
-{
-    [MUGSHOT_SIDNEY]   = TRAINER_PIC_ELITE_FOUR_SIDNEY,
-    [MUGSHOT_PHOEBE]   = TRAINER_PIC_ELITE_FOUR_PHOEBE,
-    [MUGSHOT_GLACIA]   = TRAINER_PIC_ELITE_FOUR_GLACIA,
-    [MUGSHOT_DRAKE]    = TRAINER_PIC_ELITE_FOUR_DRAKE,
-    [MUGSHOT_CHAMPION] = TRAINER_PIC_CHAMPION_WALLACE,
-};
-static const s16 sMugshotsOpponentRotationScales[MUGSHOTS_COUNT][2] =
-{
-    [MUGSHOT_SIDNEY] =   {0x200, 0x200},
-    [MUGSHOT_PHOEBE] =   {0x200, 0x200},
-    [MUGSHOT_GLACIA] =   {0x1B0, 0x1B0},
-    [MUGSHOT_DRAKE] =    {0x1A0, 0x1A0},
-    [MUGSHOT_CHAMPION] = {0x188, 0x188},
-};
-static const s16 sMugshotsOpponentCoords[MUGSHOTS_COUNT][2] =
-{
-    [MUGSHOT_SIDNEY] =   { 0,  0},
-    [MUGSHOT_PHOEBE] =   { 0,  0},
-    [MUGSHOT_GLACIA] =   {-4,  4},
-    [MUGSHOT_DRAKE] =    { 0,  5},
-    [MUGSHOT_CHAMPION] = {-8,  7},
-};
-
-static const TransitionSpriteCallback sMugshotTrainerPicFuncs[] =
-{
-    MugshotTrainerPic_Pause,
-    MugshotTrainerPic_Init,
-    MugshotTrainerPic_Slide,
-    MugshotTrainerPic_SlideSlow,
-    MugshotTrainerPic_Pause,
-    MugshotTrainerPic_SlideOffscreen,
-    MugshotTrainerPic_Pause
-};
-
-// One element per slide direction.
-// Sign of acceleration is opposite speed, so slide decelerates.
-static const s16 sTrainerPicSlideSpeeds[2] = {12, -12};
-static const s16 sTrainerPicSlideAccels[2] = {-1,   1};
-
-static const TransitionStateFunc sSlice_Funcs[] =
-{
-    Slice_Init,
-    Slice_Main,
-    Slice_End
-};
 
 static const TransitionStateFunc sShredSplit_Funcs[] =
 {
@@ -765,44 +475,6 @@ static const TransitionStateFunc sWhiteBarsFade_Funcs[] =
 #define NUM_WHITE_BARS 8
 static const s16 sWhiteBarsFade_StartDelays[NUM_WHITE_BARS] = {0, 20, 15, 40, 10, 25, 35, 5};
 
-static const TransitionStateFunc sGridSquares_Funcs[] =
-{
-    GridSquares_Init,
-    GridSquares_Main,
-    GridSquares_End
-};
-
-static const TransitionStateFunc sAngledWipes_Funcs[] =
-{
-    AngledWipes_Init,
-    AngledWipes_SetWipeData,
-    AngledWipes_DoWipe,
-    AngledWipes_TryEnd,
-    AngledWipes_StartNext
-};
-
-#define NUM_ANGLED_WIPES 7
-
-static const s16 sAngledWipes_MoveData[NUM_ANGLED_WIPES][5] =
-{
-// startX          startY          endX            endY            yDirection
-    {56,            0,              0,              DISPLAY_HEIGHT, 0},
-    {104,           DISPLAY_HEIGHT, DISPLAY_WIDTH,  88,             1},
-    {DISPLAY_WIDTH, 72,             56,             0,              1},
-    {0,             32,             144,            DISPLAY_HEIGHT, 0},
-    {144,           DISPLAY_HEIGHT, 184,            0,              1},
-    {56,            0,              168,            DISPLAY_HEIGHT, 0},
-    {168,           DISPLAY_HEIGHT, 48,             0,              1},
-};
-
-static const s16 sAngledWipes_EndDelays[NUM_ANGLED_WIPES] = {8, 4, 2, 1, 1, 1, 0};
-
-static const TransitionStateFunc sTransitionIntroFuncs[] =
-{
-    TransitionIntro_FadeToGray,
-    TransitionIntro_FadeFromGray
-};
-
 static const struct SpriteFrameImage sSpriteImage_Pokeball[] =
 {
     {sPokeball_Gfx, sizeof(sPokeball_Gfx)}
@@ -848,98 +520,9 @@ static const struct SpriteTemplate sSpriteTemplate_Pokeball =
     .callback = SpriteCB_FldEffPokeballTrail
 };
 
-static const struct OamData sOam_UnusedBrendanLass =
-{
-    .y = 0,
-    .affineMode = ST_OAM_AFFINE_OFF,
-    .objMode = ST_OAM_OBJ_NORMAL,
-    .mosaic = FALSE,
-    .bpp = ST_OAM_4BPP,
-    .shape = SPRITE_SHAPE(64x64),
-    .x = 0,
-    .matrixNum = 0,
-    .size = SPRITE_SIZE(64x64),
-    .tileNum = 0,
-    .priority = 0,
-    .paletteNum = 0,
-    .affineParam = 0,
-};
-
-static const struct SpriteFrameImage sImageTable_UnusedBrendan[] =
-{
-    {sUnusedBrendan_Gfx, sizeof(sUnusedBrendan_Gfx)}
-};
-
-static const struct SpriteFrameImage sImageTable_UnusedLass[] =
-{
-    {sUnusedLass_Gfx, sizeof(sUnusedLass_Gfx)}
-};
-
-static const union AnimCmd sSpriteAnim_UnusedBrendanLass[] =
-{
-    ANIMCMD_FRAME(0, 1),
-    ANIMCMD_END
-};
-
-static const union AnimCmd *const sSpriteAnimTable_UnusedBrendanLass[] =
-{
-    sSpriteAnim_UnusedBrendanLass
-};
-
-static const struct SpriteTemplate sSpriteTemplate_UnusedBrendan =
-{
-    .tileTag = TAG_NONE,
-    .paletteTag = PALTAG_UNUSED_MUGSHOT,
-    .oam = &sOam_UnusedBrendanLass,
-    .anims = sSpriteAnimTable_UnusedBrendanLass,
-    .images = sImageTable_UnusedBrendan,
-    .affineAnims = gDummySpriteAffineAnimTable,
-    .callback = SpriteCB_MugshotTrainerPic
-};
-
-static const struct SpriteTemplate sSpriteTemplate_UnusedLass =
-{
-    .tileTag = TAG_NONE,
-    .paletteTag = PALTAG_UNUSED_MUGSHOT,
-    .oam = &sOam_UnusedBrendanLass,
-    .anims = sSpriteAnimTable_UnusedBrendanLass,
-    .images = sImageTable_UnusedLass,
-    .affineAnims = gDummySpriteAffineAnimTable,
-    .callback = SpriteCB_MugshotTrainerPic
-};
-
 static const u16 sFieldEffectPal_Pokeball[] = INCBIN_U16("graphics/field_effects/palettes/pokeball.gbapal");
 
 const struct SpritePalette gSpritePalette_Pokeball = {sFieldEffectPal_Pokeball, FLDEFF_PAL_TAG_POKEBALL_TRAIL};
-
-static const u16 sMugshotPal_Sidney[] = INCBIN_U16("graphics/battle_transitions/sidney_bg.gbapal");
-static const u16 sMugshotPal_Phoebe[] = INCBIN_U16("graphics/battle_transitions/phoebe_bg.gbapal");
-static const u16 sMugshotPal_Glacia[] = INCBIN_U16("graphics/battle_transitions/glacia_bg.gbapal");
-static const u16 sMugshotPal_Drake[] = INCBIN_U16("graphics/battle_transitions/drake_bg.gbapal");
-static const u16 sMugshotPal_Champion[] = INCBIN_U16("graphics/battle_transitions/wallace_bg.gbapal");
-static const u16 sMugshotPal_Brendan[] = INCBIN_U16("graphics/battle_transitions/brendan_bg.gbapal");
-static const u16 sMugshotPal_May[] = INCBIN_U16("graphics/battle_transitions/may_bg.gbapal");
-
-static const u16 *const sOpponentMugshotsPals[MUGSHOTS_COUNT] =
-{
-    [MUGSHOT_SIDNEY] = sMugshotPal_Sidney,
-    [MUGSHOT_PHOEBE] = sMugshotPal_Phoebe,
-    [MUGSHOT_GLACIA] = sMugshotPal_Glacia,
-    [MUGSHOT_DRAKE] = sMugshotPal_Drake,
-    [MUGSHOT_CHAMPION] = sMugshotPal_Champion
-};
-
-static const u16 *const sPlayerMugshotsPals[GENDER_COUNT] =
-{
-    [MALE] = sMugshotPal_Brendan,
-    [FEMALE] = sMugshotPal_May
-};
-
-static const u16 sUnusedTrainerPalette[] = INCBIN_U16("graphics/battle_transitions/unused_trainer.gbapal");
-static const struct SpritePalette sSpritePalette_UnusedTrainer = {sUnusedTrainerPalette, PALTAG_UNUSED_MUGSHOT};
-
-static const u16 sBigPokeball_Tilemap[] = INCBIN_U16("graphics/battle_transitions/big_pokeball_map.bin");
-static const u16 sMugshotsTilemap[] = INCBIN_U16("graphics/battle_transitions/elite_four_bg_map.bin");
 
 static const TransitionStateFunc sFrontierLogoWiggle_Funcs[] =
 {
@@ -1043,7 +626,7 @@ static void CB2_TestBattleTransition(void)
     UpdatePaletteFade();
 }
 
-static void UNUSED TestBattleTransition(u8 transitionId)
+void BattleTransition_StartTest(u8 transitionId)
 {
     sTestingTransitionId = transitionId;
     SetMainCallback2(CB2_TestBattleTransition);
@@ -1071,6 +654,7 @@ bool8 IsBattleTransitionDone(void)
     {
         DestroyTask(taskId);
         FREE_AND_SET_NULL(sTransitionData);
+        gBattleTransitionData = NULL;
         return TRUE;
     }
     else
@@ -1084,6 +668,7 @@ static void LaunchBattleTransitionTask(u8 transitionId)
     u8 taskId = CreateTask(Task_BattleTransition, 2);
     gTasks[taskId].tTransitionId = transitionId;
     sTransitionData = AllocZeroed(sizeof(*sTransitionData));
+    gBattleTransitionData = (struct BattleTransitionData*)sTransitionData;
 }
 
 static void Task_BattleTransition(u8 taskId)
@@ -1144,209 +729,13 @@ static void Task_Intro(u8 taskId)
     if (gTasks[taskId].tState == 0)
     {
         gTasks[taskId].tState++;
-        CreateIntroTask(
-            TRANSITION_INTRO_FADE_TO_GRAY_DELAY,
-            TRANSITION_INTRO_FADE_FROM_GRAY_DELAY,
-            TRANSITION_INTRO_NUMBER_OF_FADES,
-            TRANSITION_INTRO_FADE_TO_GRAY_INCREMENT,
-            TRANSITION_INTRO_FADE_FROM_GRAY_INCREMENT
-        );
+        BattleTransitionIntro_CreateTask();
     }
-    else if (IsIntroTaskDone())
+    else if (BattleTransitionIntro_IsTaskDone())
     {
         DestroyTask(taskId);
     }
 }
-
-//--------------------
-// B_TRANSITION_BLUR
-//--------------------
-// Vanilla: used in a Flash cave if the enemy wild Pokemon is stronger than the player.
-
-#define tDelay   data[1]
-#define tCounter data[2]
-
-static void Task_Blur(u8 taskId)
-{
-    while (sBlur_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 Blur_Init(struct Task *task)
-{
-    SetGpuReg(REG_OFFSET_MOSAIC, 0);
-    SetGpuRegBits(REG_OFFSET_BG1CNT, BGCNT_MOSAIC);
-    SetGpuRegBits(REG_OFFSET_BG2CNT, BGCNT_MOSAIC);
-    SetGpuRegBits(REG_OFFSET_BG3CNT, BGCNT_MOSAIC);
-    task->tState++;
-    return TRUE;
-}
-
-static bool8 Blur_Main(struct Task *task)
-{
-    if (task->tDelay != 0)
-    {
-        task->tDelay--;
-    }
-    else
-    {
-        task->tDelay = 4;
-        if (++task->tCounter == 10)
-            BeginNormalPaletteFade(PALETTES_ALL, -1, 0, 16, RGB_BLACK);
-        SetGpuReg(REG_OFFSET_MOSAIC, (task->tCounter & 15) * 17);
-        if (task->tCounter > 14)
-            task->tState++;
-    }
-    return FALSE;
-}
-
-static bool8 Blur_End(struct Task *task)
-{
-    if (!gPaletteFade.active)
-    {
-        u8 taskId = FindTaskIdByFunc(Task_Blur);
-        DestroyTask(taskId);
-    }
-    return FALSE;
-}
-
-#undef tDelay
-#undef tCounter
-
-//--------------------
-// B_TRANSITION_SWIRL
-//--------------------
-
-#define tSinIndex  data[1]
-#define tAmplitude data[2]
-
-static void Task_Swirl(u8 taskId)
-{
-    while (sSwirl_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 Swirl_Init(struct Task *task)
-{
-    InitTransitionData();
-    ScanlineEffect_Clear();
-    BeginNormalPaletteFade(PALETTES_ALL, 4, 0, 16, RGB_BLACK);
-    SetSinWave(gScanlineEffectRegBuffers[1], sTransitionData->cameraX, 0, 2, 0, DISPLAY_HEIGHT);
-
-    SetVBlankCallback(VBlankCB_Swirl);
-    SetHBlankCallback(HBlankCB_Swirl);
-
-    EnableInterrupts(INTR_FLAG_VBLANK | INTR_FLAG_HBLANK);
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Swirl_End(struct Task *task)
-{
-    sTransitionData->VBlank_DMA = FALSE;
-    task->tSinIndex += 4;
-    task->tAmplitude += 8;
-
-    SetSinWave(gScanlineEffectRegBuffers[0], sTransitionData->cameraX, task->tSinIndex, 2, task->tAmplitude, DISPLAY_HEIGHT);
-
-    if (!gPaletteFade.active)
-    {
-        u8 taskId = FindTaskIdByFunc(Task_Swirl);
-        DestroyTask(taskId);
-    }
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static void VBlankCB_Swirl(void)
-{
-    VBlankCB_BattleTransition();
-    if (sTransitionData->VBlank_DMA)
-        DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 2);
-}
-
-static void HBlankCB_Swirl(void)
-{
-    u16 var = gScanlineEffectRegBuffers[1][REG_VCOUNT];
-    REG_BG1HOFS = var;
-    REG_BG2HOFS = var;
-    REG_BG3HOFS = var;
-}
-
-#undef tSinIndex
-#undef tAmplitude
-
-//----------------------
-// B_TRANSITION_SHUFFLE
-//----------------------
-// Vanilla: used in a cave if the enemy trainer is stronger than the player.
-
-#define tSinVal    data[1]
-#define tAmplitude data[2]
-
-static void Task_Shuffle(u8 taskId)
-{
-    while (sShuffle_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 Shuffle_Init(struct Task *task)
-{
-    InitTransitionData();
-    ScanlineEffect_Clear();
-
-    BeginNormalPaletteFade(PALETTES_ALL, 4, 0, 16, RGB_BLACK);
-    memset(gScanlineEffectRegBuffers[1], sTransitionData->cameraY, DISPLAY_HEIGHT * 2);
-
-    SetVBlankCallback(VBlankCB_Shuffle);
-    SetHBlankCallback(HBlankCB_Shuffle);
-
-    EnableInterrupts(INTR_FLAG_VBLANK | INTR_FLAG_HBLANK);
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Shuffle_End(struct Task *task)
-{
-    u8 i;
-    u16 amplitude, sinVal;
-
-    sTransitionData->VBlank_DMA = FALSE;
-    sinVal = task->tSinVal;
-    amplitude = task->tAmplitude >> 8;
-    task->tSinVal += 4224;
-    task->tAmplitude += 384;
-
-    for (i = 0; i < DISPLAY_HEIGHT; i++, sinVal += 4224)
-    {
-        u16 sinIndex = sinVal / 256;
-        gScanlineEffectRegBuffers[0][i] = sTransitionData->cameraY + Sin(sinIndex, amplitude);
-    }
-
-    if (!gPaletteFade.active)
-        DestroyTask(FindTaskIdByFunc(Task_Shuffle));
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static void VBlankCB_Shuffle(void)
-{
-    VBlankCB_BattleTransition();
-    if (sTransitionData->VBlank_DMA)
-        DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 2);
-}
-
-static void HBlankCB_Shuffle(void)
-{
-    u16 var = gScanlineEffectRegBuffers[1][REG_VCOUNT];
-    REG_BG1VOFS = var;
-    REG_BG2VOFS = var;
-    REG_BG3VOFS = var;
-}
-
-#undef tSinVal
-#undef tAmplitude
 
 //------------------------------------------------------------------------
 // B_TRANSITION_BIG_POKEBALL, B_TRANSITION_AQUA, B_TRANSITION_MAGMA,
@@ -1370,36 +759,6 @@ static void HBlankCB_Shuffle(void)
 #define tSinIndex     data[4]
 #define tAmplitude    data[5]
 #define tEndDelay     data[8]
-
-static void Task_BigPokeball(u8 taskId)
-{
-    while (sBigPokeball_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static void Task_Aqua(u8 taskId)
-{
-    while (sAqua_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static void Task_Magma(u8 taskId)
-{
-    while (sMagma_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static void Task_Regice(u8 taskId)
-{
-    while (sRegice_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static void Task_Registeel(u8 taskId)
-{
-    while (sRegisteel_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static void Task_Regirock(u8 taskId)
-{
-    while (sRegirock_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
 
 static void Task_Kyogre(u8 taskId)
 {
@@ -1428,147 +787,6 @@ static void InitPatternWeaveTransition(struct Task *task)
         gScanlineEffectRegBuffers[1][i] = DISPLAY_WIDTH;
 
     SetVBlankCallback(VBlankCB_PatternWeave);
-}
-
-static bool8 Aqua_Init(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    task->tEndDelay = 60;
-    InitPatternWeaveTransition(task);
-    GetBg0TilesDst(&tilemap, &tileset);
-    CpuFill16(0, tilemap, BG_SCREEN_SIZE);
-    LZ77UnCompVram(sTeamAqua_Tileset, tileset);
-    LoadPalette(sEvilTeam_Palette, BG_PLTT_ID(15), sizeof(sEvilTeam_Palette));
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Magma_Init(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    task->tEndDelay = 60;
-    InitPatternWeaveTransition(task);
-    GetBg0TilesDst(&tilemap, &tileset);
-    CpuFill16(0, tilemap, BG_SCREEN_SIZE);
-    LZ77UnCompVram(sTeamMagma_Tileset, tileset);
-    LoadPalette(sEvilTeam_Palette, BG_PLTT_ID(15), sizeof(sEvilTeam_Palette));
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Regi_Init(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    task->tEndDelay = 60;
-    InitPatternWeaveTransition(task);
-    GetBg0TilesDst(&tilemap, &tileset);
-    CpuFill16(0, tilemap, BG_SCREEN_SIZE);
-    CpuCopy16(sRegis_Tileset, tileset, 0x2000);
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 BigPokeball_Init(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    InitPatternWeaveTransition(task);
-    GetBg0TilesDst(&tilemap, &tileset);
-    CpuFill16(0, tilemap, BG_SCREEN_SIZE);
-    CpuCopy16(sBigPokeball_Tileset, tileset, sizeof(sBigPokeball_Tileset));
-    LoadPalette(sFieldEffectPal_Pokeball, BG_PLTT_ID(15), sizeof(sFieldEffectPal_Pokeball));
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 BigPokeball_SetGfx(struct Task *task)
-{
-    s16 i, j;
-    u16 *tilemap, *tileset;
-    const u16 *bigPokeballMap;
-
-    GetBg0TilesDst(&tilemap, &tileset);
-    bigPokeballMap = sBigPokeball_Tilemap;
-    for (i = 0; i < 20; i++)
-    {
-        for (j = 0; j < 30; j++, bigPokeballMap++)
-            SET_TILE(tilemap, i, j, *bigPokeballMap);
-    }
-
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude, DISPLAY_HEIGHT);
-
-    task->tState++;
-    return TRUE;
-}
-
-static bool8 Aqua_SetGfx(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    GetBg0TilesDst(&tilemap, &tileset);
-    LZ77UnCompVram(sTeamAqua_Tilemap, tilemap);
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude, DISPLAY_HEIGHT);
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Magma_SetGfx(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    GetBg0TilesDst(&tilemap, &tileset);
-    LZ77UnCompVram(sTeamMagma_Tilemap, tilemap);
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude, DISPLAY_HEIGHT);
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Regice_SetGfx(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    GetBg0TilesDst(&tilemap, &tileset);
-    LoadPalette(sRegice_Palette, BG_PLTT_ID(15), sizeof(sRegice_Palette));
-    CpuCopy16(sRegice_Tilemap, tilemap, 0x500);
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude, DISPLAY_HEIGHT);
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Registeel_SetGfx(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    GetBg0TilesDst(&tilemap, &tileset);
-    LoadPalette(sRegisteel_Palette, BG_PLTT_ID(15), sizeof(sRegisteel_Palette));
-    CpuCopy16(sRegisteel_Tilemap, tilemap, 0x500);
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude, DISPLAY_HEIGHT);
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Regirock_SetGfx(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    GetBg0TilesDst(&tilemap, &tileset);
-    LoadPalette(sRegirock_Palette, BG_PLTT_ID(15), sizeof(sRegirock_Palette));
-    CpuCopy16(sRegirock_Tilemap, tilemap, 0x500);
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude, DISPLAY_HEIGHT);
-
-    task->tState++;
-    return FALSE;
 }
 
 #define tTimer data[1]
@@ -1657,7 +875,7 @@ static bool8 PatternWeave_Blend1(struct Task *task)
     task->tSinIndex += 8;
     task->tAmplitude -= 256;
 
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude >> 8, DISPLAY_HEIGHT);
+    BattleTransitionCommon_SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude >> 8, DISPLAY_HEIGHT);
 
     sTransitionData->VBlank_DMA++;
     return FALSE;
@@ -1677,7 +895,7 @@ static bool8 PatternWeave_Blend2(struct Task *task)
     task->tSinIndex += 8;
     task->tAmplitude -= 256;
 
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude >> 8, DISPLAY_HEIGHT);
+    BattleTransitionCommon_SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude >> 8, DISPLAY_HEIGHT);
 
     sTransitionData->VBlank_DMA++;
     return FALSE;
@@ -1689,7 +907,7 @@ static bool8 PatternWeave_FinishAppear(struct Task *task)
     task->tSinIndex += 8;
     task->tAmplitude -= 256;
 
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude >> 8, DISPLAY_HEIGHT);
+    BattleTransitionCommon_SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude >> 8, DISPLAY_HEIGHT);
 
     if (task->tAmplitude <= 0)
     {
@@ -1736,7 +954,7 @@ static bool8 PatternWeave_CircularMask(struct Task *task)
         if (task->tRadius < 0)
             task->tRadius = 0;
     }
-    SetCircularMask(gScanlineEffectRegBuffers[0], DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, task->tRadius);
+    BattleTransitionCommon_SetCircularMask(gScanlineEffectRegBuffers[0], DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, task->tRadius);
     if (task->tRadius == 0)
     {
         SetVBlankCallback(NULL);
@@ -1907,967 +1125,6 @@ static void SpriteCB_FldEffPokeballTrail(struct Sprite *sprite)
 #undef sDelay
 #undef sPrevX
 
-//-----------------------------
-// B_TRANSITION_CLOCKWISE_WIPE
-//-----------------------------
-// Vanilla: used for wild encounters in caves, when the foe is stronger than the player.
-
-static void Task_ClockwiseWipe(u8 taskId)
-{
-    while (sClockwiseWipe_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 ClockwiseWipe_Init(struct Task *task)
-{
-    u16 i;
-
-    InitTransitionData();
-    ScanlineEffect_Clear();
-
-    sTransitionData->WININ = 0;
-    sTransitionData->WINOUT = WINOUT_WIN01_ALL;
-    sTransitionData->WIN0H = WIN_RANGE(DISPLAY_WIDTH, DISPLAY_WIDTH + 1);
-    sTransitionData->WIN0V = DISPLAY_HEIGHT;
-
-    for (i = 0; i < DISPLAY_HEIGHT; i++)
-        gScanlineEffectRegBuffers[1][i] = ((DISPLAY_WIDTH + 3) << 8) | (DISPLAY_WIDTH + 4);
-
-    SetVBlankCallback(VBlankCB_ClockwiseWipe);
-    sTransitionData->tWipeEndX = DISPLAY_WIDTH / 2;
-
-    task->tState++;
-    return TRUE;
-}
-
-static bool8 ClockwiseWipe_TopRight(struct Task *task)
-{
-    sTransitionData->VBlank_DMA = FALSE;
-
-#ifdef UBFIX
-    InitBlackWipe(sTransitionData->data, DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, sTransitionData->tWipeEndX, 0, 1, 1);
-#else
-    InitBlackWipe(sTransitionData->data, DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, sTransitionData->tWipeEndX, -1, 1, 1);
-#endif
-    do
-    {
-        gScanlineEffectRegBuffers[0][sTransitionData->tWipeCurrY] = (sTransitionData->tWipeCurrX + 1) | ((DISPLAY_WIDTH / 2) << 8);
-    } while (!UpdateBlackWipe(sTransitionData->data, TRUE, TRUE));
-
-    sTransitionData->tWipeEndX += 16;
-    if (sTransitionData->tWipeEndX >= DISPLAY_WIDTH)
-    {
-        sTransitionData->tWipeEndY = 0;
-        task->tState++;
-    }
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 ClockwiseWipe_Right(struct Task *task)
-{
-    s16 start, end;
-    vu8 finished = FALSE;
-
-    sTransitionData->VBlank_DMA = FALSE;
-
-    InitBlackWipe(sTransitionData->data, DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, DISPLAY_WIDTH, sTransitionData->tWipeEndY, 1, 1);
-
-    while (1)
-    {
-        start = DISPLAY_WIDTH / 2, end = sTransitionData->tWipeCurrX + 1;
-        if (sTransitionData->tWipeEndY >= DISPLAY_HEIGHT / 2)
-            start = sTransitionData->tWipeCurrX, end = DISPLAY_WIDTH;
-        gScanlineEffectRegBuffers[0][sTransitionData->tWipeCurrY] = end | (start << 8);
-        if (finished)
-            break;
-        finished = UpdateBlackWipe(sTransitionData->data, TRUE, TRUE);
-    }
-
-    sTransitionData->tWipeEndY += 8;
-    if (sTransitionData->tWipeEndY >= DISPLAY_HEIGHT)
-    {
-        sTransitionData->tWipeEndX = DISPLAY_WIDTH;
-        task->tState++;
-    }
-    else
-    {
-        while (sTransitionData->tWipeCurrY < sTransitionData->tWipeEndY)
-            gScanlineEffectRegBuffers[0][++sTransitionData->tWipeCurrY] = end | (start << 8);
-    }
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 ClockwiseWipe_Bottom(struct Task *task)
-{
-    sTransitionData->VBlank_DMA = FALSE;
-
-    InitBlackWipe(sTransitionData->data, DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, sTransitionData->tWipeEndX, DISPLAY_HEIGHT, 1, 1);
-    do
-    {
-        gScanlineEffectRegBuffers[0][sTransitionData->tWipeCurrY] = (sTransitionData->tWipeCurrX << 8) | DISPLAY_WIDTH;
-    } while (!UpdateBlackWipe(sTransitionData->data, TRUE, TRUE));
-
-    sTransitionData->tWipeEndX -= 16;
-    if (sTransitionData->tWipeEndX <= 0)
-    {
-        sTransitionData->tWipeEndY = DISPLAY_HEIGHT;
-        task->tState++;
-    }
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 ClockwiseWipe_Left(struct Task *task)
-{
-    s16 end, start, temp;
-    vu8 finished = FALSE;
-
-    sTransitionData->VBlank_DMA = FALSE;
-
-    InitBlackWipe(sTransitionData->data, DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, 0, sTransitionData->tWipeEndY, 1, 1);
-
-    while (1)
-    {
-        end = (gScanlineEffectRegBuffers[0][sTransitionData->tWipeCurrY]) & 0xFF;
-        start = sTransitionData->tWipeCurrX;
-        if (sTransitionData->tWipeEndY <= DISPLAY_HEIGHT / 2)
-            start = DISPLAY_WIDTH / 2, end = sTransitionData->tWipeCurrX;
-        temp = end | (start << 8);
-        gScanlineEffectRegBuffers[0][sTransitionData->tWipeCurrY] = temp;
-        if (finished)
-            break;
-        finished = UpdateBlackWipe(sTransitionData->data, TRUE, TRUE);
-    }
-
-    sTransitionData->tWipeEndY -= 8;
-    if (sTransitionData->tWipeEndY <= 0)
-    {
-        sTransitionData->tWipeEndX = 0;
-        task->tState++;
-    }
-    else
-    {
-        while (sTransitionData->tWipeCurrY > sTransitionData->tWipeEndY)
-            gScanlineEffectRegBuffers[0][--sTransitionData->tWipeCurrY] = end | (start << 8);
-    }
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 ClockwiseWipe_TopLeft(struct Task *task)
-{
-    sTransitionData->VBlank_DMA = FALSE;
-
-    InitBlackWipe(sTransitionData->data, DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, sTransitionData->tWipeEndX, 0, 1, 1);
-    do
-    {
-        s16 start, end;
-        start = DISPLAY_WIDTH / 2, end = sTransitionData->tWipeCurrX;
-        if (sTransitionData->tWipeCurrX >= DISPLAY_WIDTH / 2)
-            start = 0, end = DISPLAY_WIDTH;
-        gScanlineEffectRegBuffers[0][sTransitionData->tWipeCurrY] = end | (start << 8);
-    } while (!UpdateBlackWipe(sTransitionData->data, TRUE, TRUE));
-
-    sTransitionData->tWipeEndX += 16;
-    if (sTransitionData->tWipeCurrX > DISPLAY_WIDTH / 2)
-        task->tState++;
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 ClockwiseWipe_End(struct Task *task)
-{
-    DmaStop(0);
-    FadeScreenBlack();
-    DestroyTask(FindTaskIdByFunc(Task_ClockwiseWipe));
-    return FALSE;
-}
-
-static void VBlankCB_ClockwiseWipe(void)
-{
-    DmaStop(0);
-    VBlankCB_BattleTransition();
-    if (sTransitionData->VBlank_DMA != 0)
-        DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 2);
-    REG_WININ = sTransitionData->WININ;
-    REG_WINOUT = sTransitionData->WINOUT;
-    REG_WIN0V = sTransitionData->WIN0V;
-    REG_WIN0H = gScanlineEffectRegBuffers[1][0];
-    DmaSet(0, gScanlineEffectRegBuffers[1], &REG_WIN0H, B_TRANS_DMA_FLAGS);
-}
-
-//---------------------
-// B_TRANSITION_RIPPLE
-//---------------------
-// Vanilla: used for wild encounters on water, when the player is stronger than the foe.
-
-#define tSinVal       data[1]
-#define tAmplitudeVal data[2]
-#define tTimer        data[3]
-#define tFadeStarted  data[4]
-
-static void Task_Ripple(u8 taskId)
-{
-    while (sRipple_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 Ripple_Init(struct Task *task)
-{
-    u8 i;
-
-    InitTransitionData();
-    ScanlineEffect_Clear();
-
-    for (i = 0; i < DISPLAY_HEIGHT; i++)
-        gScanlineEffectRegBuffers[1][i] = sTransitionData->cameraY;
-
-    SetVBlankCallback(VBlankCB_Ripple);
-    SetHBlankCallback(HBlankCB_Ripple);
-
-    EnableInterrupts(INTR_FLAG_HBLANK);
-
-    task->tState++;
-    return TRUE;
-}
-
-static bool8 Ripple_Main(struct Task *task)
-{
-    u8 i;
-    s16 amplitude;
-    u16 sinVal, speed;
-
-    sTransitionData->VBlank_DMA = FALSE;
-
-    amplitude = task->tAmplitudeVal >> 8;
-    sinVal = task->tSinVal;
-    speed = 0x180;
-    task->tSinVal += 0x400;
-    if (task->tAmplitudeVal <= 0x1FFF)
-        task->tAmplitudeVal += 0x180;
-
-    for (i = 0; i < DISPLAY_HEIGHT; i++, sinVal += speed)
-    {
-        s16 sinIndex = sinVal >> 8;
-        gScanlineEffectRegBuffers[0][i] = sTransitionData->cameraY + Sin(sinIndex & 0xffff, amplitude);
-    }
-
-    if (++task->tTimer == 81)
-    {
-        task->tFadeStarted++;
-        BeginNormalPaletteFade(PALETTES_ALL, -2, 0, 16, RGB_BLACK);
-    }
-
-    if (task->tFadeStarted && !gPaletteFade.active)
-        DestroyTask(FindTaskIdByFunc(Task_Ripple));
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static void VBlankCB_Ripple(void)
-{
-    VBlankCB_BattleTransition();
-    if (sTransitionData->VBlank_DMA)
-        DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 2);
-}
-
-static void HBlankCB_Ripple(void)
-{
-    u16 var = gScanlineEffectRegBuffers[1][REG_VCOUNT];
-    REG_BG1VOFS = var;
-    REG_BG2VOFS = var;
-    REG_BG3VOFS = var;
-}
-
-#undef tSinVal
-#undef tAmplitudeVal
-#undef tTimer
-#undef tFadeStarted
-
-//-------------------
-// B_TRANSITION_WAVE
-//-------------------
-// Vanilla: used for wild encounters on water, when the foe is stronger than the player.
-
-#define tX        data[1]
-#define tSinIndex data[2]
-
-static void Task_Wave(u8 taskId)
-{
-    while (sWave_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 Wave_Init(struct Task *task)
-{
-    u8 i;
-
-    InitTransitionData();
-    ScanlineEffect_Clear();
-
-    sTransitionData->WININ = WININ_WIN0_ALL;
-    sTransitionData->WINOUT = 0;
-    sTransitionData->WIN0H = DISPLAY_WIDTH;
-    sTransitionData->WIN0V = DISPLAY_HEIGHT;
-
-    for (i = 0; i < DISPLAY_HEIGHT; i++)
-        gScanlineEffectRegBuffers[1][i] = DISPLAY_WIDTH + 2;
-
-    SetVBlankCallback(VBlankCB_Wave);
-
-    task->tState++;
-    return TRUE;
-}
-
-static bool8 Wave_Main(struct Task *task)
-{
-    u8 i, sinIndex;
-    u16 *toStore;
-    bool8 finished;
-
-    sTransitionData->VBlank_DMA = FALSE;
-    toStore = gScanlineEffectRegBuffers[0];
-    sinIndex = task->tSinIndex;
-    task->tSinIndex += 16;
-    task->tX += 8;
-
-    for (i = 0, finished = TRUE; i < DISPLAY_HEIGHT; i++, sinIndex += 4, toStore++)
-    {
-        s16 x = task->tX + Sin(sinIndex, 40);
-        if (x < 0)
-            x = 0;
-        if (x > DISPLAY_WIDTH)
-            x = DISPLAY_WIDTH;
-        *toStore = (x << 8) | (DISPLAY_WIDTH + 1);
-        if (x < DISPLAY_WIDTH)
-            finished = FALSE;
-    }
-    if (finished)
-        task->tState++;
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 Wave_End(struct Task *task)
-{
-    DmaStop(0);
-    FadeScreenBlack();
-    DestroyTask(FindTaskIdByFunc(Task_Wave));
-    return FALSE;
-}
-
-static void VBlankCB_Wave(void)
-{
-    DmaStop(0);
-    VBlankCB_BattleTransition();
-    if (sTransitionData->VBlank_DMA != 0)
-        DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 2);
-    REG_WININ = sTransitionData->WININ;
-    REG_WINOUT = sTransitionData->WINOUT;
-    REG_WIN0V = sTransitionData->WIN0V;
-    DmaSet(0, gScanlineEffectRegBuffers[1], &REG_WIN0H, B_TRANS_DMA_FLAGS);
-}
-
-#undef tX
-#undef tSinIndex
-
-//----------------------------------------------------------------
-// B_TRANSITION_SIDNEY, B_TRANSITION_PHOEBE, B_TRANSITION_GLACIA,
-// B_TRANSITION_DRAKE, and B_TRANSITION_CHAMPION
-//
-// These are all the "mugshot" transitions, where a banner shows
-// the trainer pic of the player and their opponent.
-//----------------------------------------------------------------
-
-#define tSinIndex           data[1]
-#define tTopBannerX         data[2]
-#define tBottomBannerX      data[3]
-#define tTimer              data[3] // Re-used
-#define tFadeSpread         data[4]
-#define tOpponentSpriteId   data[13]
-#define tPlayerSpriteId     data[14]
-#define tMugshotId          data[15]
-
-// Sprite data for trainer sprites in mugshots
-#define sState       data[0]
-#define sSlideSpeed  data[1]
-#define sSlideAccel  data[2]
-#define sDone        data[6]
-#define sSlideDir    data[7]
-
-static void Task_Sidney(u8 taskId)
-{
-    gTasks[taskId].tMugshotId = MUGSHOT_SIDNEY;
-    DoMugshotTransition(taskId);
-}
-
-static void Task_Phoebe(u8 taskId)
-{
-    gTasks[taskId].tMugshotId = MUGSHOT_PHOEBE;
-    DoMugshotTransition(taskId);
-}
-
-static void Task_Glacia(u8 taskId)
-{
-    gTasks[taskId].tMugshotId = MUGSHOT_GLACIA;
-    DoMugshotTransition(taskId);
-}
-
-static void Task_Drake(u8 taskId)
-{
-    gTasks[taskId].tMugshotId = MUGSHOT_DRAKE;
-    DoMugshotTransition(taskId);
-}
-
-static void Task_Champion(u8 taskId)
-{
-    gTasks[taskId].tMugshotId = MUGSHOT_CHAMPION;
-    DoMugshotTransition(taskId);
-}
-
-static void DoMugshotTransition(u8 taskId)
-{
-    while (sMugshot_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 Mugshot_Init(struct Task *task)
-{
-    u8 i;
-
-    InitTransitionData();
-    ScanlineEffect_Clear();
-    Mugshots_CreateTrainerPics(task);
-
-    task->tSinIndex = 0;
-    task->tTopBannerX = 1;
-    task->tBottomBannerX = DISPLAY_WIDTH - 1;
-    sTransitionData->WININ = WININ_WIN0_ALL;
-    sTransitionData->WINOUT = WINOUT_WIN01_BG1 | WINOUT_WIN01_BG2 | WINOUT_WIN01_BG3 | WINOUT_WIN01_OBJ | WINOUT_WIN01_CLR;
-    sTransitionData->WIN0V = DISPLAY_HEIGHT;
-
-    for (i = 0; i < DISPLAY_HEIGHT; i++)
-        gScanlineEffectRegBuffers[1][i] = (DISPLAY_WIDTH << 8) | (DISPLAY_WIDTH + 1);
-
-    SetVBlankCallback(VBlankCB_Mugshots);
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Mugshot_SetGfx(struct Task *task)
-{
-    s16 i, j;
-    u16 *tilemap, *tileset;
-    const u16 *mugshotsMap;
-
-    mugshotsMap = sMugshotsTilemap;
-    GetBg0TilesDst(&tilemap, &tileset);
-    CpuSet(sEliteFour_Tileset, tileset, 0xF0);
-    LoadPalette(sOpponentMugshotsPals[task->tMugshotId], BG_PLTT_ID(15), PLTT_SIZE_4BPP);
-    LoadPalette(sPlayerMugshotsPals[gSaveBlock2Ptr->playerGender], BG_PLTT_ID(15) + 10, PLTT_SIZEOF(6));
-
-    for (i = 0; i < 20; i++)
-    {
-        for (j = 0; j < 32; j++, mugshotsMap++)
-            SET_TILE(tilemap, i, j, *mugshotsMap);
-    }
-
-    EnableInterrupts(INTR_FLAG_HBLANK);
-
-    SetHBlankCallback(HBlankCB_Mugshots);
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 Mugshot_ShowBanner(struct Task *task)
-{
-    u8 i, sinIndex;
-    u16 *toStore;
-    s16 x;
-    s32 mergedValue;
-
-    sTransitionData->VBlank_DMA = FALSE;
-
-    toStore = gScanlineEffectRegBuffers[0];
-    sinIndex = task->tSinIndex;
-    task->tSinIndex += 16;
-
-    // Update top banner
-    for (i = 0; i < DISPLAY_HEIGHT / 2; i++, toStore++, sinIndex += 16)
-    {
-        x = task->tTopBannerX + Sin(sinIndex, 16);
-        if (x < 0)
-            x = 1;
-        if (x > DISPLAY_WIDTH)
-            x = DISPLAY_WIDTH;
-        *toStore = x;
-    }
-
-    // Update bottom banner
-    for (; i < DISPLAY_HEIGHT; i++, toStore++, sinIndex += 16)
-    {
-        x = task->tBottomBannerX - Sin(sinIndex, 16);
-        if (x < 0)
-            x = 0;
-        if (x > DISPLAY_WIDTH - 1)
-            x = DISPLAY_WIDTH - 1;
-        *toStore = (x << 8) | DISPLAY_WIDTH;
-    }
-
-    // Slide banners across screen
-    task->tTopBannerX += 8;
-    task->tBottomBannerX -= 8;
-
-    if (task->tTopBannerX > DISPLAY_WIDTH)
-        task->tTopBannerX = DISPLAY_WIDTH;
-    if (task->tBottomBannerX < 0)
-        task->tBottomBannerX = 0;
-
-    mergedValue = *(s32 *)(&task->tTopBannerX);
-    if (mergedValue == DISPLAY_WIDTH)
-        task->tState++;
-
-    sTransitionData->BG0HOFS_Lower -= 8;
-    sTransitionData->BG0HOFS_Upper += 8;
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 Mugshot_StartOpponentSlide(struct Task *task)
-{
-    u8 i;
-    u16 *toStore;
-
-    sTransitionData->VBlank_DMA = FALSE;
-
-    for (i = 0, toStore = gScanlineEffectRegBuffers[0]; i < DISPLAY_HEIGHT; i++, toStore++)
-        *toStore = DISPLAY_WIDTH;
-
-    task->tState++;
-
-    // Clear old data
-    task->tSinIndex = 0;
-    task->tTopBannerX = 0;
-    task->tBottomBannerX = 0;
-
-    sTransitionData->BG0HOFS_Lower -= 8;
-    sTransitionData->BG0HOFS_Upper += 8;
-
-    SetTrainerPicSlideDirection(task->tOpponentSpriteId, 0);
-    SetTrainerPicSlideDirection(task->tPlayerSpriteId, 1);
-
-    // Start opponent slide
-    IncrementTrainerPicState(task->tOpponentSpriteId);
-
-    PlaySE(SE_MUGSHOT);
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 Mugshot_WaitStartPlayerSlide(struct Task *task)
-{
-    sTransitionData->BG0HOFS_Lower -= 8;
-    sTransitionData->BG0HOFS_Upper += 8;
-
-    // Start player's slide in once the opponent is finished
-    if (IsTrainerPicSlideDone(task->tOpponentSpriteId))
-    {
-        task->tState++;
-        IncrementTrainerPicState(task->tPlayerSpriteId);
-    }
-    return FALSE;
-}
-
-static bool8 Mugshot_WaitPlayerSlide(struct Task *task)
-{
-    sTransitionData->BG0HOFS_Lower -= 8;
-    sTransitionData->BG0HOFS_Upper += 8;
-
-    if (IsTrainerPicSlideDone(task->tPlayerSpriteId))
-    {
-        sTransitionData->VBlank_DMA = FALSE;
-        SetVBlankCallback(NULL);
-        DmaStop(0);
-        memset(gScanlineEffectRegBuffers[0], 0, DISPLAY_HEIGHT * 2);
-        memset(gScanlineEffectRegBuffers[1], 0, DISPLAY_HEIGHT * 2);
-        SetGpuReg(REG_OFFSET_WIN0H, DISPLAY_WIDTH);
-        SetGpuReg(REG_OFFSET_BLDY, 0);
-        task->tState++;
-        task->tTimer = 0;
-        task->tFadeSpread = 0;
-        sTransitionData->BLDCNT = BLDCNT_TGT1_ALL | BLDCNT_EFFECT_LIGHTEN;
-        SetVBlankCallback(VBlankCB_MugshotsFadeOut);
-    }
-    return FALSE;
-}
-
-static bool8 Mugshot_GradualWhiteFade(struct Task *task)
-{
-    bool32 active;
-
-    sTransitionData->VBlank_DMA = FALSE;
-    active = TRUE;
-    sTransitionData->BG0HOFS_Lower -= 8;
-    sTransitionData->BG0HOFS_Upper += 8;
-
-    if (task->tFadeSpread < DISPLAY_HEIGHT / 2)
-        task->tFadeSpread += 2;
-    if (task->tFadeSpread > DISPLAY_HEIGHT / 2)
-        task->tFadeSpread = DISPLAY_HEIGHT / 2;
-
-    if (++task->tTimer & 1)
-    {
-        s16 i;
-        for (i = 0, active = FALSE; i <= task->tFadeSpread; i++)
-        {
-            // Fade starts in middle of screen and
-            // spreads outwards in both directions.
-            s16 index1 = DISPLAY_HEIGHT / 2 - i;
-            s16 index2 = DISPLAY_HEIGHT / 2 + i;
-            if (gScanlineEffectRegBuffers[0][index1] <= 15)
-            {
-                active = TRUE;
-                gScanlineEffectRegBuffers[0][index1]++;
-            }
-            if (gScanlineEffectRegBuffers[0][index2] <= 15)
-            {
-                active = TRUE;
-                gScanlineEffectRegBuffers[0][index2]++;
-            }
-        }
-    }
-
-    if (task->tFadeSpread == DISPLAY_HEIGHT / 2 && !active)
-        task->tState++;
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-// Set palette to white to replace the scanline white fade
-// before the screen fades to black.
-static bool8 Mugshot_InitFadeWhiteToBlack(struct Task *task)
-{
-    sTransitionData->VBlank_DMA = FALSE;
-    BlendPalettes(PALETTES_ALL, 16, RGB_WHITE);
-    sTransitionData->BLDCNT = 0xFF;
-    task->tTimer = 0;
-
-    task->tState++;
-    return TRUE;
-}
-
-static bool8 Mugshot_FadeToBlack(struct Task *task)
-{
-    sTransitionData->VBlank_DMA = FALSE;
-
-    task->tTimer++;
-    memset(gScanlineEffectRegBuffers[0], task->tTimer, DISPLAY_HEIGHT * 2);
-    if (task->tTimer > 15)
-        task->tState++;
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 Mugshot_End(struct Task *task)
-{
-    DmaStop(0);
-    FadeScreenBlack();
-    DestroyTask(FindTaskIdByFunc(task->func));
-    return FALSE;
-}
-
-static void VBlankCB_Mugshots(void)
-{
-    DmaStop(0);
-    VBlankCB_BattleTransition();
-    if (sTransitionData->VBlank_DMA != 0)
-        DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 2);
-    REG_BG0VOFS = sTransitionData->BG0VOFS;
-    REG_WININ = sTransitionData->WININ;
-    REG_WINOUT = sTransitionData->WINOUT;
-    REG_WIN0V = sTransitionData->WIN0V;
-    DmaSet(0, gScanlineEffectRegBuffers[1], &REG_WIN0H, B_TRANS_DMA_FLAGS);
-}
-
-static void VBlankCB_MugshotsFadeOut(void)
-{
-    DmaStop(0);
-    VBlankCB_BattleTransition();
-    if (sTransitionData->VBlank_DMA != 0)
-        DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 2);
-    REG_BLDCNT = sTransitionData->BLDCNT;
-    DmaSet(0, gScanlineEffectRegBuffers[1], &REG_BLDY, B_TRANS_DMA_FLAGS);
-}
-
-static void HBlankCB_Mugshots(void)
-{
-    if (REG_VCOUNT < DISPLAY_HEIGHT / 2)
-        REG_BG0HOFS = sTransitionData->BG0HOFS_Lower;
-    else
-        REG_BG0HOFS = sTransitionData->BG0HOFS_Upper;
-}
-
-static void Mugshots_CreateTrainerPics(struct Task *task)
-{
-    struct Sprite *opponentSprite, *playerSprite;
-
-    s16 mugshotId = task->tMugshotId;
-    task->tOpponentSpriteId = CreateTrainerSprite(sMugshotsTrainerPicIDsTable[mugshotId],
-                                                  sMugshotsOpponentCoords[mugshotId][0] - 32,
-                                                  sMugshotsOpponentCoords[mugshotId][1] + 42,
-                                                  0, gDecompressionBuffer);
-    task->tPlayerSpriteId = CreateTrainerSprite(PlayerGenderToFrontTrainerPicId(gSaveBlock2Ptr->playerGender),
-                                                DISPLAY_WIDTH + 32,
-                                                106,
-                                                0, gDecompressionBuffer);
-
-    opponentSprite = &gSprites[task->tOpponentSpriteId];
-    playerSprite = &gSprites[task->tPlayerSpriteId];
-
-    opponentSprite->callback = SpriteCB_MugshotTrainerPic;
-    playerSprite->callback = SpriteCB_MugshotTrainerPic;
-
-    opponentSprite->oam.affineMode = ST_OAM_AFFINE_DOUBLE;
-    playerSprite->oam.affineMode = ST_OAM_AFFINE_DOUBLE;
-
-    opponentSprite->oam.matrixNum = AllocOamMatrix();
-    playerSprite->oam.matrixNum = AllocOamMatrix();
-
-    opponentSprite->oam.shape = SPRITE_SHAPE(64x32);
-    playerSprite->oam.shape = SPRITE_SHAPE(64x32);
-
-    opponentSprite->oam.size = SPRITE_SIZE(64x32);
-    playerSprite->oam.size = SPRITE_SIZE(64x32);
-
-    CalcCenterToCornerVec(opponentSprite, SPRITE_SHAPE(64x32), SPRITE_SIZE(64x32), ST_OAM_AFFINE_DOUBLE);
-    CalcCenterToCornerVec(playerSprite, SPRITE_SHAPE(64x32), SPRITE_SIZE(64x32), ST_OAM_AFFINE_DOUBLE);
-
-    SetOamMatrixRotationScaling(opponentSprite->oam.matrixNum, sMugshotsOpponentRotationScales[mugshotId][0], sMugshotsOpponentRotationScales[mugshotId][1], 0);
-    SetOamMatrixRotationScaling(playerSprite->oam.matrixNum, -512, 512, 0);
-}
-
-static void SpriteCB_MugshotTrainerPic(struct Sprite *sprite)
-{
-    while (sMugshotTrainerPicFuncs[sprite->sState](sprite));
-}
-
-// Wait until IncrementTrainerPicState is called
-static bool8 MugshotTrainerPic_Pause(struct Sprite *sprite)
-{
-    return FALSE;
-}
-
-static bool8 MugshotTrainerPic_Init(struct Sprite *sprite)
-{
-    s16 speeds[ARRAY_COUNT(sTrainerPicSlideSpeeds)];
-    s16 accels[ARRAY_COUNT(sTrainerPicSlideAccels)];
-
-    memcpy(speeds, sTrainerPicSlideSpeeds, sizeof(sTrainerPicSlideSpeeds));
-    memcpy(accels, sTrainerPicSlideAccels, sizeof(sTrainerPicSlideAccels));
-
-    sprite->sState++;
-    sprite->sSlideSpeed = speeds[sprite->sSlideDir];
-    sprite->sSlideAccel = accels[sprite->sSlideDir];
-    return TRUE;
-}
-
-static bool8 MugshotTrainerPic_Slide(struct Sprite *sprite)
-{
-    sprite->x += sprite->sSlideSpeed;
-
-    // Advance state when pic passes ~40% of screen
-    if (sprite->sSlideDir && sprite->x < DISPLAY_WIDTH - 107)
-        sprite->sState++;
-    else if (!sprite->sSlideDir && sprite->x > 103)
-        sprite->sState++;
-    return FALSE;
-}
-
-static bool8 MugshotTrainerPic_SlideSlow(struct Sprite *sprite)
-{
-    // Add acceleration value to speed, then add speed.
-    // For both sides acceleration is opposite speed, so slide slows down.
-    sprite->sSlideSpeed += sprite->sSlideAccel;
-    sprite->x += sprite->sSlideSpeed;
-
-    // Advance state when slide comes to a stop
-    if (sprite->sSlideSpeed == 0)
-    {
-        sprite->sState++;
-        sprite->sSlideAccel = -sprite->sSlideAccel;
-        sprite->sDone = TRUE;
-    }
-    return FALSE;
-}
-
-// Slides trainer pic offscreen. This is never reached, because it's preceded
-// by a second MugshotTrainerPic_Pause, and IncrementTrainerPicState is
-// only called once per trainer pic.
-static bool8 MugshotTrainerPic_SlideOffscreen(struct Sprite *sprite)
-{
-    sprite->sSlideSpeed += sprite->sSlideAccel;
-    sprite->x += sprite->sSlideSpeed;
-    if (sprite->x < -31 || sprite->x > DISPLAY_WIDTH + 31)
-        sprite->sState++;
-    return FALSE;
-}
-
-static void SetTrainerPicSlideDirection(s16 spriteId, s16 dirId)
-{
-    gSprites[spriteId].sSlideDir = dirId;
-}
-
-static void IncrementTrainerPicState(s16 spriteId)
-{
-    gSprites[spriteId].sState++;
-}
-
-static s16 IsTrainerPicSlideDone(s16 spriteId)
-{
-    return gSprites[spriteId].sDone;
-}
-
-#undef sState
-#undef sSlideSpeed
-#undef sSlideAccel
-#undef sDone
-#undef sSlideDir
-#undef tSinIndex
-#undef tTopBannerX
-#undef tBottomBannerX
-#undef tTimer
-#undef tFadeSpread
-#undef tOpponentSpriteId
-#undef tPlayerSpriteId
-#undef tMugshotId
-
-//--------------------
-// B_TRANSITION_SLICE
-//--------------------
-// Vanilla: used for ordinary wild encounters, when the player is stronger than the foe.
-
-#define tEffectX data[1]
-#define tSpeed   data[2]
-#define tAccel   data[3]
-
-static void Task_Slice(u8 taskId)
-{
-    while (sSlice_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 Slice_Init(struct Task *task)
-{
-    u16 i;
-
-    InitTransitionData();
-    ScanlineEffect_Clear();
-
-    task->tSpeed = SLICE_TRANSITION_INITIAL_SPEED << 8;
-    task->tAccel = SLICE_TRANSITION_INITIAL_ACCEL;
-    sTransitionData->WININ = WININ_WIN0_ALL;
-    sTransitionData->WINOUT = 0;
-    sTransitionData->WIN0V = DISPLAY_HEIGHT;
-    sTransitionData->VBlank_DMA = FALSE;
-
-    for (i = 0; i < DISPLAY_HEIGHT; i++)
-    {
-        gScanlineEffectRegBuffers[1][i] = sTransitionData->cameraX;
-        gScanlineEffectRegBuffers[1][DISPLAY_HEIGHT + i] = DISPLAY_WIDTH;
-    }
-
-    EnableInterrupts(INTR_FLAG_HBLANK);
-    SetGpuRegBits(REG_OFFSET_DISPSTAT, DISPSTAT_HBLANK_INTR);
-
-    SetVBlankCallback(VBlankCB_Slice);
-    SetHBlankCallback(HBlankCB_Slice);
-
-    task->tState++;
-    return TRUE;
-}
-
-static bool8 Slice_Main(struct Task *task)
-{
-    u16 i;
-
-    sTransitionData->VBlank_DMA = FALSE;
-
-    task->tEffectX += (task->tSpeed >> 8);
-    if (task->tEffectX > DISPLAY_WIDTH)
-        task->tEffectX = DISPLAY_WIDTH;
-    if (task->tSpeed <= 0xFFF)
-        task->tSpeed += task->tAccel;
-    if (task->tAccel < 128)
-        task->tAccel <<= 1; // multiplying by two
-
-    for (i = 0; i < DISPLAY_HEIGHT; i++)
-    {
-        u16 *storeLoc1 = &gScanlineEffectRegBuffers[0][i];
-        u16 *storeLoc2 = &gScanlineEffectRegBuffers[0][i + DISPLAY_HEIGHT];
-
-        // Alternate rows
-        if (i % 2)
-        {
-            *storeLoc1 = sTransitionData->cameraX + task->tEffectX;
-            *storeLoc2 = DISPLAY_WIDTH - task->tEffectX;
-        }
-        else
-        {
-            *storeLoc1 = sTransitionData->cameraX - task->tEffectX;
-            *storeLoc2 = (task->tEffectX << 8) | (DISPLAY_WIDTH + 1);
-        }
-    }
-
-    if (task->tEffectX >= DISPLAY_WIDTH)
-        task->tState++;
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 Slice_End(struct Task *task)
-{
-    DmaStop(0);
-    FadeScreenBlack();
-    DestroyTask(FindTaskIdByFunc(Task_Slice));
-    return FALSE;
-}
-
-static void VBlankCB_Slice(void)
-{
-    DmaStop(0);
-    VBlankCB_BattleTransition();
-    REG_WININ = sTransitionData->WININ;
-    REG_WINOUT = sTransitionData->WINOUT;
-    REG_WIN0V = sTransitionData->WIN0V;
-    if (sTransitionData->VBlank_DMA)
-        DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 4);
-    DmaSet(0, &gScanlineEffectRegBuffers[1][DISPLAY_HEIGHT], &REG_WIN0H, B_TRANS_DMA_FLAGS);
-}
-
-static void HBlankCB_Slice(void)
-{
-    if (REG_VCOUNT < DISPLAY_HEIGHT)
-    {
-        u16 var = gScanlineEffectRegBuffers[1][REG_VCOUNT];
-        REG_BG1HOFS = var;
-        REG_BG2HOFS = var;
-        REG_BG3HOFS = var;
-    }
-}
-
-#undef tEffectX
-#undef tSpeed
-#undef tAccel
-
 //--------------------------
 // B_TRANSITION_SHRED_SPLIT
 //--------------------------
@@ -2911,11 +1168,31 @@ static bool8 ShredSplit_Init(struct Task *task)
 
     EnableInterrupts(INTR_FLAG_HBLANK);
 
-    SetVBlankCallback(VBlankCB_Slice);
-    SetHBlankCallback(HBlankCB_Slice);
+    SetVBlankCallback(VBlankCB_ShredSplit);
+    SetHBlankCallback(HBlankCB_ShredSplit);
 
     task->tState++;
     return TRUE;
+}
+
+static void VBlankCB_ShredSplit(void) {
+   DmaStop(0);
+   BattleTransitionCommon_VBlankCB();
+   REG_WININ  = WININ_WIN0_ALL;
+   REG_WINOUT = 0;
+   REG_WIN0V  = DISPLAY_HEIGHT;
+   if (gBattleTransitionData->VBlank_DMA)
+      DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 4);
+   DmaSet(0, &gScanlineEffectRegBuffers[1][DISPLAY_HEIGHT], &REG_WIN0H, B_TRANS_DMA_FLAGS);
+}
+
+static void HBlankCB_ShredSplit(void) {
+   if (REG_VCOUNT < DISPLAY_HEIGHT) {
+      u16 var = gScanlineEffectRegBuffers[1][REG_VCOUNT];
+      REG_BG1HOFS = var;
+      REG_BG2HOFS = var;
+      REG_BG3HOFS = var;
+   }
 }
 
 static bool8 ShredSplit_Main(struct Task *task)
@@ -3124,7 +1401,7 @@ static bool8 Blackhole_GrowEnd(struct Task *task)
             task->tRadius += task->tGrowSpeed >> 8;
         if (task->tRadius > DISPLAY_HEIGHT)
             task->tRadius = DISPLAY_HEIGHT;
-        SetCircularMask(gScanlineEffectRegBuffers[0], DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, task->tRadius);
+        BattleTransitionCommon_SetCircularMask(gScanlineEffectRegBuffers[0], DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, task->tRadius);
         if (task->tRadius == DISPLAY_HEIGHT)
         {
             task->tFlag = TRUE;
@@ -3150,7 +1427,7 @@ static bool8 Blackhole_Vibrate(struct Task *task)
     }
     task->tRadius += sBlackhole_Vibrations[task->tVibrateId];
     task->tVibrateId = (task->tVibrateId + 1) % (int)ARRAY_COUNT(sBlackhole_Vibrations);
-    SetCircularMask(gScanlineEffectRegBuffers[0], DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, task->tRadius);
+    BattleTransitionCommon_SetCircularMask(gScanlineEffectRegBuffers[0], DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, task->tRadius);
     if (task->tRadius < 9)
     {
         task->tState++;
@@ -3177,7 +1454,7 @@ static bool8 BlackholePulsate_Main(struct Task *task)
     if (task->tRadius > DISPLAY_HEIGHT)
         task->tRadius = DISPLAY_HEIGHT;
 
-    SetCircularMask(gScanlineEffectRegBuffers[0], DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, task->tRadius);
+    BattleTransitionCommon_SetCircularMask(gScanlineEffectRegBuffers[0], DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, task->tRadius);
     if (task->tRadius == DISPLAY_HEIGHT)
     {
         DmaStop(0);
@@ -3798,301 +2075,6 @@ static void SpriteCB_WhiteBarFade(struct Sprite *sprite)
 #undef sDelay
 #undef sIsMainSprite
 
-//---------------------------
-// B_TRANSITION_GRID_SQUARES
-//---------------------------
-
-#define tDelay       data[1]
-#define tShrinkStage data[2]
-
-static void Task_GridSquares(u8 taskId)
-{
-    while (sGridSquares_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 GridSquares_Init(struct Task *task)
-{
-    u16 *tilemap, *tileset;
-
-    GetBg0TilesDst(&tilemap, &tileset);
-    CpuSet(sShrinkingBoxTileset, tileset, 16);
-    CpuFill16(0xF0 << 8, tilemap, BG_SCREEN_SIZE);
-    LoadPalette(sFieldEffectPal_Pokeball, BG_PLTT_ID(15), sizeof(sFieldEffectPal_Pokeball));
-
-    task->tState++;
-    return FALSE;
-}
-
-static bool8 GridSquares_Main(struct Task *task)
-{
-    u16 *tileset;
-
-    if (task->tDelay == 0)
-    {
-        GetBg0TilemapDst(&tileset);
-        task->tDelay = 3;
-        task->tShrinkStage++;
-        CpuSet(&sShrinkingBoxTileset[task->tShrinkStage * 8], tileset, 16);
-        if (task->tShrinkStage > 13)
-        {
-            task->tState++;
-            task->tDelay = 16;
-        }
-    }
-
-    task->tDelay--;
-    return FALSE;
-}
-
-static bool8 GridSquares_End(struct Task *task)
-{
-    if (--task->tDelay == 0)
-    {
-        FadeScreenBlack();
-        DestroyTask(FindTaskIdByFunc(Task_GridSquares));
-    }
-    return FALSE;
-}
-
-#undef tDelay
-#undef tShrinkStage
-
-//---------------------------
-// B_TRANSITION_ANGLED_WIPES
-//---------------------------
-
-#define tWipeId data[1]
-#define tDir    data[2]
-#define tDelay  data[3]
-
-static void Task_AngledWipes(u8 taskId)
-{
-    while (sAngledWipes_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 AngledWipes_Init(struct Task *task)
-{
-    u16 i;
-
-    InitTransitionData();
-    ScanlineEffect_Clear();
-
-    sTransitionData->WININ = WININ_WIN0_ALL;
-    sTransitionData->WINOUT = 0;
-    sTransitionData->WIN0V = DISPLAY_HEIGHT;
-
-    for (i = 0; i < DISPLAY_HEIGHT; i++)
-        gScanlineEffectRegBuffers[0][i] = DISPLAY_WIDTH;
-
-    CpuSet(gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT);
-    SetVBlankCallback(VBlankCB_AngledWipes);
-
-    task->tState++;
-    return TRUE;
-}
-
-static bool8 AngledWipes_SetWipeData(struct Task *task)
-{
-    InitBlackWipe(sTransitionData->data,
-                  sAngledWipes_MoveData[task->tWipeId][0],
-                  sAngledWipes_MoveData[task->tWipeId][1],
-                  sAngledWipes_MoveData[task->tWipeId][2],
-                  sAngledWipes_MoveData[task->tWipeId][3],
-                  1, 1);
-    task->tDir = sAngledWipes_MoveData[task->tWipeId][4];
-    task->tState++;
-    return TRUE;
-}
-
-static bool8 AngledWipes_DoWipe(struct Task *task)
-{
-    s16 i;
-    bool8 finished;
-
-    sTransitionData->VBlank_DMA = 0;
-
-    for (i = 0, finished = FALSE; i < 16; i++)
-    {
-        s16 r3 = gScanlineEffectRegBuffers[0][sTransitionData->tWipeCurrY] >> 8;
-        s16 r4 = gScanlineEffectRegBuffers[0][sTransitionData->tWipeCurrY] & 0xFF;
-        if (task->tDir == 0)
-        {
-            // Moving down
-            if (r3 < sTransitionData->tWipeCurrX)
-                r3 = sTransitionData->tWipeCurrX;
-            if (r3 > r4)
-                r3 = r4;
-        }
-        else
-        {
-            // Moving up
-            if (r4 > sTransitionData->tWipeCurrX)
-                r4 = sTransitionData->tWipeCurrX;
-            if (r4 <= r3)
-                r4 = r3;
-        }
-        gScanlineEffectRegBuffers[0][sTransitionData->tWipeCurrY] = (r4) | (r3 << 8);
-        if (finished)
-        {
-            task->tState++;
-            break;
-        }
-        finished = UpdateBlackWipe(sTransitionData->data, TRUE, TRUE);
-    }
-
-    sTransitionData->VBlank_DMA++;
-    return FALSE;
-}
-
-static bool8 AngledWipes_TryEnd(struct Task *task)
-{
-    if (++task->tWipeId < NUM_ANGLED_WIPES)
-    {
-        // Continue with next wipe
-        task->tState++;
-        task->tDelay = sAngledWipes_EndDelays[task->tWipeId - 1];
-        return TRUE;
-    }
-    else
-    {
-        // End transition
-        DmaStop(0);
-        FadeScreenBlack();
-        DestroyTask(FindTaskIdByFunc(Task_AngledWipes));
-        return FALSE;
-    }
-}
-
-static bool8 AngledWipes_StartNext(struct Task *task)
-{
-    if (--task->tDelay == 0)
-    {
-        // Return to AngledWipes_SetWipeData
-        task->tState = 1;
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-static void VBlankCB_AngledWipes(void)
-{
-    DmaStop(0);
-    VBlankCB_BattleTransition();
-    if (sTransitionData->VBlank_DMA)
-        DmaCopy16(3, gScanlineEffectRegBuffers[0], gScanlineEffectRegBuffers[1], DISPLAY_HEIGHT * 2);
-    REG_WININ = sTransitionData->WININ;
-    REG_WINOUT = sTransitionData->WINOUT;
-    REG_WIN0V = sTransitionData->WIN0V;
-    REG_WIN0H = gScanlineEffectRegBuffers[1][0];
-    DmaSet(0, gScanlineEffectRegBuffers[1], &REG_WIN0H, B_TRANS_DMA_FLAGS);
-}
-
-#undef tWipeId
-#undef tDir
-#undef tDelay
-
-//-----------------------------------
-// Transition intro
-//-----------------------------------
-
-#define tFadeToGrayDelay       data[1]
-#define tFadeFromGrayDelay     data[2]
-#define tNumFades              data[3]
-#define tFadeToGrayIncrement   data[4]
-#define tFadeFromGrayIncrement data[5]
-#define tDelayTimer            data[6]
-#define tBlend                 data[7]
-
-static void CreateIntroTask(s16 fadeToGrayDelay, s16 fadeFromGrayDelay, s16 numFades, s16 fadeToGrayIncrement, s16 fadeFromGrayIncrement)
-{
-    if (numFades == 0)
-    {
-        //
-        // Don't create the intro-fade task at all, as the way it's structured 
-        // means it'll loop forever if the fade count is 0. Other parts of the 
-        // battle transition code just poll to see if the task has ceased to 
-        // exist, so if we never create it in the first place, then the main 
-        // transition should play seamlessly.
-        //
-        return;
-    }
-    u8 taskId = CreateTask(Task_BattleTransition_Intro, 3);
-    gTasks[taskId].tFadeToGrayDelay = fadeToGrayDelay;
-    gTasks[taskId].tFadeFromGrayDelay = fadeFromGrayDelay;
-    gTasks[taskId].tNumFades = numFades;
-    gTasks[taskId].tFadeToGrayIncrement = fadeToGrayIncrement;
-    gTasks[taskId].tFadeFromGrayIncrement = fadeFromGrayIncrement;
-    gTasks[taskId].tDelayTimer = fadeToGrayDelay;
-}
-
-static bool8 IsIntroTaskDone(void)
-{
-    if (FindTaskIdByFunc(Task_BattleTransition_Intro) == TASK_NONE)
-        return TRUE;
-    else
-        return FALSE;
-}
-
-void Task_BattleTransition_Intro(u8 taskId)
-{
-    while (sTransitionIntroFuncs[gTasks[taskId].tState](&gTasks[taskId]));
-}
-
-static bool8 TransitionIntro_FadeToGray(struct Task *task)
-{
-    if (task->tDelayTimer == 0 || --task->tDelayTimer == 0)
-    {
-        task->tDelayTimer = task->tFadeToGrayDelay;
-        task->tBlend += task->tFadeToGrayIncrement;
-        if (task->tBlend > 16)
-            task->tBlend = 16;
-        BlendPalettes(PALETTES_ALL, task->tBlend, RGB(11, 11, 11));
-    }
-    if (task->tBlend >= 16)
-    {
-        // Fade to gray complete, start fade back
-        task->tState++;
-        task->tDelayTimer = task->tFadeFromGrayDelay;
-    }
-    return FALSE;
-}
-
-static bool8 TransitionIntro_FadeFromGray(struct Task *task)
-{
-    if (task->tDelayTimer == 0 || --task->tDelayTimer == 0)
-    {
-        task->tDelayTimer = task->tFadeFromGrayDelay;
-        task->tBlend -= task->tFadeFromGrayIncrement;
-        if (task->tBlend < 0)
-            task->tBlend = 0;
-        BlendPalettes(PALETTES_ALL, task->tBlend, RGB(11, 11, 11));
-    }
-    if (task->tBlend == 0)
-    {
-        if (--task->tNumFades == 0)
-        {
-            // All fades done, end intro
-            DestroyTask(FindTaskIdByFunc(Task_BattleTransition_Intro));
-        }
-        else
-        {
-            // Fade from gray complete, start new fade
-            task->tDelayTimer = task->tFadeToGrayDelay;
-            task->tState = 0;
-        }
-    }
-    return FALSE;
-}
-
-#undef tFadeToGrayDelay
-#undef tFadeFromGrayDelay
-#undef tNumFades
-#undef tFadeToGrayIncrement
-#undef tFadeFromGrayIncrement
-#undef tDelayTimer
-#undef tBlend
-
 //-----------------------------------
 // General transition functions
 //-----------------------------------
@@ -4110,13 +2092,6 @@ static void VBlankCB_BattleTransition(void)
     TransferPlttBuffer();
 }
 
-static void GetBg0TilemapDst(u16 **tileset)
-{
-    u16 charBase = REG_BG0CNT >> 2;
-    charBase <<= 14;
-    *tileset = (u16 *)(BG_VRAM + charBase);
-}
-
 void GetBg0TilesDst(u16 **tilemap, u16 **tileset)
 {
     u16 screenBase = REG_BG0CNT >> 8;
@@ -4132,152 +2107,6 @@ void GetBg0TilesDst(u16 **tilemap, u16 **tileset)
 static void FadeScreenBlack(void)
 {
     BlendPalettes(PALETTES_ALL, 16, RGB_BLACK);
-}
-
-static void SetSinWave(s16 *array, s16 sinAdd, s16 index, s16 indexIncrementer, s16 amplitude, s16 arrSize)
-{
-    u8 i;
-    for (i = 0; arrSize > 0; arrSize--, i++, index += indexIncrementer)
-        array[i] = sinAdd + Sin(index & 0xFF, amplitude);
-}
-
-static void SetCircularMask(u16 *buffer, s16 centerX, s16 centerY, s16 radius)
-{
-    s16 i;
-
-    memset(buffer, 10, DISPLAY_HEIGHT * sizeof(u16));
-    for (i = 0; i < 64; i++)
-    {
-        s16 sinResult, cosResult;
-        s16 drawXLeft, drawYBottNext, drawYTopNext, drawX, drawYTop, drawYBott;
-
-        sinResult = Sin(i, radius);
-        cosResult = Cos(i, radius);
-
-        drawXLeft = centerX - sinResult;
-        drawX = centerX + sinResult;
-        drawYTop = centerY - cosResult;
-        drawYBott = centerY + cosResult;
-
-        if (drawXLeft < 0)
-            drawXLeft = 0;
-        if (drawX > DISPLAY_WIDTH)
-            drawX = DISPLAY_WIDTH;
-        if (drawYTop < 0)
-            drawYTop = 0;
-        if (drawYBott > DISPLAY_HEIGHT - 1)
-            drawYBott = DISPLAY_HEIGHT - 1;
-
-        drawX |= (drawXLeft << 8);
-        buffer[drawYTop] = drawX;
-        buffer[drawYBott] = drawX;
-
-        cosResult = Cos(i + 1, radius);
-        drawYTopNext = centerY - cosResult;
-        drawYBottNext = centerY + cosResult;
-
-        if (drawYTopNext < 0)
-            drawYTopNext = 0;
-        if (drawYBottNext > DISPLAY_HEIGHT - 1)
-            drawYBottNext = DISPLAY_HEIGHT - 1;
-
-        while (drawYTop > drawYTopNext)
-            buffer[--drawYTop] = drawX;
-        while (drawYTop < drawYTopNext)
-            buffer[++drawYTop] = drawX;
-
-        while (drawYBott > drawYBottNext)
-            buffer[--drawYBott] = drawX;
-        while (drawYBott < drawYBottNext)
-            buffer[++drawYBott] = drawX;
-    }
-}
-
-static void InitBlackWipe(s16 *data, s16 startX, s16 startY, s16 endX, s16 endY, s16 xMove, s16 yMove)
-{
-    tWipeStartX = startX;
-    tWipeStartY = startY;
-    tWipeCurrX = startX;
-    tWipeCurrY = startY;
-    tWipeEndX = endX;
-    tWipeEndY = endY;
-    tWipeXMove = xMove;
-    tWipeYMove = yMove;
-    tWipeXDist = endX - startX;
-    if (tWipeXDist < 0)
-    {
-        // If end was less than start, reverse direction
-        tWipeXDist = -tWipeXDist;
-        tWipeXMove = -xMove;
-    }
-    tWipeYDist = endY - startY;
-    if (tWipeYDist < 0)
-    {
-        // If end was less than start, reverse direction
-        tWipeYDist = -tWipeYDist;
-        tWipeYMove = -yMove;
-    }
-    tWipeTemp = 0;
-}
-
-static bool8 UpdateBlackWipe(s16 *data, bool8 xExact, bool8 yExact)
-{
-    u8 numFinished;
-
-    if (tWipeXDist > tWipeYDist)
-    {
-        // X has further to move, move it first
-        tWipeCurrX += tWipeXMove;
-
-        // If it has been far enough since Y's
-        // last move then move it too
-        tWipeTemp += tWipeYDist;
-        if (tWipeTemp > tWipeXDist)
-        {
-            tWipeCurrY += tWipeYMove;
-            tWipeTemp -= tWipeXDist;
-        }
-    }
-    else
-    {
-        // Y has further to move, move it first
-        tWipeCurrY += tWipeYMove;
-
-        // If it has been far enough since X's
-        // last move then move it too
-        tWipeTemp += tWipeXDist;
-        if (tWipeTemp > tWipeYDist)
-        {
-            tWipeCurrX += tWipeXMove;
-            tWipeTemp -= tWipeYDist;
-        }
-    }
-
-    numFinished = 0;
-
-    // Has X coord reached end?
-    if ((tWipeXMove > 0 && tWipeCurrX >= tWipeEndX)
-     || (tWipeXMove < 0 && tWipeCurrX <= tWipeEndX))
-    {
-        numFinished++;
-        if (xExact)
-            tWipeCurrX = tWipeEndX;
-    }
-
-    // Has Y coord reached end?
-    if ((tWipeYMove > 0 && tWipeCurrY >= tWipeEndY)
-     || (tWipeYMove < 0 && tWipeCurrY <= tWipeEndY))
-    {
-        numFinished++;
-        if (yExact)
-            tWipeCurrY = tWipeEndY;
-    }
-
-    // Return TRUE if both coords have reached end
-    if (numFinished == 2)
-        return TRUE;
-    else
-        return FALSE;
 }
 
 //-----------------------------------
@@ -4307,7 +2136,7 @@ static bool8 FrontierLogoWiggle_SetGfx(struct Task *task)
 
     GetBg0TilesDst(&tilemap, &tileset);
     LZ77UnCompVram(sFrontierLogo_Tilemap, tilemap);
-    SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude, DISPLAY_HEIGHT);
+    BattleTransitionCommon_SetSinWave(gScanlineEffectRegBuffers[0], 0, task->tSinIndex, 132, task->tAmplitude, DISPLAY_HEIGHT);
 
     task->tState++;
     return TRUE;

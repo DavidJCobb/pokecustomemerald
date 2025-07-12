@@ -1,0 +1,6 @@
+#ifndef GUARD_BATTLE_TRANSITION_ANGLED_WIPES_H
+#define GUARD_BATTLE_TRANSITION_ANGLED_WIPES_H
+
+void BattleTransitionTaskHandler_AngledWipes(u8);
+
+#endif

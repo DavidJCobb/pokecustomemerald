@@ -4,7 +4,7 @@
 #include "util.h"
 #include "battle_transition.h"
 #include "task.h"
-#include "battle_transition.h"
+#include "battle_transition/common_intro.h" // BattleTransitionIntro_IsTaskDone
 #include "fieldmap.h"
 
 static EWRAM_DATA struct {
@@ -1169,7 +1169,7 @@ static void BlendAnimPalette_BattleDome_FloorLights(u16 timer)
 {
     CpuCopy16(sTilesetAnims_BattleDomeFloorLightPals[timer % ARRAY_COUNT(sTilesetAnims_BattleDomeFloorLightPals)], &gPlttBufferUnfaded[BG_PLTT_ID(8)], PLTT_SIZE_4BPP);
     BlendPalette(BG_PLTT_ID(8), 16, gPaletteFade.y, gPaletteFade.blendColor & 0x7FFF);
-    if ((u8)FindTaskIdByFunc(Task_BattleTransition_Intro) != TASK_NONE)
+    if (!BattleTransitionIntro_IsTaskDone())
     {
         sSecondaryTilesetAnimCallback = TilesetAnim_BattleDome2;
         sSecondaryTilesetAnimCounterMax = 32;
@@ -1179,7 +1179,7 @@ static void BlendAnimPalette_BattleDome_FloorLights(u16 timer)
 static void BlendAnimPalette_BattleDome_FloorLightsNoBlend(u16 timer)
 {
     CpuCopy16(sTilesetAnims_BattleDomeFloorLightPals[timer % ARRAY_COUNT(sTilesetAnims_BattleDomeFloorLightPals)], &gPlttBufferUnfaded[BG_PLTT_ID(8)], PLTT_SIZE_4BPP);
-    if ((u8)FindTaskIdByFunc(Task_BattleTransition_Intro) == TASK_NONE)
+    if (BattleTransitionIntro_IsTaskDone())
     {
         BlendPalette(BG_PLTT_ID(8), 16, gPaletteFade.y, gPaletteFade.blendColor & 0x7FFF);
         if (!--sSecondaryTilesetAnimCounterMax)

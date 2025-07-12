@@ -1,0 +1,6 @@
+#ifndef GUARD_BATTLE_TRANSITION_CLOCKWISE_WIPE_H
+#define GUARD_BATTLE_TRANSITION_CLOCKWISE_WIPE_H
+
+void BattleTransitionTaskHandler_ClockwiseWipe(u8);
+
+#endif
