@@ -39,6 +39,8 @@
 #include "constants/rgb.h"
 #include "constants/songs.h"
 
+#include "lu/utils_item.h"
+
 #define TAG_SCROLL_ARROW   2100
 #define TAG_ITEM_ICON_BASE 2110
 
@@ -104,10 +106,12 @@ struct ShopData
     s16 viewportObjects[OBJECT_EVENTS_COUNT][5];
 };
 
+#define ITEM_NAME_BUFFER_SIZE (max(ITEM_NAME_LENGTH, MOVE_NAME_LENGTH + sizeof("TM05 ")) + 2)
+
 static EWRAM_DATA struct MartInfo sMartInfo = {0};
 static EWRAM_DATA struct ShopData *sShopData = NULL;
 static EWRAM_DATA struct ListMenuItem *sListMenuItems = NULL;
-static EWRAM_DATA u8 (*sItemNames)[ITEM_NAME_LENGTH + 2] = {0};
+static EWRAM_DATA u8 (*sItemNames)[ITEM_NAME_BUFFER_SIZE] = {0};
 static EWRAM_DATA u8 sPurchaseHistoryId = 0;
 EWRAM_DATA struct ItemSlot gMartPurchaseHistory[SMARTSHOPPER_NUM_ITEMS] = {0};
 
@@ -578,10 +582,22 @@ static void BuyMenuBuildListMenuTemplate(void)
 
 static void BuyMenuSetListEntry(struct ListMenuItem *menuItem, u16 item, u8 *name)
 {
-    if (sMartInfo.martType == MART_TYPE_NORMAL)
-        CopyItemName(item, name);
-    else
+    if (sMartInfo.martType == MART_TYPE_NORMAL) {
+        if (Lu_GetItemTMNumber(item) || Lu_GetItemHMNumber(item)) {
+             //
+             // Print both the item name and the move name.
+             //
+             u8* end = StringCopy(name, GetItemName(item));
+             *end = CHAR_SPACE;
+             ++end;
+             *end = EOS;
+             StringCopy(end, gMoveNames[ItemIdToBattleMoveId(item)]);
+        } else {
+             CopyItemName(item, name);
+        }
+    } else {
         StringCopy(name, gDecorations[item].name);
+    }
 
     menuItem->name = name;
     menuItem->id = item;
