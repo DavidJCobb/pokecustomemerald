@@ -7,6 +7,8 @@
 #include "scanline_effect.h" // gScanlineEffectRegBuffers
 #include "task.h"
 
+#define SPEED 2 // vanilla: 1
+
 static bool8 ClockwiseWipe_Init(struct Task*);
 static bool8 ClockwiseWipe_TopRight(struct Task*);
 static bool8 ClockwiseWipe_Right(struct Task*);
@@ -32,6 +34,13 @@ static void VBlankCB_ClockwiseWipe(void);
 
 void BattleTransitionTaskHandler_ClockwiseWipe(u8 taskId) {
    while (sClockwiseWipe_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
+   #if SPEED > 1
+   if (gTasks[taskId].tState > 1 && gTasks[taskId].tState < 6) {
+      for(u8 i = 1; i < SPEED; ++i) {
+         while (sClockwiseWipe_Funcs[gTasks[taskId].tState](&gTasks[taskId]));
+      }
+   }
+   #endif
 }
 
 static bool8 ClockwiseWipe_Init(struct Task* task) {

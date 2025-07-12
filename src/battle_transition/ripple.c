@@ -9,6 +9,9 @@
 #include "task.h"
 #include "trig.h"
 
+#define DURATION 60    // vanilla: 80    // frame count of animation
+#define SPEED    0x180 // vanilla: 0x180 // ripple distortion speed
+
 static bool8 Ripple_Init(struct Task*);
 static bool8 Ripple_Main(struct Task*);
 //
@@ -49,17 +52,17 @@ static bool8 Ripple_Main(struct Task* task) {
    with_vblank_dma_disabled {
       s16 amplitude = task->tAmplitudeVal >> 8;
       u16 sinVal    = task->tSinVal;
-      u16 speed     = 0x180;
+      u16 speed     = SPEED;
       task->tSinVal += 0x400;
       if (task->tAmplitudeVal <= 0x1FFF)
-         task->tAmplitudeVal += 0x180;
+         task->tAmplitudeVal += SPEED;
 
       for (u8 i = 0; i < DISPLAY_HEIGHT; i++, sinVal += speed) {
          s16 sinIndex = sinVal >> 8;
          gScanlineEffectRegBuffers[0][i] = gBattleTransitionData->cameraY + Sin(sinIndex & 0xffff, amplitude);
       }
 
-      if (++task->tTimer == 81) {
+      if (++task->tTimer == (DURATION + 1)) {
          task->tFadeStarted++;
          BeginNormalPaletteFade(PALETTES_ALL, -2, 0, 16, RGB_BLACK);
       }
