@@ -73,6 +73,24 @@ void lu_PrepStringWrap(
       }
    }
 }
+void lu_PrepStringWrapBySize(u16 width, u16 height, u8 font_id) {
+   _sim_state.japanese = FALSE;
+   _sim_state.override_spacing = 0;
+   
+   _sim_state.font_id = font_id;
+   _sim_state.letter_spacing = GetFontAttribute(font_id, FONTATTR_LETTER_SPACING);
+   
+   _sim_state.canvas_width = width;
+   _sim_state.canvas_width -= 16; // Reserve space for the down-arrow used to prompt the player to press A to scroll, plus roughly 8px padding.
+   _sim_state.canvas_lines = 1;
+   {
+      u8 text_height = gFonts[_sim_state.font_id].maxLetterHeight;
+      while (text_height < height) {
+         ++_sim_state.canvas_lines;
+         text_height += gFonts[_sim_state.font_id].maxLetterHeight + GetFontAttribute(font_id, FONTATTR_LINE_SPACING);
+      }
+   }
+}
 
 void lu_PrepStringWrap_Normal(void) {
    lu_PrepStringWrap(0, FONT_NORMAL);

@@ -45,6 +45,8 @@
 #include "lu/custom_game_option_handlers/battle.h"
 #include "lu/utils_item.h"
 #include "lu/strings.h"
+#include "lu/string_wrap.h"
+#include "strings/item_use_tmhm.h"
 
 static void SetUpItemUseCallback(u8);
 static void FieldCB_UseItemOnField(void);
@@ -790,14 +792,26 @@ void ItemUseOutOfBattle_RareCandy(u8 taskId)
     SetUpItemUseCallback(taskId);
 }
 
-void ItemUseOutOfBattle_TMHM(u8 taskId)
-{
-    if (gSpecialVar_ItemId >= ITEM_HM01)
-        DisplayItemMessage(taskId, FONT_NORMAL, gText_BootedUpHM, BootUpSoundTMHM); // HM
-    else
-        DisplayItemMessage(taskId, FONT_NORMAL, gText_BootedUpTM, BootUpSoundTMHM); // TM
+void ItemUseOutOfBattle_TMHM(u8 taskId) {
+   const u8* message = gText_ItemUse_TM;
+   if (gSpecialVar_ItemId >= ITEM_HM01) {
+      message = gText_ItemUse_HM;
+   }
+   
+   PlaySE(SE_PC_LOGIN);
+   
+   StringCopy(gStringVar1, gMoveNames[ItemIdToBattleMoveId(gSpecialVar_ItemId)]);
+   StringExpandPlaceholders(gStringVar4, message);
+   lu_PrepStringWrapBySize(
+      27 * TILE_WIDTH,  // item_menu.c:sContextMenuWindowTemplates[ITEMWIN_MESSAGE].width
+       4 * TILE_HEIGHT, // item_menu.c:sContextMenuWindowTemplates[ITEMWIN_MESSAGE].height
+      FONT_NORMAL
+   );
+   lu_StringWrap(gStringVar4);
+   DisplayItemMessage(taskId, FONT_NORMAL, gStringVar4, UseTMHMYesNo);
 }
 
+/*//
 static void BootUpSoundTMHM(u8 taskId)
 {
     PlaySE(SE_PC_LOGIN);
@@ -813,6 +827,7 @@ static void Task_ShowTMHMContainedMessage(u8 taskId)
         DisplayItemMessage(taskId, FONT_NORMAL, gStringVar4, UseTMHMYesNo);
     }
 }
+//*/
 
 static void UseTMHMYesNo(u8 taskId)
 {
