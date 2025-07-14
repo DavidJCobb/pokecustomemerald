@@ -89,6 +89,30 @@
             "trainers.dat": 1,
             "vars.dat": 2
          }
+      },
+      {
+         "files": [
+            "easy-chat.dat",
+            "flags-0.dat"
+         ],
+         "shared": {
+            "flags-1.dat": 1,
+            "flags-2.dat": 4,
+            "flags-3.dat": 4,
+            "flags-4.dat": 1,
+            "flags-5.dat": 1,
+            "flags-6.dat": 1,
+            "flags-7.dat": 1,
+            "game-stats.dat": 1,
+            "items.dat": 1,
+            "maps.dat": 4,
+            "misc.dat": 1,
+            "moves.dat": 1,
+            "natures.dat": 1,
+            "species.dat": 1,
+            "trainers.dat": 1,
+            "vars.dat": 2
+         }
       }
    ],
    "index_version": 1

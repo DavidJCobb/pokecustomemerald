@@ -6,7 +6,9 @@ import EMERALD_DISPLAY_OVERRIDES from "./emerald-display-overrides.js";
 
 import assess_sav_version from "./savedata-classes/assess-sav-version.js";
 
+// user-defined translators
 import EasyChatWordIndexBitcountTranslator from "./translators/easy-chat-word-index-bitcount-translator.js";
+import CustomEm_EasyChat_CombinePokemonGroups from "./translators/custom-em-easy-chat-combine-pokemon-groups.js";
 
 SaveFormatIndex.load().then(function() {
    let node  = document.getElementById("translate-to-version");
@@ -222,6 +224,9 @@ SaveFormatIndex.load().then(function() {
                   tran.install(operation);
                }
                (new EasyChatWordIndexBitcountTranslator()).install(operation);
+               if (src_version <= 4 && dst_version > 4) {
+                  (new CustomEm_EasyChat_CombinePokemonGroups()).install(operation);
+               }
                //
                // And with the translators installed, the operation can now proceed.
                //
