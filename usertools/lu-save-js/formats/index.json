@@ -68,12 +68,13 @@
       },
       {
          "files": [
+            "easy-chat.dat",
+            "flags-0.dat",
             "flags-2.dat",
             "flags-3.dat",
             "maps.dat"
          ],
          "shared": {
-            "flags-0.dat": 1,
             "flags-1.dat": 1,
             "flags-4.dat": 1,
             "flags-5.dat": 1,

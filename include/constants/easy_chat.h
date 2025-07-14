@@ -1116,6 +1116,12 @@
 #define EC_MASK_BITS 9
 #define EC_MASK_GROUP ((1 << (16 - EC_MASK_BITS)) - 1)
 #define EC_MASK_INDEX ((1 << EC_MASK_BITS) - 1)
+#if (0xFFFF >> EC_MASK_BITS) < (EC_NUM_GROUPS - 1)
+   #error Insufficient bits allotted for the word-group in Easy Chat word values.
+#endif
+#if (0xFFFF & EC_MASK_INDEX) < EC_MAX_WORDS_IN_GROUP
+   #error Insufficient bits allotted for the word-index in Easy Chat word values.
+#endif
 
 #define EC_POKEMON(mon) ((EC_GROUP_POKEMON << EC_MASK_BITS) | SPECIES_##mon)
 #define EC_POKEMON_NATIONAL(mon) ((EC_GROUP_POKEMON_NATIONAL << EC_MASK_BITS) | SPECIES_##mon)
