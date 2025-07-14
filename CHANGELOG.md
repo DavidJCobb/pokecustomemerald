@@ -84,6 +84,8 @@
 
 * Coalesced some text related to interacting with berry trees, to use fewer textboxes and to segment textboxes better.
 
+* Coalesced TM/HM usage text into a single textbox.
+
 * Sped up the game's startup sequence: it fades in from white more quickly, the copyright screen is displayed for half as long, and the transition from the copyright screen to the intro animation is faster.
 
 * Substantially reduced the delay before Professor Birch appears in the New Game intro.
