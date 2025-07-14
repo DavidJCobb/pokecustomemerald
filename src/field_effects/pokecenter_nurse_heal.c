@@ -195,11 +195,11 @@ static const struct Action sActions[] = {
    },
    {  // Placing a Poke Ball with the dominant hand.
       .on_end   = Action_PlacePokemon,
-      .duration = 25,
+      .duration = 15,
    },
    {  // Placing a Poke Ball with the offhand.
       .on_end   = Action_PlacePokemon,
-      .duration = 9,
+      .duration = 5,
    },
    {  // Facing the player, to take two more Poke Balls.
       .on_start   = Action_TakePokemon_Start,
