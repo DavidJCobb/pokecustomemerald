@@ -30,6 +30,7 @@
 #include "constants/weather.h"
 
 #include "lu/pronoun_strings.h"
+#include "lu/utils_item.h"
 
 struct BattleWindowText
 {
@@ -1434,6 +1435,8 @@ const u8 gText_BattleRecordedOnPass[] = _("{B_PLAYER_NAME}'s battle result was r
 static const u8 sText_LinkTrainerWantsToBattlePause[] = _("{B_LINK_OPPONENT1_NAME}\nwants to battle!{PAUSE 49}");
 static const u8 sText_TwoLinkTrainersWantToBattlePause[] = _("{B_LINK_OPPONENT1_NAME} and {B_LINK_OPPONENT2_NAME}\nwant to battle!{PAUSE 49}");
 
+static const u8 sText_PlayerThrewPokeBall[] = _("{B_PLAYER_NAME} threw a\n{B_LAST_ITEM}!");
+
 // This is four lists of moves which use a different attack string in Japanese
 // to the default. See the documentation for ChooseTypeOfMoveUsedString for more detail.
 static const u16 sGrammarMoveUsedTable[] =
@@ -2257,6 +2260,14 @@ void BufferStringBattleWithData(u16 stringID, struct BattleMsgData* data)
             }
         }
         break;
+        
+   case STRINGID_PLAYERUSEDITEM:
+      stringPtr = gBattleStringsTable[stringID - BATTLESTRINGS_TABLE_START];
+      if (Lu_ItemIsAPokeBall(gLastUsedItem)) {
+         stringPtr = sText_PlayerThrewPokeBall;
+      }
+      break;
+    
     default: // load a string from the table
         if (stringID >= BATTLESTRINGS_COUNT)
         {
