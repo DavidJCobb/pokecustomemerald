@@ -239,7 +239,10 @@ enum
     CONTROLLER_LINKSTANDBYMSG,
     CONTROLLER_RESETACTIONMOVESELECTION,
     CONTROLLER_ENDLINKBATTLE, // 55
+    
+    CONTROLLER_REPORTSTATCHANGE,
     /*new controllers should go here*/
+    
     CONTROLLER_TERMINATOR_NOP,
     CONTROLLER_CMDS_COUNT
 };
@@ -297,6 +300,18 @@ void BtlController_EmitLinkStandbyMsg(u8 bufferId, u8 mode, bool32 record);
 void BtlController_EmitResetActionMoveSelection(u8 bufferId, u8 caseId);
 void BtlController_EmitEndLinkBattle(u8 bufferId, u8 battleOutcome);
 void BtlController_EmitAttackStringAndAnimation(u8 bufferId, u16 move, u8 turnOfMove, u16 movePower, s32 dmg, u8 friendship, struct DisableStruct *disableStructPtr, u8 multihit);
+void BtlController_EmitReportStatChange(
+   u8 bufferId,
+   u8 cause_battler,
+   u8 stats_changed,
+   u8 stats_failed,
+   s8 desired_magnitude,
+   u8 flags,
+   u8 cause,
+   u8 all_failed_reason,
+   u8 ability_guards_specific_stats,
+   u8 specific_stats_bounded
+);
 
 // player controller
 void SetControllerToPlayer(void);

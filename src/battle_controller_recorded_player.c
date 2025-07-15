@@ -84,6 +84,7 @@ static void RecordedPlayerHandleBattleAnimation(void);
 static void RecordedPlayerHandleLinkStandbyMsg(void);
 static void RecordedPlayerHandleResetActionMoveSelection(void);
 static void RecordedPlayerHandleEndLinkBattle(void);
+static void RecordedPlayerHandleReportStatChange(void);
 static void RecordedPlayerCmdEnd(void);
 
 static void RecordedPlayerBufferRunCommand(void);
@@ -154,6 +155,7 @@ static void (*const sRecordedPlayerBufferCommands[CONTROLLER_CMDS_COUNT])(void) 
     [CONTROLLER_LINKSTANDBYMSG]           = RecordedPlayerHandleLinkStandbyMsg,
     [CONTROLLER_RESETACTIONMOVESELECTION] = RecordedPlayerHandleResetActionMoveSelection,
     [CONTROLLER_ENDLINKBATTLE]            = RecordedPlayerHandleEndLinkBattle,
+    [CONTROLLER_REPORTSTATCHANGE]         = RecordedPlayerHandleReportStatChange,
     [CONTROLLER_TERMINATOR_NOP]           = RecordedPlayerCmdEnd
 };
 
@@ -1579,6 +1581,10 @@ static void RecordedPlayerHandleEndLinkBattle(void)
     BeginFastPaletteFade(3);
     RecordedPlayerBufferExecCompleted();
     gBattlerControllerFuncs[gActiveBattler] = SetBattleEndCallbacks;
+}
+
+static void RecordedPlayerHandleReportStatChange(void) {
+   BtlController_HandleReportStatChange(RecordedPlayerBufferExecCompleted);
 }
 
 static void RecordedPlayerCmdEnd(void)

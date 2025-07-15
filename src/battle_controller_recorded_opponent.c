@@ -88,6 +88,7 @@ static void RecordedOpponentHandleBattleAnimation(void);
 static void RecordedOpponentHandleLinkStandbyMsg(void);
 static void RecordedOpponentHandleResetActionMoveSelection(void);
 static void RecordedOpponentHandleEndLinkBattle(void);
+static void RecordedOpponentHandleReportStatChange(void);
 static void RecordedOpponentCmdEnd(void);
 
 static void RecordedOpponentBufferRunCommand(void);
@@ -159,6 +160,7 @@ static void (*const sRecordedOpponentBufferCommands[CONTROLLER_CMDS_COUNT])(void
     [CONTROLLER_LINKSTANDBYMSG]           = RecordedOpponentHandleLinkStandbyMsg,
     [CONTROLLER_RESETACTIONMOVESELECTION] = RecordedOpponentHandleResetActionMoveSelection,
     [CONTROLLER_ENDLINKBATTLE]            = RecordedOpponentHandleEndLinkBattle,
+    [CONTROLLER_REPORTSTATCHANGE]         = RecordedOpponentHandleReportStatChange,
     [CONTROLLER_TERMINATOR_NOP]           = RecordedOpponentCmdEnd
 };
 
@@ -1540,6 +1542,10 @@ static void RecordedOpponentHandleEndLinkBattle(void)
     BeginFastPaletteFade(3);
     RecordedOpponentBufferExecCompleted();
     gBattlerControllerFuncs[gActiveBattler] = SetBattleEndCallbacks;
+}
+
+static void RecordedOpponentHandleReportStatChange(void) {
+   BtlController_HandleReportStatChange(RecordedOpponentBufferExecCompleted);
 }
 
 static void RecordedOpponentCmdEnd(void)

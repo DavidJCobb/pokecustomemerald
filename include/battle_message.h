@@ -70,6 +70,8 @@
 #define B_TXT_EFF_PRONOUN 0x37 // EFF = short for gEffectBank
 #define B_TXT_ACTIVE_PRONOUN 0x38
 #define B_TXT_SCR_ACTIVE_PRONOUN 0x39
+#define B_TXT_IDX_ABILITY 0x3A
+#define B_TXT_IDX_NAME_WITH_PREFIX 0x3B
 
 // for B_TXT_BUFF1, B_TXT_BUFF2 and B_TXT_BUFF3
 

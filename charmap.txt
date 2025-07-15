@@ -413,6 +413,8 @@ B_DEF_PRONOUN = FD 36
 B_EFF_PRONOUN = FD 37
 B_ACTIVE_PRONOUN = FD 38
 B_SCR_ACTIVE_PRONOUN = FD 39
+B_IDX_ABILITY = FD 3A     @ Follow this with \x00 through \x03 to identify the battler.
+B_IDX_NAME_WITH_PREFIX = FD 3B
 
 @ indicates the end of a town/city name (before " TOWN" or " CITY")
 NAME_END = FC 00

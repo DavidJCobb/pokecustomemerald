@@ -88,6 +88,7 @@ static void LinkOpponentHandleBattleAnimation(void);
 static void LinkOpponentHandleLinkStandbyMsg(void);
 static void LinkOpponentHandleResetActionMoveSelection(void);
 static void LinkOpponentHandleEndLinkBattle(void);
+static void LinkOpponentHandleReportStatChange(void);
 static void LinkOpponentCmdEnd(void);
 
 static void LinkOpponentBufferRunCommand(void);
@@ -1599,6 +1600,10 @@ static void LinkOpponentHandleEndLinkBattle(void)
     BeginFastPaletteFade(3);
     LinkOpponentBufferExecCompleted();
     gBattlerControllerFuncs[gActiveBattler] = SetBattleEndCallbacks;
+}
+
+static void LinkOpponentHandleReportStatChange(void) {
+   BtlController_HandleReportStatChange(LinkOpponentBufferExecCompleted);
 }
 
 static void LinkOpponentCmdEnd(void)

@@ -1450,3 +1450,12 @@
 	.macro attackstringandanimation
 	.byte 0xFA
 	.endm
+
+	.macro trystatchange stats:req, flags:req, magnitude:req, cause:req, jumpptr:req
+	.byte 0xFB
+   .byte \stats
+   .byte \flags
+   .byte \magnitude
+   .byte \cause
+   .4byte \jumpptr
+	.endm

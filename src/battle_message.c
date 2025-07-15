@@ -2794,6 +2794,7 @@ u32 BattleStringExpandPlaceholders(const u8 *src, u8 *dst)
                 GetFrontierTrainerName(text, gPartnerTrainerId);
                 toCpy = text;
                 break;
+                
             case B_TXT_ATK_PRONOUN: // attacker pronoun (next byte is pronoun type)
                 HANDLE_PRONOUN_STRING_CASE(gBattlerAttacker, gBattlerPartyIndexes[gBattlerAttacker])
                 break;
@@ -2808,6 +2809,32 @@ u32 BattleStringExpandPlaceholders(const u8 *src, u8 *dst)
                 break;
             case B_TXT_SCR_ACTIVE_PRONOUN: // scripting active battlerId pronoun (next byte is pronoun type)
                 HANDLE_PRONOUN_STRING_CASE(gBattleScripting.battler, gBattlerPartyIndexes[gBattleScripting.battler])
+                break;
+            case B_TXT_IDX_ABILITY: // ability of a battler specified by index
+                toCpy = NULL;
+                {
+                    src++;
+                    if (*src == EOS) {
+                        src--;
+                    } else {
+                        u8 index = *src;
+                        if (index < 4) {
+                            toCpy = gAbilityNames[sBattlerAbilities[index]];
+                        }
+                    }
+                }
+                break;
+            case B_TXT_IDX_NAME_WITH_PREFIX: // name, with prefix, of a battler specified by index
+                toCpy = NULL;
+                {
+                    src++;
+                    if (*src == EOS) {
+                        src--;
+                    } else {
+                        u8 index = *src;
+                        HANDLE_NICKNAME_STRING_CASE(index, gBattlerPartyIndexes[index])
+                    }
+                }
                 break;
             }
 

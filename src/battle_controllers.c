@@ -1604,3 +1604,28 @@ void BtlController_EmitAttackStringAndAnimation(u8 bufferId, u16 move, u8 turnOf
     memcpy(&sBattleBuffersTransferData[16], disableStructPtr, sizeof(struct DisableStruct));
     PrepareBufferDataTransfer(bufferId, sBattleBuffersTransferData, 16 + sizeof(struct DisableStruct));
 }
+
+void BtlController_EmitReportStatChange(
+   u8 bufferId,
+   u8 cause_battler,
+   u8 stats_changed,
+   u8 stats_failed,
+   s8 desired_magnitude,
+   u8 flags,
+   u8 cause,
+   u8 all_failed_reason,
+   u8 ability_guards_specific_stats,
+   u8 specific_stats_bounded
+) {
+    sBattleBuffersTransferData[0] = CONTROLLER_REPORTSTATCHANGE;
+    sBattleBuffersTransferData[1] = cause_battler;
+    sBattleBuffersTransferData[2] = stats_changed;
+    sBattleBuffersTransferData[3] = stats_failed;
+    sBattleBuffersTransferData[4] = desired_magnitude;
+    sBattleBuffersTransferData[5] = flags;
+    sBattleBuffersTransferData[6] = cause;
+    sBattleBuffersTransferData[7] = all_failed_reason;
+    sBattleBuffersTransferData[8] = ability_guards_specific_stats;
+    sBattleBuffersTransferData[9] = specific_stats_bounded;
+    PrepareBufferDataTransfer(bufferId, sBattleBuffersTransferData, 10);
+}

@@ -134,6 +134,20 @@
 #define BIT_ACC                     (1 << 6)
 #define BIT_EVASION                 (1 << 7)
 
+// stat flags for Cmd_trystatchange
+#define STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES (1 << 1)
+#define STAT_CHANGE_SUPPRESS_ANIMATIONS       (1 << 2)
+// reuse: STAT_CHANGE_NOT_PROTECT_AFFECTED
+// reuse: MOVE_EFFECT_AFFECTS_USER
+// reuse: MOVE_EFFECT_CERTAIN
+
+// stat causes for Cmd_trystatchange
+#define STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY   0
+#define STAT_CHANGE_CAUSE_ABILITY 1
+#define STAT_CHANGE_CAUSE_ITEM_HELD 2
+#define STAT_CHANGE_CAUSE_ITEM_USED 3
+#define STAT_CHANGE_CAUSE_MOVE_EFFECT_SECONDARY 4
+
 #define PARTY_SCREEN_OPTIONAL (1 << 7) // Flag for first argument to openpartyscreen
 
 // cases for Cmd_moveend

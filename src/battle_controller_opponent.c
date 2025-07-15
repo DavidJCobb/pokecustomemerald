@@ -93,6 +93,7 @@ static void OpponentHandleBattleAnimation(void);
 static void OpponentHandleLinkStandbyMsg(void);
 static void OpponentHandleResetActionMoveSelection(void);
 static void OpponentHandleEndLinkBattle(void);
+static void OpponentHandleReportStatChange(void);
 static void OpponentCmdEnd(void);
 
 static void OpponentBufferRunCommand(void);
@@ -163,6 +164,7 @@ static void (*const sOpponentBufferCommands[CONTROLLER_CMDS_COUNT])(void) =
     [CONTROLLER_LINKSTANDBYMSG]           = OpponentHandleLinkStandbyMsg,
     [CONTROLLER_RESETACTIONMOVESELECTION] = OpponentHandleResetActionMoveSelection,
     [CONTROLLER_ENDLINKBATTLE]            = OpponentHandleEndLinkBattle,
+    [CONTROLLER_REPORTSTATCHANGE]         = OpponentHandleReportStatChange,
     [CONTROLLER_TERMINATOR_NOP]           = OpponentCmdEnd
 };
 
@@ -1755,6 +1757,10 @@ static void OpponentHandleEndLinkBattle(void)
         SetMainCallback2(gMain.savedCallback);
     }
     OpponentBufferExecCompleted();
+}
+
+static void OpponentHandleReportStatChange(void) {
+   BtlController_HandleReportStatChange(OpponentBufferExecCompleted);
 }
 
 static void OpponentCmdEnd(void)

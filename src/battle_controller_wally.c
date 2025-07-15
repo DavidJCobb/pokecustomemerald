@@ -92,6 +92,7 @@ static void WallyHandleBattleAnimation(void);
 static void WallyHandleLinkStandbyMsg(void);
 static void WallyHandleResetActionMoveSelection(void);
 static void WallyHandleEndLinkBattle(void);
+static void WallyHandleReportStatChange(void);
 static void WallyCmdEnd(void);
 
 static void WallyBufferRunCommand(void);
@@ -161,6 +162,7 @@ static void (*const sWallyBufferCommands[CONTROLLER_CMDS_COUNT])(void) =
     [CONTROLLER_LINKSTANDBYMSG]           = WallyHandleLinkStandbyMsg,
     [CONTROLLER_RESETACTIONMOVESELECTION] = WallyHandleResetActionMoveSelection,
     [CONTROLLER_ENDLINKBATTLE]            = WallyHandleEndLinkBattle,
+    [CONTROLLER_REPORTSTATCHANGE]         = WallyHandleReportStatChange,
     [CONTROLLER_TERMINATOR_NOP]           = WallyCmdEnd
 };
 
@@ -1372,6 +1374,10 @@ static void WallyHandleEndLinkBattle(void)
 
     if (!(gBattleTypeFlags & BATTLE_TYPE_IS_MASTER) && gBattleTypeFlags & BATTLE_TYPE_LINK)
         gBattlerControllerFuncs[gActiveBattler] = SetBattleEndCallbacks;
+}
+
+static void WallyHandleReportStatChange(void) {
+   BtlController_HandleReportStatChange(WallyBufferExecCompleted);
 }
 
 static void WallyCmdEnd(void)

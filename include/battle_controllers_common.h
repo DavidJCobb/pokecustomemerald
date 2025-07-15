@@ -34,6 +34,8 @@ extern bool BtlController_HandleBattleAnimation(SendControllerCompletionFunc, bo
 
 extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc);
 
+extern void BtlController_HandleReportStatChange(SendControllerCompletionFunc);
+
 // -----------------------------------------------------------------------------
 
 // These handlers aren't latent, so there's no need to take the completion 

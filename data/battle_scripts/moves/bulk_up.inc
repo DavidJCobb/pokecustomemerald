@@ -1,6 +1,9 @@
 BattleScript_EffectBulkUp::
 	attackcanceler
 	ppreduce
+   @
+   @ Fail if both Attack and Defense are maxed.
+   @
 	jumpifstat BS_ATTACKER, CMP_LESS_THAN, STAT_ATK, MAX_STAT_STAGE, BattleScript_BulkUpDoMoveAnim
 	jumpifstat BS_ATTACKER, CMP_EQUAL, STAT_DEF, MAX_STAT_STAGE, BattleScript_CantRaiseMultipleStats
 BattleScript_BulkUpDoMoveAnim::

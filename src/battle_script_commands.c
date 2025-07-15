@@ -331,6 +331,7 @@ static void Cmd_finishturn(void);
 static void Cmd_trainerslideout(void);
 static void Cmd_lu_extensions(void);
 static void Cmd_attackstringandanimation(void);
+static void Cmd_trystatchange(void);
 
 void (*const gBattleScriptingCommandsTable[])(void) =
 {
@@ -585,6 +586,7 @@ void (*const gBattleScriptingCommandsTable[])(void) =
     Cmd_trainerslideout,                         //0xF8
     Cmd_lu_extensions,                           //0xF9 // EXTENSION
     Cmd_attackstringandanimation,                //0xFA // EXTENSION
+    Cmd_trystatchange,                           //0xFB // EXTENSION
 };
 
 struct StatFractions
@@ -4177,6 +4179,74 @@ static void Cmd_setgraphicalstatchangevalues(void)
     gBattlescriptCurrInstr++;
 }
 
+enum StatDecreaseFailureReason {
+   STATDEC_DID_NOT_FAIL = 0,
+   STATDEC_FAIL_MIST,
+   STATDEC_FAIL_PROTECT,
+   STATDEC_FAIL_ABILITY_GUARDS_ALL_STATS,
+   STATDEC_FAIL_ABILITY_GUARDS_THIS_STAT,
+   STATDEC_FAIL_ABILITY_BLOCKS_SECONDARY_EFFECTS,
+   STATDEC_FAIL_CANNOT_GO_LOWER,
+};
+static enum StatDecreaseFailureReason CheckCannotDecreaseStat(
+   u8    battler,
+   u8    stat,
+   u8    flags,
+   bool8 secondary_effect,
+   u16   move_id
+) {
+   bool8 certain              = (flags & MOVE_EFFECT_CERTAIN) ? 1 : 0;
+   bool8 not_protect_affected = (flags & STAT_CHANGE_NOT_PROTECT_AFFECTED) ? 1 : 0;
+   bool8 is_self_applied      = (flags & MOVE_EFFECT_AFFECTS_USER) ? 1 : 0;
+   
+   //
+   // If a non-Ghost-type Pokemon attempts to lower its own stats using 
+   // Curse, some protections from stat losses should be skipped.
+   //
+   if (move_id != MOVE_CURSE) {
+      if (gSideTimers[GET_BATTLER_SIDE(battler)].mistTimer && !certain) {
+         return STATDEC_FAIL_MIST;
+      }
+      if (!not_protect_affected && JumpIfMoveAffectedByProtect(0)) {
+         return STATDEC_FAIL_PROTECT;
+      }
+      if (!certain) {
+         switch (gBattleMons[battler].ability) {
+            case ABILITY_CLEAR_BODY:
+            case ABILITY_WHITE_SMOKE:
+               return STATDEC_FAIL_ABILITY_GUARDS_ALL_STATS;
+         }
+      }
+   }
+   //
+   // End of non-Curse stat protections.
+   //
+   if (!certain) {
+      //
+      // Fail if the subject's ability blocks reductions of this specific stat.
+      //
+      u16   ability = gBattleMons[battler].ability;
+      bool8 blocked = FALSE;
+      if (ability == ABILITY_KEEN_EYE && stat == STAT_ACC) {
+         blocked = TRUE;
+      } else if (ability == ABILITY_HYPER_CUTTER && stat == STAT_ATK) {
+         blocked = TRUE;
+      }
+      
+      if (blocked) {
+         return STATDEC_FAIL_ABILITY_GUARDS_THIS_STAT;
+      }
+   }
+   if (gBattleMons[battler].ability == ABILITY_SHIELD_DUST && secondary_effect && !is_self_applied) {
+      return STATDEC_FAIL_ABILITY_BLOCKS_SECONDARY_EFFECTS;
+   }
+   if (gBattleMons[battler].statStages[currStat] <= MIN_STAT_STAGE) {
+      return STATDEC_FAIL_CANNOT_GO_LOWER;
+   }
+   
+   return STATDEC_DID_NOT_FAIL;
+}
+
 static void Cmd_playstatchangeanimation(void)
 {
     u32 currStat = 0;
@@ -7007,167 +7077,180 @@ static void Cmd_negativedamage(void)
 #define STAT_CHANGE_WORKED      0
 #define STAT_CHANGE_DIDNT_WORK  1
 
-static u8 ChangeStatBuffs(s8 statValue, u8 statId, u8 flags, const u8 *BS_ptr)
-{
-    bool8 certain = FALSE;
-    bool8 notProtectAffected = FALSE;
-    u32 index;
+//
+// Valid flags:
+//    
+//    Bit 0 = STAT_CHANGE_ALLOW_PTR
+//       Indicates that this stat change has been triggered by a script 
+//       command. If the stat change fails, we will jump to the `BS_ptr` 
+//       argument, possibly after displaying an appropriate message.
+//    
+//    Bit 5 = STAT_CHANGE_NOT_PROTECT_AFFECTED
+//       Indicates a stat reduction that can't be blocked by Protect. Used 
+//       by abilities like Intimidate.
+//    
+//    Bit 6 = MOVE_EFFECT_AFFECTS_USER
+//       Alter the stats of gBattlerAttacker rather than gBattlerTarget.
+//    
+//    Bit 7 = MOVE_EFFECT_CERTAIN
+//       Prevents a stat reduction from being blocked by battlefield side 
+//       statuses and by abilities.
+//
+static u8 ChangeStatBuffs(
+   s8 change_by,
+   u8 stat,
+   u8 flags,
+   const u8* BS_ptr
+) {
+   if (flags & MOVE_EFFECT_AFFECTS_USER)
+      gActiveBattler = gBattlerAttacker;
+   else
+      gActiveBattler = gBattlerTarget;
 
-    if (flags & MOVE_EFFECT_AFFECTS_USER)
-        gActiveBattler = gBattlerAttacker;
-    else
-        gActiveBattler = gBattlerTarget;
-
-    flags &= ~MOVE_EFFECT_AFFECTS_USER;
-
-    if (flags & MOVE_EFFECT_CERTAIN)
-        certain++;
-    flags &= ~MOVE_EFFECT_CERTAIN;
-
-    if (flags & STAT_CHANGE_NOT_PROTECT_AFFECTED)
-        notProtectAffected++;
-    flags &= ~STAT_CHANGE_NOT_PROTECT_AFFECTED;
-
-    PREPARE_STAT_BUFFER(gBattleTextBuff1, statId)
-
-    if (statValue <= -1) // Stat decrease.
-    {
-        if (gSideTimers[GET_BATTLER_SIDE(gActiveBattler)].mistTimer
-            && !certain && gCurrentMove != MOVE_CURSE)
-        {
-            if (flags == STAT_CHANGE_ALLOW_PTR)
-            {
-                if (gSpecialStatuses[gActiveBattler].statLowered)
-                {
-                    gBattlescriptCurrInstr = BS_ptr;
-                }
-                else
-                {
-                    BattleScriptPush(BS_ptr);
-                    gBattleScripting.battler = gActiveBattler;
-                    gBattlescriptCurrInstr = BattleScript_MistProtected;
-                    gSpecialStatuses[gActiveBattler].statLowered = 1;
-                }
+   bool8 certain              = (flags & MOVE_EFFECT_CERTAIN) ? 1 : 0;
+   bool8 not_protect_affected = (flags & STAT_CHANGE_NOT_PROTECT_AFFECTED) ? 1 : 0;
+   
+   PREPARE_STAT_BUFFER(gBattleTextBuff1, stat)
+   
+   if (change_by <= -1) {
+      enum StatDecreaseFailureReason failure = CheckCannotDecreaseStat(
+         gActiveBattler,
+         stat,
+         flags,
+         (flags == 0) ? TRUE : FALSE,
+         gCurrentMove
+      );
+      switch (failure) {
+         case STATDEC_DID_NOT_FAIL:
+         case STATDEC_FAIL_CANNOT_GO_LOWER:
+            break;
+         case STATDEC_FAIL_MIST:
+            if (flags & STAT_CHANGE_ALLOW_PTR) {
+               if (gSpecialStatuses[gActiveBattler].statLowered) {
+                  gBattlescriptCurrInstr = BS_ptr;
+               } else {
+                  BattleScriptPush(BS_ptr);
+                  gBattleScripting.battler = gActiveBattler;
+                  gBattlescriptCurrInstr = BattleScript_MistProtected;
+                  //
+                  // Move scripts may attempt to apply multiple stat losses 
+                  // to the same battler. The flag below is used to ensure 
+                  // that if such stat losses are blocked, we only print a 
+                  // single message for them.
+                  //
+                  gSpecialStatuses[gActiveBattler].statLowered = 1;
+               }
             }
             return STAT_CHANGE_DIDNT_WORK;
-        }
-        else if (gCurrentMove != MOVE_CURSE
-                 && notProtectAffected != TRUE && JumpIfMoveAffectedByProtect(0))
-        {
+         case STATDEC_FAIL_PROTECT:
             gBattlescriptCurrInstr = BattleScript_ButItFailed;
             return STAT_CHANGE_DIDNT_WORK;
-        }
-        else if ((gBattleMons[gActiveBattler].ability == ABILITY_CLEAR_BODY
-                  || gBattleMons[gActiveBattler].ability == ABILITY_WHITE_SMOKE)
-                 && !certain && gCurrentMove != MOVE_CURSE)
-        {
-            if (flags == STAT_CHANGE_ALLOW_PTR)
-            {
-                if (gSpecialStatuses[gActiveBattler].statLowered)
-                {
-                    gBattlescriptCurrInstr = BS_ptr;
-                }
-                else
-                {
-                    BattleScriptPush(BS_ptr);
-                    gBattleScripting.battler = gActiveBattler;
-                    gBattlescriptCurrInstr = BattleScript_AbilityNoStatLoss;
-                    gLastUsedAbility = gBattleMons[gActiveBattler].ability;
-                    RecordAbilityBattle(gActiveBattler, gLastUsedAbility);
-                    gSpecialStatuses[gActiveBattler].statLowered = 1;
-                }
+         case STATDEC_FAIL_ABILITY_GUARDS_ALL_STATS:
+            if (flags & STAT_CHANGE_ALLOW_PTR) {
+               if (gSpecialStatuses[gActiveBattler].statLowered) {
+                  gBattlescriptCurrInstr = BS_ptr;
+               } else {
+                  BattleScriptPush(BS_ptr);
+                  gBattleScripting.battler = gActiveBattler;
+                  gBattlescriptCurrInstr = BattleScript_AbilityNoStatLoss;
+                  gLastUsedAbility = gBattleMons[gActiveBattler].ability;
+                  RecordAbilityBattle(gActiveBattler, gLastUsedAbility);
+                  //
+                  // Move scripts may attempt to apply multiple stat losses 
+                  // to the same battler. The flag below is used to ensure 
+                  // that if such stat losses are blocked, we only print a 
+                  // single message for them.
+                  //
+                  gSpecialStatuses[gActiveBattler].statLowered = 1;
+               }
             }
             return STAT_CHANGE_DIDNT_WORK;
-        }
-        else if (gBattleMons[gActiveBattler].ability == ABILITY_KEEN_EYE
-                 && !certain && statId == STAT_ACC)
-        {
-            if (flags == STAT_CHANGE_ALLOW_PTR)
-            {
-                BattleScriptPush(BS_ptr);
-                gBattleScripting.battler = gActiveBattler;
-                gBattlescriptCurrInstr = BattleScript_AbilityNoSpecificStatLoss;
-                gLastUsedAbility = gBattleMons[gActiveBattler].ability;
-                RecordAbilityBattle(gActiveBattler, gLastUsedAbility);
+         case STATDEC_FAIL_ABILITY_GUARDS_THIS_STAT:
+            if (flags & STAT_CHANGE_ALLOW_PTR) {
+               BattleScriptPush(BS_ptr);
+               gBattleScripting.battler = gActiveBattler;
+               gBattlescriptCurrInstr = BattleScript_AbilityNoSpecificStatLoss;
+               gLastUsedAbility = gBattleMons[gActiveBattler].ability;
+               RecordAbilityBattle(gActiveBattler, gLastUsedAbility);
+               //
+               // Move scripts may attempt to apply multiple stat losses to the 
+               // same target. Ordinarily, we use a flag set on the battler to 
+               // keep track of whether we've already printed a message about 
+               // the stat losses being blocked. However, we are here dealing 
+               // with abilities that only block the reduction of one single 
+               // stat, so that flag would not be appropriate to use here.
             }
             return STAT_CHANGE_DIDNT_WORK;
-        }
-        else if (gBattleMons[gActiveBattler].ability == ABILITY_HYPER_CUTTER
-                 && !certain && statId == STAT_ATK)
-        {
-            if (flags == STAT_CHANGE_ALLOW_PTR)
-            {
-                BattleScriptPush(BS_ptr);
-                gBattleScripting.battler = gActiveBattler;
-                gBattlescriptCurrInstr = BattleScript_AbilityNoSpecificStatLoss;
-                gLastUsedAbility = gBattleMons[gActiveBattler].ability;
-                RecordAbilityBattle(gActiveBattler, gLastUsedAbility);
-            }
+         case STATDEC_FAIL_ABILITY_BLOCKS_SECONDARY_EFFECTS:
             return STAT_CHANGE_DIDNT_WORK;
-        }
-        else if (gBattleMons[gActiveBattler].ability == ABILITY_SHIELD_DUST && flags == 0)
-        {
-            return STAT_CHANGE_DIDNT_WORK;
-        }
-        else // try to decrease
-        {
-            statValue = -GET_STAT_BUFF_VALUE(statValue);
-            gBattleTextBuff2[0] = B_BUFF_PLACEHOLDER_BEGIN;
-            index = 1;
-            if (statValue == -2)
-            {
-                gBattleTextBuff2[1] = B_BUFF_STRING;
-                gBattleTextBuff2[2] = STRINGID_STATHARSHLY;
-                gBattleTextBuff2[3] = STRINGID_STATHARSHLY >> 8;
-                index = 4;
-            }
-            gBattleTextBuff2[index++] = B_BUFF_STRING;
-            gBattleTextBuff2[index++] = STRINGID_STATFELL;
-            gBattleTextBuff2[index++] = STRINGID_STATFELL >> 8;
-            gBattleTextBuff2[index] = B_BUFF_EOS;
+      }
+      //
+      // The stat reduction was not blocked, though it could still have failed 
+      // if the stat can't go any lower.
+      //
+      change_by = -GET_STAT_BUFF_VALUE(change_by);
+      gBattleTextBuff2[0] = B_BUFF_PLACEHOLDER_BEGIN;
+      
+      u32 index = 1;
+      if (change_by == -2) {
+         gBattleTextBuff2[1] = B_BUFF_STRING;
+         gBattleTextBuff2[2] = STRINGID_STATHARSHLY;
+         gBattleTextBuff2[3] = STRINGID_STATHARSHLY >> 8;
+         index = 4;
+      }
+      gBattleTextBuff2[index++] = B_BUFF_STRING;
+      gBattleTextBuff2[index++] = STRINGID_STATFELL;
+      gBattleTextBuff2[index++] = STRINGID_STATFELL >> 8;
+      gBattleTextBuff2[index] = B_BUFF_EOS;
 
-            if (gBattleMons[gActiveBattler].statStages[statId] == MIN_STAT_STAGE)
-                gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_STAT_WONT_DECREASE;
-            else
-                gBattleCommunication[MULTISTRING_CHOOSER] = (gBattlerTarget == gActiveBattler); // B_MSG_ATTACKER_STAT_FELL or B_MSG_DEFENDER_STAT_FELL
-        }
-    }
-    else // stat increase
-    {
-        statValue = GET_STAT_BUFF_VALUE(statValue);
-        gBattleTextBuff2[0] = B_BUFF_PLACEHOLDER_BEGIN;
-        index = 1;
-        if (statValue == 2)
-        {
-            gBattleTextBuff2[1] = B_BUFF_STRING;
-            gBattleTextBuff2[2] = STRINGID_STATSHARPLY;
-            gBattleTextBuff2[3] = STRINGID_STATSHARPLY >> 8;
-            index = 4;
-        }
-        gBattleTextBuff2[index++] = B_BUFF_STRING;
-        gBattleTextBuff2[index++] = STRINGID_STATROSE;
-        gBattleTextBuff2[index++] = STRINGID_STATROSE >> 8;
-        gBattleTextBuff2[index] = B_BUFF_EOS;
+      if (gBattleMons[gActiveBattler].statStages[stat] == MIN_STAT_STAGE)
+         gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_STAT_WONT_DECREASE;
+      else
+         gBattleCommunication[MULTISTRING_CHOOSER] = (gBattlerTarget == gActiveBattler); // B_MSG_ATTACKER_STAT_FELL or B_MSG_DEFENDER_STAT_FELL
+   } else {
+      //
+      // Stat increase.
+      //
+      change_by = GET_STAT_BUFF_VALUE(change_by);
+      gBattleTextBuff2[0] = B_BUFF_PLACEHOLDER_BEGIN;
+      
+      u32 index = 1;
+      if (change_by == 2) {
+         gBattleTextBuff2[1] = B_BUFF_STRING;
+         gBattleTextBuff2[2] = STRINGID_STATSHARPLY;
+         gBattleTextBuff2[3] = STRINGID_STATSHARPLY >> 8;
+         index = 4;
+      }
+      gBattleTextBuff2[index++] = B_BUFF_STRING;
+      gBattleTextBuff2[index++] = STRINGID_STATROSE;
+      gBattleTextBuff2[index++] = STRINGID_STATROSE >> 8;
+      gBattleTextBuff2[index] = B_BUFF_EOS;
 
-        if (gBattleMons[gActiveBattler].statStages[statId] == MAX_STAT_STAGE)
-            gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_STAT_WONT_INCREASE;
-        else
-            gBattleCommunication[MULTISTRING_CHOOSER] = (gBattlerTarget == gActiveBattler); // B_MSG_ATTACKER_STAT_ROSE or B_MSG_DEFENDER_STAT_ROSE
-    }
+      if (gBattleMons[gActiveBattler].statStages[stat] == MAX_STAT_STAGE)
+         gBattleCommunication[MULTISTRING_CHOOSER] = B_MSG_STAT_WONT_INCREASE;
+      else
+         gBattleCommunication[MULTISTRING_CHOOSER] = (gBattlerTarget == gActiveBattler); // B_MSG_ATTACKER_STAT_ROSE or B_MSG_DEFENDER_STAT_ROSE
+   }
+   //
+   // Common code for both stat decreases and increases.
+   //
+   s8* current_mod = &gBattleMons[gActiveBattler].statStages[stat];
+   
+   *current_mod += change_by;
+   if (*current_mod < MIN_STAT_STAGE)
+      *current_mod = MIN_STAT_STAGE;
+   else if (*current_mod > MAX_STAT_STAGE)
+      *current_mod = MAX_STAT_STAGE;
 
-    gBattleMons[gActiveBattler].statStages[statId] += statValue;
-    if (gBattleMons[gActiveBattler].statStages[statId] < MIN_STAT_STAGE)
-        gBattleMons[gActiveBattler].statStages[statId] = MIN_STAT_STAGE;
-    if (gBattleMons[gActiveBattler].statStages[statId] > MAX_STAT_STAGE)
-        gBattleMons[gActiveBattler].statStages[statId] = MAX_STAT_STAGE;
-
-    if (gBattleCommunication[MULTISTRING_CHOOSER] == B_MSG_STAT_WONT_INCREASE && flags & STAT_CHANGE_ALLOW_PTR)
-        gMoveResultFlags |= MOVE_RESULT_MISSED;
-
-    if (gBattleCommunication[MULTISTRING_CHOOSER] == B_MSG_STAT_WONT_INCREASE && !(flags & STAT_CHANGE_ALLOW_PTR))
-        return STAT_CHANGE_DIDNT_WORK;
-
-    return STAT_CHANGE_WORKED;
+   if (gBattleCommunication[MULTISTRING_CHOOSER] == B_MSG_STAT_WONT_INCREASE) {
+      if (flags & STAT_CHANGE_ALLOW_PTR) {
+         gMoveResultFlags |= MOVE_RESULT_MISSED;
+      } else {
+         return STAT_CHANGE_DIDNT_WORK;
+      }
+   }
+   
+   return STAT_CHANGE_WORKED;
 }
 
 static void Cmd_statbuffchange(void)
@@ -10550,4 +10633,101 @@ static void Cmd_attackstringandanimation(void) {
    gBattleScripting.animTargetsHit++;
    MarkBattlerForControllerExec(gBattlerAttacker);
    gBattlescriptCurrInstr++;
+}
+
+#include "battle_util/stat_change.h"
+
+static void Cmd_trystatchange(void) {
+   if (gBattleControllerExecFlags)
+      return;
+   
+   u8 stats     = gBattlescriptCurrInstr[1];
+   u8 flags     = gBattlescriptCurrInstr[2];
+   s8 magnitude = gBattlescriptCurrInstr[3];
+   u8 cause     = gBattlescriptCurrInstr[4];
+   
+   u8 battler_cause   = gBattlerAttacker;
+   u8 battler_subject = gBattlerDefender;
+   if (flags & MOVE_EFFECT_AFFECTS_USER) {
+      battler_subject = gBattlerAttacker;
+   }
+   
+   const bool8 certain        = flags & MOVE_EFFECT_CERTAIN;
+   const bool8 bypass_protect = flags & STAT_CHANGE_NOT_PROTECT_AFFECTED;
+   
+   u8 stats_changed            = 0;
+   u8 stats_failed             = 0;
+   u8 per_stat_failure_ability = 0;
+   u8 per_stat_failure_bounded = 0;
+   
+   u8 fail_all = CheckDecreaseBattlerAnyStats(battler_subject, gCurrentMove, certain, bypass_protect);
+   if (fail_all != CANNOTDECREASEANYSTATSREASON_NONE) {
+      stats_failed = stats;
+   } else {
+      for(u8 i = 1; i < 8; ++i) {
+         u8 mask = 1 << i;
+         if ((stats & mask) == 0)
+            continue;
+         
+         u8 failure_reason = CheckDecreaseBattlerStat(battler_subject, i, certain);
+         if (failure_reason == CANNOTDECREASESPECIFICSTATREASON_NONE) {
+            //
+            // NOTE: If we factor this code out into a more generalized function that 
+            // isn't specific to move scripts, but rather is also used by built-in 
+            // move effects, then we'll want to here check for Shield Dust and block 
+            // stat changes that are secondary effects.
+            //
+            stats_changed |= mask;
+         } else {
+            stats_failed |= mask;
+            switch (failure_reason) {
+               case CANNOTDECREASESPECIFICSTATREASON_ABILITY:
+                  per_stat_failure_ability |= mask;
+                  break;
+               case CANNOTDECREASESPECIFICSTATREASON_BOUNDED:
+                  per_stat_failure_bounded |= mask;
+                  break;
+            }
+         }
+      }
+   }
+   
+   //
+   // Apply stat changes.
+   //
+   if (stats_changed == 0) {
+      gMoveResultFlags |= MOVE_RESULT_MISSED; // NOTE: Only if triggered by a move script.
+   } else {
+      s8* current_mod = &gBattleMons[battler_subject].statStages[stat];
+      
+      *current_mod += magnitude;
+      if (*current_mod < MIN_STAT_STAGE)
+         *current_mod = MIN_STAT_STAGE;
+      else if (*current_mod > MAX_STAT_STAGE)
+         *current_mod = MAX_STAT_STAGE;
+   }
+   
+   gActiveBattler = battler_subject;
+   BtlController_EmitReportStatChange(
+      B_COMM_TO_CONTROLLER,
+      battler_cause,
+      stats_changed,
+      stats_failed,
+      magnitude,
+      flags,
+      cause,
+      fail_all,
+      per_stat_failure_ability,
+      per_stat_failure_bounded
+   );
+   
+   if (stats_changed == 0) {
+      u8* jump_target = T1_READ_PTR(gBattlescriptCurrInstr + 5);
+      if (jump_target) {
+         gBattlescriptCurrInstr = jump_target;
+         return;
+      }
+   }
+   
+   gBattlescriptCurrInstr += 9;
 }
