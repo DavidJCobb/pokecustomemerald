@@ -1,4 +1,9 @@
 #include "battle_util/stat_change.h"
+#include "global.h" // dependency for battle.h
+#include "battle.h"
+#include "battle_anim.h" // GetBattlerPosition (via GET_BATTLER_SIDE)
+#include "constants/abilities.h"
+#include "constants/moves.h"
 
 enum CannotDecreaseAnyStatsReason CheckDecreaseBattlerAnyStats(
    u8    battler,
@@ -52,7 +57,7 @@ enum CannotDecreaseSpecificStatReason CheckDecreaseBattlerStat(
          return CANNOTDECREASESPECIFICSTATREASON_ABILITY;
       }
    }
-   if (gBattleMons[battler].statStages[currStat] <= MIN_STAT_STAGE) {
+   if (gBattleMons[battler].statStages[stat] <= MIN_STAT_STAGE) {
       return CANNOTDECREASESPECIFICSTATREASON_BOUNDED;
    }
    return CANNOTDECREASESPECIFICSTATREASON_NONE;

@@ -650,18 +650,58 @@ static void SetBattlePartyIds(void)
 #include "gba/isagbprint.h"
 static void PrepareBufferDataTransfer(u8 bufferId, u8 *data, u16 size)
 {
-    s32 i;
     DebugPrintf(
-       "Emitting message for battler %u: %u",
+       "Emitting message for battler %u: %u (0x%02X bytes)",
        gActiveBattler,
-       data[0]
+       data[0],
+       size
     );
+    #ifndef NDEBUG
+       if (bufferId == B_COMM_TO_CONTROLLER && IS_BATTLE_CONTROLLER_ACTIVE_ON_LOCAL(gActiveBattler)) {
+          DebugPrintf("WARNING: THIS BATTLER IS STILL HANDLING ANOTHER MESSAGE!");
+       }
+    #endif
+    #if 0
+    if (data[0] > 55 && data[0] != CONTROLLER_TERMINATOR_NOP && size < 16*16) {
+       //
+       // Dump any custom/extended controller messages' contents.
+       //
+       for(u8 i = 0; i < size; i += 16) {
+          u8 bytes[16];
+          for(u8 j = 0; j < 16; ++j) {
+             bytes[j] = (i + j < size) ? data[i + j] : 0;
+          }
+          DebugPrintf(
+             "%04X | %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+             i,
+             bytes[0],
+             bytes[1],
+             bytes[2],
+             bytes[3],
+             bytes[4],
+             bytes[5],
+             bytes[6],
+             bytes[7],
+             bytes[8],
+             bytes[9],
+             bytes[10],
+             bytes[11],
+             bytes[12],
+             bytes[13],
+             bytes[14],
+             bytes[15]
+          );
+       }
+    }
+    #endif
+    
     if (gBattleTypeFlags & BATTLE_TYPE_LINK)
     {
         PrepareBufferDataTransferLink(bufferId, size, data);
     }
     else
     {
+        s32 i;
         switch (bufferId)
         {
         case B_COMM_TO_CONTROLLER:

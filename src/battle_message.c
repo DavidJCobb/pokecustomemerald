@@ -2819,7 +2819,7 @@ u32 BattleStringExpandPlaceholders(const u8 *src, u8 *dst)
                     } else {
                         u8 index = *src;
                         if (index < 4) {
-                            toCpy = gAbilityNames[sBattlerAbilities[index]];
+                            toCpy = gAbilityNames[gBattleMons[index].ability];
                         }
                     }
                 }
@@ -2869,6 +2869,8 @@ u32 BattleStringExpandPlaceholders(const u8 *src, u8 *dst)
     return dstID;
 }
 
+static const u8 sStatListFragment_Comma[] = _(", ");
+static const u8 sStatListFragment_And[] = _(" and ");
 static void ExpandBattleTextBuffPlaceholders(const u8 *src, u8 *dst)
 {
     u32 srcID = 1;
@@ -2978,6 +2980,30 @@ static void ExpandBattleTextBuffPlaceholders(const u8 *src, u8 *dst)
                 CopyItemName(hword, dst);
             }
             srcID += 3;
+            break;
+        case B_BUFF_STAT_LIST:
+            {
+                u8 stats = src[srcID + 1];
+                
+                u8 stat_change_count = 0;
+                for(u8 s = stats; s != 0; s >>= 1)
+                    if (s & 1)
+                        ++stat_change_count;
+                
+                u8 count_printed = 0;
+                for(u8 i = 0; i < 8; ++i) {
+                    bool8 used = stats & (1 << i);
+                    if (!used)
+                        continue;
+                    StringAppend(dst, gStatNamesTable[i]);
+                    ++count_printed;
+                    if (stat_change_count > 2 && count_printed < stat_change_count)
+                        StringAppend(dst, sStatListFragment_Comma);
+                    if (count_printed == stat_change_count - 1)
+                        StringAppend(dst, sStatListFragment_And);
+                }
+            }
+            srcID += 2;
             break;
         }
     }

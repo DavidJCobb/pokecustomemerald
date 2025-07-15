@@ -1,6 +1,8 @@
 #ifndef GUARD_LU_BATTLE_UTIL_STAT_CHANGES_H
 #define GUARD_LU_BATTLE_UTIL_STAT_CHANGES_H
 
+#include "gba/types.h"
+
 enum CannotDecreaseAnyStatsReason {
    CANNOTDECREASEANYSTATSREASON_NONE,
    CANNOTDECREASEANYSTATSREASON_ABILITY, // Subject's ability blocks all stat losses.

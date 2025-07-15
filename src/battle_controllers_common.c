@@ -20,9 +20,11 @@
 #include "lu/battle_ambient_weather/core.h"
 #include "battle_message/stat_changes.h"
 
+#include "gba/isagbprint.h"
+
 #define CURRENT_LATENT_STATE gBattleStruct->battleControllerLatentState[gActiveBattler]
-#define CURRENT_LATENT_STATE_U8(index, high) *(((u8*)&CURRENT_LATENT_STATE)[(index) * 2 + (high ? 1 : 0)])
-#define CURRENT_LATENT_STATE_S8(index, high) *(((s8*)&CURRENT_LATENT_STATE)[(index) * 2 + (high ? 1 : 0)])
+#define CURRENT_LATENT_STATE_U8(index, high) *((u8*)&(CURRENT_LATENT_STATE[(index) * 2 + ((high) ? 1 : 0)]))
+#define CURRENT_LATENT_STATE_S8(index, high) *((s8*)&(CURRENT_LATENT_STATE[(index) * 2 + ((high) ? 1 : 0)]))
 
 static u8* AccessStateByte(u8 index, bool8 high) {
    u8* ptr = (u8*)&CURRENT_LATENT_STATE[index];
@@ -383,7 +385,7 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
 }
 #undef sCounter
 
-#pragma region Report Stat Change
+//#pragma region Report Stat Change
    // data[0]:  on_complete
    // data[1]:  on_complete
    // data[2]:  stats changed
@@ -425,6 +427,7 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
    static void ReportStatChange_Handler(void);
 
    extern void BtlController_HandleReportStatChange(SendControllerCompletionFunc on_complete) {
+DebugPrintf("[Battle Controller: Report Stat Change] Handling...");
       StoreStateDword(0, (u32)on_complete);
       lBattlerCause   = gBattleBufferA[gActiveBattler][1];
       lBattlerSubject = gActiveBattler;
@@ -441,6 +444,7 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
       if (lFailureAll != 0) {
          lState = REPORTSTATCHANGESTATE_UNILATERALFAILURE_START;
       }
+DebugPrintf("[Battle Controller: Report Stat Change] Starting from state %u", lState);
       
       gBattlerControllerFuncs[gActiveBattler] = ReportStatChange_Handler;
    }
@@ -451,14 +455,11 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
    
    static void ReportStatChange_Handler(void) {
       switch (lState) {
-         case REPORTSTATCHANGESTATE_SUCCESS_WAIT:
-            if (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animFromTableActive)
-               return;
-            // [[fallthrough]];
          case REPORTSTATCHANGESTATE_PERSTATFAILURE_ABILITY_WAIT:
          case REPORTSTATCHANGESTATE_PERSTATFAILURE_BOUNDED_WAIT:
             if (IsTextPrinterActive(B_WIN_MSG))
                return;
+DebugPrintf("[Battle Controller: Report Stat Change] Advancing from state %u to %u...", lState, (lState + 1));
             ++lState;
             break;
             
@@ -466,9 +467,11 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
             {
                u8 stats = lStatsChanged;
                if (!stats) {
+DebugPrintf("[Battle Controller: Report Stat Change] No stats changed; advancing from state %u to %u...", lState, (lState + 2));
                   lState += 2;
                   break;
                }
+DebugPrintf("[Battle Controller: Report Stat Change] Displaying stat-changed message for stats %u...", stats);
                BufferStatChangeSuccessMessage(
                   lBattlerCause,
                   lBattlerSubject,
@@ -511,21 +514,24 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
                         }
                      }
                   }
-                  TryHandleLaunchBattleTableAnimation(gActiveBattler, gActiveBattler, gActiveBattler, animation_id, animation_arg);
+DebugPrintf("[Battle Controller: Report Stat Change] Displaying stat-change animation (ID %u Arg %u)...", animation_id, animation_arg);
+                  u8 result = TryHandleLaunchBattleTableAnimation(gActiveBattler, gActiveBattler, gActiveBattler, animation_id, animation_arg);
+DebugPrintf("[Battle Controller: Report Stat Change] Result of attempting to start animation: %u.", result);
                }
             }
             ++lState;
             break;
-            
          case REPORTSTATCHANGESTATE_SUCCESS_WAIT:
             if (gBattleSpritesDataPtr->healthBoxesData[gActiveBattler].animFromTableActive)
                return;
             if (IsTextPrinterActive(B_WIN_MSG))
                return;
             if (lFlags & (1 << 1)) { // STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES
+DebugPrintf("[Battle Controller: Report Stat Change] Done displaying success message. Failure message suppressed; exiting...");
                lState = REPORTSTATCHANGESTATE_SUCCESS_DONE;
                break;
             }
+DebugPrintf("[Battle Controller: Report Stat Change] Done displaying success message.");
             ++lState;
             break;
             
@@ -533,9 +539,11 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
             {
                u8 stats = lFailurePerStat_Ability;
                if (!stats) {
+DebugPrintf("[Battle Controller: Report Stat Change] No individual stats were guarded by an ability...");
                   lState += 2;
                   break;
                }
+DebugPrintf("[Battle Controller: Report Stat Change] Displaying message for stats guarded by an ability (%u)...", stats);
                BufferStatChangeAnyFailMessage(
                   lBattlerCause,
                   lBattlerSubject,
@@ -552,9 +560,11 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
             {
                u8 stats = lFailurePerStat_Bounded;
                if (!stats) {
+DebugPrintf("[Battle Controller: Report Stat Change] No individual stats hit bounds...");
                   lState += 2;
                   break;
                }
+DebugPrintf("[Battle Controller: Report Stat Change] Displaying message for stats that hit bounds (%u)...", stats);
                BufferStatChangeAnyFailMessage(
                   lBattlerCause,
                   lBattlerSubject,
@@ -569,6 +579,7 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
             break;
             
          case REPORTSTATCHANGESTATE_UNILATERALFAILURE_START:
+DebugPrintf("[Battle Controller: Report Stat Change] Displaying all-stats-guarded message...");
             BufferStatChangeAllFailMessage(
                lBattlerCause,
                lBattlerSubject,
@@ -581,10 +592,12 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
          case REPORTSTATCHANGESTATE_UNILATERALFAILURE_WAIT:
             if (IsTextPrinterActive(B_WIN_MSG))
                return;
+DebugPrintf("[Battle Controller: Report Stat Change] Done displaying all-stats-guarded message; exiting...");
             lState = REPORTSTATCHANGESTATE_SUCCESS_DONE;
             break;
             
          case REPORTSTATCHANGESTATE_SUCCESS_DONE:
+DebugPrintf("[Battle Controller: Report Stat Change] Exiting.");
             {
                SendControllerCompletionFunc on_complete = (SendControllerCompletionFunc)ExtractStateDword(0);
                on_complete();
@@ -603,7 +616,7 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
    #undef lFailurePerStat_Bounded
    #undef lBattlerCause
    #undef lBattlerSubject
-#pragma endregion
+//#pragma endregion
 
 // ---------------------------------------------------------------------------------------------------------------
 //    MESSAGE HANDLERS WITH INSTANT BEHAVIOR

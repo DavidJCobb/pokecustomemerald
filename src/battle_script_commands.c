@@ -4240,7 +4240,7 @@ static enum StatDecreaseFailureReason CheckCannotDecreaseStat(
    if (gBattleMons[battler].ability == ABILITY_SHIELD_DUST && secondary_effect && !is_self_applied) {
       return STATDEC_FAIL_ABILITY_BLOCKS_SECONDARY_EFFECTS;
    }
-   if (gBattleMons[battler].statStages[currStat] <= MIN_STAT_STAGE) {
+   if (gBattleMons[battler].statStages[stat] <= MIN_STAT_STAGE) {
       return STATDEC_FAIL_CANNOT_GO_LOWER;
    }
    
@@ -10636,6 +10636,7 @@ static void Cmd_attackstringandanimation(void) {
 }
 
 #include "battle_util/stat_change.h"
+#include "gba/isagbprint.h"
 
 static void Cmd_trystatchange(void) {
    if (gBattleControllerExecFlags)
@@ -10647,7 +10648,7 @@ static void Cmd_trystatchange(void) {
    u8 cause     = gBattlescriptCurrInstr[4];
    
    u8 battler_cause   = gBattlerAttacker;
-   u8 battler_subject = gBattlerDefender;
+   u8 battler_subject = gBattlerTarget;
    if (flags & MOVE_EFFECT_AFFECTS_USER) {
       battler_subject = gBattlerAttacker;
    }
@@ -10662,6 +10663,7 @@ static void Cmd_trystatchange(void) {
    
    u8 fail_all = CheckDecreaseBattlerAnyStats(battler_subject, gCurrentMove, certain, bypass_protect);
    if (fail_all != CANNOTDECREASEANYSTATSREASON_NONE) {
+DebugPrintf("[Battle script command: trystatchange] All stats guarded (%u).", fail_all);
       stats_failed = stats;
    } else {
       for(u8 i = 1; i < 8; ++i) {
@@ -10677,8 +10679,10 @@ static void Cmd_trystatchange(void) {
             // move effects, then we'll want to here check for Shield Dust and block 
             // stat changes that are secondary effects.
             //
+DebugPrintf("[Battle script command: trystatchange] Stat %u will change.", i);
             stats_changed |= mask;
          } else {
+DebugPrintf("[Battle script command: trystatchange] Stat %u cannot change (%u).", i, failure_reason);
             stats_failed |= mask;
             switch (failure_reason) {
                case CANNOTDECREASESPECIFICSTATREASON_ABILITY:
@@ -10698,15 +10702,21 @@ static void Cmd_trystatchange(void) {
    if (stats_changed == 0) {
       gMoveResultFlags |= MOVE_RESULT_MISSED; // NOTE: Only if triggered by a move script.
    } else {
-      s8* current_mod = &gBattleMons[battler_subject].statStages[stat];
-      
-      *current_mod += magnitude;
-      if (*current_mod < MIN_STAT_STAGE)
-         *current_mod = MIN_STAT_STAGE;
-      else if (*current_mod > MAX_STAT_STAGE)
-         *current_mod = MAX_STAT_STAGE;
+      for(u8 stat = 0; stat < 8; ++stat) {
+         if ((stats_changed & (1 << stat)) == 0)
+            continue;
+         
+         s8* current_mod = &gBattleMons[battler_subject].statStages[stat];
+         
+         *current_mod += magnitude;
+         if (*current_mod < MIN_STAT_STAGE)
+            *current_mod = MIN_STAT_STAGE;
+         else if (*current_mod > MAX_STAT_STAGE)
+            *current_mod = MAX_STAT_STAGE;
+      }
    }
    
+DebugPrintf("[Battle script command: trystatchange] Dispatching to battle controller...");
    gActiveBattler = battler_subject;
    BtlController_EmitReportStatChange(
       B_COMM_TO_CONTROLLER,
@@ -10720,10 +10730,12 @@ static void Cmd_trystatchange(void) {
       per_stat_failure_ability,
       per_stat_failure_bounded
    );
+   MarkBattlerForControllerExec(gActiveBattler);
    
    if (stats_changed == 0) {
       u8* jump_target = T1_READ_PTR(gBattlescriptCurrInstr + 5);
       if (jump_target) {
+DebugPrintf("[Battle script command: trystatchange] No stats changed; jumping to failure label.");
          gBattlescriptCurrInstr = jump_target;
          return;
       }

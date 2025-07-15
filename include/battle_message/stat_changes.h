@@ -1,16 +1,13 @@
 #ifndef GUARD_LU_BATTLE_MESSAGES_STAT_CHANGES_H
 #define GUARD_LU_BATTLE_MESSAGES_STAT_CHANGES_H
 
-// Write a human-readable list of stats into the destination string, 
-// and return a pointer to the end of the written content.
-//
-// Output examples:
-//    "ATTACK"
-//    "ATTACK and DEFENSE"
-//    "ATTACK, DEFENSE, and SPEED"
-//    "ATTACK, DEFENSE, SPEED, and evasiveness"
-// 
-u8* WriteStatNamesInto(u8* dst, u8 stats);
+#include "gba/types.h"
+
+// Store a list of stat names into gBattleTextBuff1 and friends in 
+// an optimized format. Writing them as a string won't fit, so 
+// this instead takes advantage of special-case format codes that 
+// are available only in those buffers.
+void BufferStatList(u8* battle_text_buffer, u8 stats);
 
 // Write a human-readable string describing the magnitude of a stat 
 // change into the destination string, and return a pointer to the 

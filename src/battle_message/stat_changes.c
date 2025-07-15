@@ -1,15 +1,11 @@
 #include "battle_message/stat_changes.h"
-
-static const u8* sStatNames[] = {
-   _("HP");
-   _("ATTACK");
-   _("DEFENSE");
-   _("SPEED");
-   _("SP. ATK");
-   _("SP. DEF");
-   _("accuracy");
-   _("evasiveness");
-};
+#include "global.h" // dependency for battle.h
+#include "battle.h"
+#include "battle_message.h"
+#include "string_util.h"
+#include "text.h"
+#include "constants/characters.h"
+#include "lu/string_wrap.h"
 
 //
 // In the strings below, index 0x01 is a sentinel for the subject, and 0x00 for the cause.
@@ -17,23 +13,23 @@ static const u8* sStatNames[] = {
 // We'll copy the strings into a local buffer and replace the indices as needed.
 //
 #pragma region Strings
-   #define CAUSE_NAME      "{B_IDX_NAME_WITH_PREFIX}\x00"
-   #define SUBJECT_NAME    "{B_IDX_NAME_WITH_PREFIX}\x01"
-   #define CAUSE_ABILITY   "{B_IDX_ABILITY}\x00"
-   #define SUBJECT_ABILITY "{B_IDX_ABILITY}\x01"
+   #define CAUSE_NAME      "{B_IDX_NAME_WITH_PREFIX}{B_IDX_00}"
+   #define SUBJECT_NAME    "{B_IDX_NAME_WITH_PREFIX}{B_IDX_01}"
+   #define CAUSE_ABILITY   "{B_IDX_ABILITY}{B_IDX_00}"
+   #define SUBJECT_ABILITY "{B_IDX_ABILITY}{B_IDX_01}"
    #define STATS_LIST      "{B_BUFF1}"
-   #define STATS_CHANGE    "{B_BUFF2}"
+   #define STATS_CHANGE    "{B_BUFF3}"
    
-   static const u8 sStatChange_General = _(SUBJECT_NAME"'s "STATS_LIST" "STATS_CHANGE"!");
-   static const u8 sStatChange_Item    = _("Using {B_LAST_ITEM}, "SUBJECT_NAME"'s "STATS_LIST" "STATS_CHANGE"!");
+   static const u8 sStatChange_General[] = _(SUBJECT_NAME "'s " STATS_LIST " " STATS_CHANGE "!");
+   static const u8 sStatChange_Item[]    = _("Using {B_LAST_ITEM}, "SUBJECT_NAME"'s "STATS_LIST" "STATS_CHANGE"!");
    
-   static const u8 sStatChange_Loss_FoeAbility = _(CAUSE_NAME"'s "CAUSE_ABILITY" cuts "SUBJECT_NAME"'s "STATS_LIST"!");
-   static const u8 sStatChange_Loss_OwnAbility = _(CAUSE_NAME"'s "CAUSE_ABILITY" cuts {B_ACTIVE_PRONOUN}{PRONOUN_FORM_POSSESSIVE} "STATS_LIST"!");
+   static const u8 sStatChange_Loss_FoeAbility[] = _(CAUSE_NAME"'s "CAUSE_ABILITY" cuts "SUBJECT_NAME"'s "STATS_LIST"!");
+   static const u8 sStatChange_Loss_OwnAbility[] = _(CAUSE_NAME"'s "CAUSE_ABILITY" cuts {B_ACTIVE_PRONOUN}{PRONOUN_FORM_POSSESSIVE} "STATS_LIST"!");
    
-   static const u8 sStatChange_UnilateralFailure_Ability = _(SUBJECT_NAME"'s "SUBJECT_ABILITY"\nprevents stat loss!");
+   static const u8 sStatChange_UnilateralFailure_Ability[] = _(SUBJECT_NAME"'s "SUBJECT_ABILITY"\nprevents stat loss!");
    static const u8 sStatChange_UnilateralFailure_AbilityBlocksAbility[] = _(SUBJECT_NAME"'s "SUBJECT_ABILITY"\nprevented "CAUSE_NAME"'s\l"CAUSE_ABILITY" from working!");
    static const u8 sStatChange_UnilateralFailure_Mist[] = _(SUBJECT_NAME" is protected\nby MIST!");
-   static const u8 sStatChange_UnilateralFailure_Protect = _(SUBJECT_NAME" protected {B_ACTIVE_PRONOUN}{PRONOUN_FORM_REFLEXIVE}!");
+   static const u8 sStatChange_UnilateralFailure_Protect[] = _(SUBJECT_NAME" protected {B_ACTIVE_PRONOUN}{PRONOUN_FORM_REFLEXIVE}!");
    
    static const u8 sStatChange_PerStatFailure_Ability[] = _(SUBJECT_NAME"'s "SUBJECT_ABILITY" prevents "STATS_LIST" loss!");
    
@@ -47,43 +43,27 @@ static const u8* sStatNames[] = {
    #undef STATS_LIST
 #pragma endregion
 
-u8* WriteStatNamesInto(u8* dst, u8 stats) {
-   if (stats == 0) {
-      *dst = EOS;
-      return dst;
-   }
-   
-   u8 stat_change_count = 0;
-   for(u8 s = stats; s != 0; s >>= 1)
-      if (s & 1)
-         ++stat_change_count;
-   
-   u8 count_printed = 0;
-   for(u8 i = 0; i < 8; ++i) {
-      bool8 changed = stats & (1 << i);
-      if (!changed)
-         continue;
-      dst = StringCopy(dst, sStatNames[i]);
-      ++count_printed;
-      if (stat_change_count > 2 && count_printed < stat_change_count)
-         dst = StringCopy(dst, _(", "));
-      if (count_printed == stat_change_count - 1)
-         dst = StringCopy(dst, _("and "));
-   }
-   
-   return dst;
+void BufferStatList(u8* battle_text_buffer, u8 stats) {
+   battle_text_buffer[0] = B_BUFF_PLACEHOLDER_BEGIN;
+   battle_text_buffer[1] = B_BUFF_STAT_LIST;
+   battle_text_buffer[2] = stats;
+   battle_text_buffer[3] = B_BUFF_EOS;
 }
 
-u8* WriteStatMagnitudeInto(u* dst, s8 magnitude) {
+static const u8 sStatMagnitude_Gain1[] = _("rose$");
+static const u8 sStatMagnitude_Gain2[] = _("sharply rose$");
+static const u8 sStatMagnitude_Loss1[] = _("fell$");
+static const u8 sStatMagnitude_Loss2[] = _("harshly fell$");
+u8* WriteStatMagnitudeInto(u8* dst, s8 magnitude) {
    const u8* format;
    if (magnitude < 0) {
-      format = _("fell");
+      format = sStatMagnitude_Loss1;
       if (magnitude < -1)
-         format = _("harshly fell");
+         format = sStatMagnitude_Loss2;
    } else {
-      format = _("rose");
+      format = sStatMagnitude_Gain1;
       if (magnitude > 1)
-         format = _("sharply rose");
+         format = sStatMagnitude_Gain2;
    }
    return StringCopy(dst, format);
 }
@@ -94,6 +74,8 @@ static void FinalizeBuffering(
    const u8  battler_subject
 ) {
    if (!format) {
+      u8 empty = EOS;
+      BattleStringExpandPlaceholdersToDisplayedString(&empty);
       return;
    }
    
@@ -120,6 +102,8 @@ static void FinalizeBuffering(
    #undef BUFFER_SIZE
    
    BattleStringExpandPlaceholdersToDisplayedString(buffer);
+   lu_PrepStringWrap(B_WIN_MSG, FONT_NORMAL);
+   lu_StringWrap(gDisplayedStringBattle);
 }
 
 void BufferStatChangeSuccessMessage(
@@ -129,14 +113,14 @@ void BufferStatChangeSuccessMessage(
    u8 stats,
    s8 magnitude
 ) {
-   WriteStatNamesInto(gBattleBuff1, stats);
-   WriteStatMagnitudeInto(gBattleBuff2, magnitude);
+   BufferStatList(gBattleTextBuff1, stats);
+   WriteStatMagnitudeInto(gBattleTextBuff3, magnitude);
    
    const u8* format = sStatChange_General;
-   if (cause == STATCHANGEMESSAGE_CAUSE_ITEM_HELD || cause == STATCHANGEMESSAGE_CAUSE_ITEM_USED) {
+   if (change_cause == STATCHANGEMESSAGE_CAUSE_ITEM_HELD || change_cause == STATCHANGEMESSAGE_CAUSE_ITEM_USED) {
       format = sStatChange_Item;
    }
-   if (magnitude < 0 && cause == STATCHANGEMESSAGE_CAUSE_ABILITY) {
+   if (magnitude < 0 && change_cause == STATCHANGEMESSAGE_CAUSE_ABILITY) {
       if (battler_cause == battler_affected) {
          format = sStatChange_Loss_OwnAbility;
       } else {
@@ -179,7 +163,8 @@ void BufferStatChangeAnyFailMessage(
    s8 magnitude,
    enum StatChangeMessage_AnyStatBlockedBy failure_cause
 ) {
-   WriteStatNamesInto(gBattleBuff1, stats);
+   BufferStatList(gBattleTextBuff1, stats);
+   const u8* format = NULL;
    switch (failure_cause) {
       case STATCHANGEMESSAGE_ANYSTATBLOCKEDBY_ABILITY:
          if (change_cause == STATCHANGEMESSAGE_CAUSE_ABILITY) {
