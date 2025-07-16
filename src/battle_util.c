@@ -3007,6 +3007,7 @@ u8 AbilityBattleEffects(u8 caseID, u8 battler, u8 ability, u8 special, u16 moveA
             {
                 if (gBattleMons[i].ability == ABILITY_INTIMIDATE && gStatuses3[i] & STATUS3_INTIMIDATE_POKES)
                 {
+                    gBattlerAttacker = i; // so that `trystatchange` checks the right battler
                     gLastUsedAbility = ABILITY_INTIMIDATE;
                     gStatuses3[i] &= ~STATUS3_INTIMIDATE_POKES;
                     BattleScriptPushCursorAndCallback(BattleScript_IntimidateActivatesEnd3);

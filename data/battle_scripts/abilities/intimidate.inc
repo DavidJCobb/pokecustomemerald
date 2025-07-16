@@ -8,24 +8,22 @@ BattleScript_IntimidateActivates::
 	setbyte gBattlerTarget, 0
 	setstatchanger STAT_ATK, 1, TRUE
 BattleScript_IntimidateActivatesLoop:
+
+   @ If `gBattlerTarget` does not already refer to a valid target 
+   @ for Intimidate (i.e. a non-absent battler on the opposite side 
+   @ of the field), then this script command increases it until it 
+   @ either finds a valid target, or runs out of battlers to check. 
+   @ If the latter outcome occurs, the command jumps to the given 
+   @ label.
+   @
 	trygetintimidatetarget BattleScript_IntimidateActivatesReturn
+   
 	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_IntimidateActivatesLoopIncrement
-	jumpifability BS_TARGET, ABILITY_CLEAR_BODY, BattleScript_IntimidatePrevented
-	jumpifability BS_TARGET, ABILITY_HYPER_CUTTER, BattleScript_IntimidatePrevented
-	jumpifability BS_TARGET, ABILITY_WHITE_SMOKE, BattleScript_IntimidatePrevented
-	statbuffchange STAT_CHANGE_NOT_PROTECT_AFFECTED | STAT_CHANGE_ALLOW_PTR, BattleScript_IntimidateActivatesLoopIncrement
-	jumpifbyte CMP_GREATER_THAN, cMULTISTRING_CHOOSER, 1, BattleScript_IntimidateActivatesLoopIncrement
-	setgraphicalstatchangevalues
-	playanimation BS_TARGET, B_ANIM_STATS_CHANGE, sB_ANIM_ARG1
-	printstring STRINGID_PKMNCUTSATTACKWITH
-	waitmessage B_WAIT_TIME_LONG
+   
+   trystatchange (BIT_ATK), (STAT_CHANGE_NOT_PROTECT_AFFECTED), -1, STAT_CHANGE_CAUSE_ABILITY, 0
+   
 BattleScript_IntimidateActivatesLoopIncrement:
 	addbyte gBattlerTarget, 1
 	goto BattleScript_IntimidateActivatesLoop
 BattleScript_IntimidateActivatesReturn:
 	return
-BattleScript_IntimidatePrevented:
-	pause B_WAIT_TIME_SHORT
-	printstring STRINGID_PREVENTEDFROMWORKING
-	waitmessage B_WAIT_TIME_LONG
-	goto BattleScript_IntimidateActivatesLoopIncrement

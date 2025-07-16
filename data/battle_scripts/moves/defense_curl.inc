@@ -7,15 +7,13 @@ BattleScript_EffectDefenseCurl::
 	attackcanceler
 	ppreduce
 	setdefensecurlbit
-	setstatchanger STAT_DEF, 1, FALSE
-	statbuffchange MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_ALLOW_PTR, BattleScript_DefenseCurlDoStatUpAnim
-	jumpifbyte CMP_EQUAL, cMULTISTRING_CHOOSER, B_MSG_STAT_WONT_INCREASE, BattleScript_EffectDefenseCurl_Failed
+	trystatchange (BIT_DEF), (MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_DEFER_ALL_VISUALS), 1, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, BattleScript_EffectDefenseCurl_Failed
 	attackstringandanimation
 	waitanimation
-BattleScript_DefenseCurlDoStatUpAnim::
-	attackstring
-	goto BattleScript_StatUpDoAnim
+BattleScript_EffectDefenseCurl_End::
+	showstatchange
+	goto BattleScript_MoveEnd
 
 BattleScript_EffectDefenseCurl_Failed::
 	attackstring
-	goto BattleScript_StatUpPrintString
+	goto BattleScript_EffectDefenseCurl_End

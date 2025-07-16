@@ -469,7 +469,7 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
             {
                u8 stats = lStatsChanged;
                if (!stats) {
-                  lState += 2;
+                  lState = REPORTSTATCHANGESTATE_PERSTATFAILURE_ABILITY_START;
                   break;
                }
                BufferStatChangeSuccessMessage(
@@ -546,7 +546,7 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
             {
                u8 stats = lFailurePerStat_Ability;
                if (!stats) {
-                  lState += 2;
+                  lState = REPORTSTATCHANGESTATE_PERSTATFAILURE_BOUNDED_START;
                   break;
                }
                BufferStatChangeAnyFailMessage(

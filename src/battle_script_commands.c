@@ -10741,6 +10741,7 @@ DebugPrintf("[Battle script command: trystatchange] Stat %u cannot change (%u)."
          if (gBattleMons[battler_subject].statStages[i] >= MAX_STAT_STAGE) {
 DebugPrintf("[Battle script command: trystatchange] Stat %u cannot change (maxed).", i);
             stats_failed |= mask;
+            per_stat_failure_bounded |= mask;
          } else {
 DebugPrintf("[Battle script command: trystatchange] Stat %u will change.", i);
             stats_changed |= mask;

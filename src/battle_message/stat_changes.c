@@ -26,9 +26,9 @@
    static const u8 sStatChange_Loss_FoeAbility[] = _(CAUSE_NAME"'s "CAUSE_ABILITY" cuts "SUBJECT_NAME"'s "STATS_LIST"!");
    static const u8 sStatChange_Loss_OwnAbility[] = _(CAUSE_NAME"'s "CAUSE_ABILITY" cuts {B_ACTIVE_PRONOUN}{PRONOUN_FORM_POSSESSIVE} "STATS_LIST"!");
    
-   static const u8 sStatChange_UnilateralFailure_Ability[] = _(SUBJECT_NAME"'s "SUBJECT_ABILITY"\nprevents stat loss!");
-   static const u8 sStatChange_UnilateralFailure_AbilityBlocksAbility[] = _(SUBJECT_NAME"'s "SUBJECT_ABILITY"\nprevented "CAUSE_NAME"'s\l"CAUSE_ABILITY" from working!");
-   static const u8 sStatChange_UnilateralFailure_Mist[] = _(SUBJECT_NAME" is protected\nby MIST!");
+   static const u8 sStatChange_UnilateralFailure_Ability[] = _(SUBJECT_NAME"'s "SUBJECT_ABILITY" prevents stat loss!");
+   static const u8 sStatChange_UnilateralFailure_AbilityBlocksAbility[] = _(SUBJECT_NAME"'s "SUBJECT_ABILITY" prevented "CAUSE_NAME"'s "CAUSE_ABILITY" from working!");
+   static const u8 sStatChange_UnilateralFailure_Mist[] = _(SUBJECT_NAME" is protected by MIST!");
    static const u8 sStatChange_UnilateralFailure_Protect[] = _(SUBJECT_NAME" protected {B_ACTIVE_PRONOUN}{PRONOUN_FORM_REFLEXIVE}!");
    
    static const u8 sStatChange_PerStatFailure_Ability[] = _(SUBJECT_NAME"'s "SUBJECT_ABILITY" prevents "STATS_LIST" loss!");
