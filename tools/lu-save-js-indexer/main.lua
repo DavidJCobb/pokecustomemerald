@@ -166,7 +166,7 @@ local enum_confusables = {
    "FLAG_TEMP_HIDE_MIRAGE_ISLAND_BERRY_TREE",
    
    -- Battle flags from pokemon.h
-   "FLAG_MAGIC_COAT_AFFECTED",
+   "FLAG_MAKES_CONTACT",
    "FLAG_PROTECT_AFFECTED",
    "FLAG_MAGIC_COAT_AFFECTED",
    "FLAG_SNATCH_AFFECTED",
