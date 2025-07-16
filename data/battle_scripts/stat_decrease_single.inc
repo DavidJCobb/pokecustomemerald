@@ -36,17 +36,17 @@ BattleScript_EffectStatDown::
 	attackcanceler
 	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_FailedFromAtkString
 	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE
-	attackstring
 	ppreduce
 	trystatchange 0, (STAT_CHANGE_USE_QUEUED_CHANGE | STAT_CHANGE_DEFER_ALL_VISUALS), 0, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, BattleScript_StatDownPrintString
-BattleScript_StatDownDoAnim::
-	attackanimation
+	attackstringandanimation
 	waitanimation
 BattleScript_StatDownPrintString::
+	attackstring
 	showstatchange
-BattleScript_StatDownEnd::
 	goto BattleScript_MoveEnd
 
+@ Called by native code, if a stat change applied by native code (i.e. in a 
+@ MOVE_EFFECT handler) succeeds.
 BattleScript_StatDown::
 	playanimation BS_EFFECT_BATTLER, B_ANIM_STATS_CHANGE, sB_ANIM_ARG1
 	printfromtable gStatDownStringIds

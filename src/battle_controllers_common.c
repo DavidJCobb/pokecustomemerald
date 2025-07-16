@@ -470,6 +470,9 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
                u8 stats = lStatsChanged;
                if (!stats) {
                   lState = REPORTSTATCHANGESTATE_PERSTATFAILURE_ABILITY_START;
+                  if (lFlags & (1 << 1)) { // STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES
+                     lState = REPORTSTATCHANGESTATE_SUCCESS_DONE;
+                  }
                   break;
                }
                BufferStatChangeSuccessMessage(
@@ -534,12 +537,13 @@ extern void BtlController_HandleHitAnimation(SendControllerCompletionFunc on_com
                return;
             if (lTimer > 0)
                break;
+            
+            lTimer = 64; // B_WAIT_TIME_LONG
             if (lFlags & (1 << 1)) { // STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES
                lState = REPORTSTATCHANGESTATE_SUCCESS_DONE;
-               break;
+            } else {
+               ++lState;
             }
-            lTimer = 64; // B_WAIT_TIME_LONG
-            ++lState;
             break;
             
          case REPORTSTATCHANGESTATE_PERSTATFAILURE_ABILITY_START:

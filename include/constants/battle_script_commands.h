@@ -136,12 +136,42 @@
 
 // stat flags for Cmd_trystatchange
 #define STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES (1 << 1)
+   // Use STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES when:
+   //
+   //  - The stat change is an optional secondary effect, e.g. Ancientpower's 
+   //    random chance to boost all of its user's stats.
+   //
+   //  - You've pre-checked the stat change via `jumpifstat`, and wish to show 
+   //    failure messages only if ALL to-be-changed stats fail, rather than if 
+   //    ANY of them fail.
+   //
 #define STAT_CHANGE_SUPPRESS_ANIMATIONS       (1 << 2)
 #define STAT_CHANGE_USE_QUEUED_CHANGE         (1 << 3)
+   // Use STAT_CHANGE_USE_QUEUED_CHANGE when you want to apply a stat change 
+   // that was previously queued by setting the "stat changer" byte.
+   //
 #define STAT_CHANGE_DEFER_ALL_VISUALS         (1 << 4)
+   // STAT_CHANGE_DEFER_ALL_VISUALS prevents `trystatchange` from immediately 
+   // displaying the results of an attempted stat change (e.g. animations, text 
+   // messages) to the user. You'll have to use `showstatchange` to display 
+   // those results later on.
+   // 
+   // Use STAT_CHANGE_DEFER_ALL_VISUALS when a failure to change stats has to 
+   // affect the control flow of your script. For example, a move that does 
+   // nothing but alter stats might try a stat change with deferred visuals; 
+   // if the stat change fails, the script might jump to a branch that runs the 
+   // `attackstring` command followed by `showstatchange`; whereas if the stat 
+   // change succeeds, the script might run `attackstringandanimation` followed 
+   // by `waitanimation` and `showstatchange`.
+   //
 // reuse: STAT_CHANGE_NOT_PROTECT_AFFECTED
+   // STAT_CHANGE_NOT_PROTECT_AFFECTED allows a stat change to bypass Protect. 
+   // This is used by Intimidate.
+   //
 // reuse: MOVE_EFFECT_AFFECTS_USER
 // reuse: MOVE_EFFECT_CERTAIN
+   // MOVE_EFFECT_CERTAIN allows a stat change to bypass several effects that 
+   // would otherwise guard a stat from being lowered, such as Abilities.
 
 // stat causes for Cmd_trystatchange
 #define STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY   0

@@ -6,7 +6,7 @@ BattleScript_EffectSwagger::
 	jumpifconfusedandstatmaxed STAT_ATK, BattleScript_Failed_AtkStringNoPPReduce
 	attackstringandanimation
 	waitanimation
-	trystatchange (BIT_ATK), (STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES), 2, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, 0
+	trystatchange (BIT_ATK), (0), 2, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, 0
 BattleScript_SwaggerTryConfuse::
 	jumpifability BS_TARGET, ABILITY_OWN_TEMPO, BattleScript_OwnTempoPrevents
 	jumpifsideaffecting BS_TARGET, SIDE_STATUS_SAFEGUARD, BattleScript_SafeguardProtected

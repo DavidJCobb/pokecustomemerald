@@ -6,7 +6,6 @@ BattleScript_PauseIntimidateActivates:
 	pause B_WAIT_TIME_SHORT
 BattleScript_IntimidateActivates::
 	setbyte gBattlerTarget, 0
-	setstatchanger STAT_ATK, 1, TRUE
 BattleScript_IntimidateActivatesLoop:
 
    @ If `gBattlerTarget` does not already refer to a valid target 

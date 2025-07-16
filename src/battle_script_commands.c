@@ -2668,10 +2668,12 @@ void SetMoveEffect(bool8 primary, u8 certain)
                                     gBattleCommunication[MOVE_EFFECT_BYTE] - MOVE_EFFECT_ATK_PLUS_1 + 1,
                                     affectsUser, 0))
                 {
+                    // Failed
                     gBattlescriptCurrInstr++;
                 }
                 else
                 {
+                    // Succeeded
                     gBattleScripting.animArg1 = gBattleCommunication[MOVE_EFFECT_BYTE] & ~(MOVE_EFFECT_AFFECTS_USER | MOVE_EFFECT_CERTAIN);
                     gBattleScripting.animArg2 = 0;
                     BattleScriptPush(gBattlescriptCurrInstr + 1);
@@ -2689,10 +2691,12 @@ void SetMoveEffect(bool8 primary, u8 certain)
                                     gBattleCommunication[MOVE_EFFECT_BYTE] - MOVE_EFFECT_ATK_MINUS_1 + 1,
                                     affectsUser, 0))
                 {
+                    // Failed
                     gBattlescriptCurrInstr++;
                 }
                 else
                 {
+                    // Succeeded
                     gBattleScripting.animArg1 = gBattleCommunication[MOVE_EFFECT_BYTE] & ~(MOVE_EFFECT_AFFECTS_USER | MOVE_EFFECT_CERTAIN);
                     gBattleScripting.animArg2 = 0;
                     BattleScriptPush(gBattlescriptCurrInstr + 1);
@@ -2710,10 +2714,12 @@ void SetMoveEffect(bool8 primary, u8 certain)
                                     gBattleCommunication[MOVE_EFFECT_BYTE] - MOVE_EFFECT_ATK_PLUS_2 + 1,
                                     affectsUser, 0))
                 {
+                    // Failed
                     gBattlescriptCurrInstr++;
                 }
                 else
                 {
+                    // Succeeded
                     gBattleScripting.animArg1 = gBattleCommunication[MOVE_EFFECT_BYTE] & ~(MOVE_EFFECT_AFFECTS_USER | MOVE_EFFECT_CERTAIN);
                     gBattleScripting.animArg2 = 0;
                     BattleScriptPush(gBattlescriptCurrInstr + 1);
@@ -2731,10 +2737,12 @@ void SetMoveEffect(bool8 primary, u8 certain)
                                     gBattleCommunication[MOVE_EFFECT_BYTE] - MOVE_EFFECT_ATK_MINUS_2 + 1,
                                     affectsUser, 0))
                 {
+                    // Failed
                     gBattlescriptCurrInstr++;
                 }
                 else
                 {
+                    // Succeeded
                     gBattleScripting.animArg1 = gBattleCommunication[MOVE_EFFECT_BYTE] & ~(MOVE_EFFECT_AFFECTS_USER | MOVE_EFFECT_CERTAIN);
                     gBattleScripting.animArg2 = 0;
                     BattleScriptPush(gBattlescriptCurrInstr + 1);

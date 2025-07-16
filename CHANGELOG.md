@@ -106,6 +106,9 @@
 
 * As mentioned above, "weather continues" messages no longer display, since the "battle ambient weather" feature feels like an acceptable substitute.
 
+* Most stat-change animations play in unison with the stat-change text. Additionally, if multiple stats are raised in tandem, they'll be printed in a single textbox.
+  * Exceptions to this are damaging moves that have a chance to randomly raise or lower a single stat. These stat changes are hardcoded; the handlers for `MOVE_EFFECT_ATK_PLUS_1` and friends need to be updated.
+
 * When you use most moves, the "Pokemon used Move!" message will begin to display at the same time that the battle animation begins to play. The change should apply to all moves *except* for the following, which need special attention:
   * Curse (non-Ghost)
   * Dragon Dance
