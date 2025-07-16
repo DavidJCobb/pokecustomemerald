@@ -11,20 +11,8 @@ BattleScript_CurseTrySpeed::
 	setbyte sB_ANIM_TURN, 1
 	attackanimation
 	waitanimation
-	setstatchanger STAT_SPEED, 1, TRUE
-	statbuffchange MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_ALLOW_PTR, BattleScript_CurseTryAttack
-	printfromtable gStatDownStringIds
-	waitmessage B_WAIT_TIME_LONG
-BattleScript_CurseTryAttack::
-	setstatchanger STAT_ATK, 1, FALSE
-	statbuffchange MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_ALLOW_PTR, BattleScript_CurseTryDefense
-	printfromtable gStatUpStringIds
-	waitmessage B_WAIT_TIME_LONG
-BattleScript_CurseTryDefense::
-	setstatchanger STAT_DEF, 1, FALSE
-	statbuffchange MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_ALLOW_PTR, BattleScript_CurseEnd
-	printfromtable gStatUpStringIds
-	waitmessage B_WAIT_TIME_LONG
+	trystatchange (BIT_SPEED), (MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_SUPPRESS_ANIMATIONS), -1, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, 0
+	trystatchange (BIT_ATK | BIT_DEF), (MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_SUPPRESS_ANIMATIONS), 1, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, 0
 BattleScript_CurseEnd::
 	goto BattleScript_MoveEnd
 

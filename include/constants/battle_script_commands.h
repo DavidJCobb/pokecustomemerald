@@ -137,6 +137,8 @@
 // stat flags for Cmd_trystatchange
 #define STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES (1 << 1)
 #define STAT_CHANGE_SUPPRESS_ANIMATIONS       (1 << 2)
+#define STAT_CHANGE_USE_QUEUED_CHANGE         (1 << 3)
+#define STAT_CHANGE_DEFER_ALL_VISUALS         (1 << 4)
 // reuse: STAT_CHANGE_NOT_PROTECT_AFFECTED
 // reuse: MOVE_EFFECT_AFFECTS_USER
 // reuse: MOVE_EFFECT_CERTAIN

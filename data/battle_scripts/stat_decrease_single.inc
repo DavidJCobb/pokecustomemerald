@@ -38,19 +38,12 @@ BattleScript_EffectStatDown::
 	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE
 	attackstring
 	ppreduce
-	statbuffchange STAT_CHANGE_ALLOW_PTR, BattleScript_StatDownEnd
-	jumpifbyte CMP_LESS_THAN, cMULTISTRING_CHOOSER, B_MSG_STAT_WONT_DECREASE, BattleScript_StatDownDoAnim
-	jumpifbyte CMP_EQUAL, cMULTISTRING_CHOOSER, B_MSG_STAT_FELL_EMPTY, BattleScript_StatDownEnd
-	pause B_WAIT_TIME_SHORT
-	goto BattleScript_StatDownPrintString
+	trystatchange 0, (STAT_CHANGE_USE_QUEUED_CHANGE | STAT_CHANGE_DEFER_ALL_VISUALS), 0, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, BattleScript_StatDownPrintString
 BattleScript_StatDownDoAnim::
 	attackanimation
 	waitanimation
-	setgraphicalstatchangevalues
-	playanimation BS_TARGET, B_ANIM_STATS_CHANGE, sB_ANIM_ARG1
 BattleScript_StatDownPrintString::
-	printfromtable gStatDownStringIds
-	waitmessage B_WAIT_TIME_LONG
+	showstatchange
 BattleScript_StatDownEnd::
 	goto BattleScript_MoveEnd
 

@@ -1459,3 +1459,7 @@
    .byte \cause
    .4byte \jumpptr
 	.endm
+   
+   .macro showstatchange
+   .byte 0xFC
+   .endm

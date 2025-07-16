@@ -8,8 +8,6 @@ BattleScript_EffectMemento::
 	waitanimation
 	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_EffectMementoPrintNoEffect
    trystatchange (BIT_ATK | BIT_DEF), (STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES), -2, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, BattleScript_EffectMementoTryFaint
-	waitanimation
-	waitmessage B_WAIT_TIME_LONG
 BattleScript_EffectMementoTryFaint:
 	tryfaintmon BS_ATTACKER
 	goto BattleScript_MoveEnd

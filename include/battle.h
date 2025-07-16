@@ -443,6 +443,26 @@ struct BattleStruct
     u8 alreadyStatusedMoveAttempt; // As bits for battlers; For example when using Thunder Wave on an already paralyzed Pokémon.
     
     u16 battleControllerLatentState[MAX_BATTLERS_COUNT][16];
+    struct BattleLastStatChange {
+       struct {
+          u8 cause;
+          u8 affected;
+       } battlers;
+       struct {
+          u8 changed;
+          u8 failed;
+       } stats;
+       s8 magnitude;
+       u8 cause;
+       u8 flags;
+       struct {
+          u8 all_failed_reason;
+          struct {
+             u8 ability;
+             u8 bounded;
+          } per_stat;
+       } failures;
+    } lastStatChange;
 };
 
 // The palaceFlags member of struct BattleStruct contains 1 flag per move to indicate which moves the AI should consider,

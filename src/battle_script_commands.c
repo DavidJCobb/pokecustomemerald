@@ -332,6 +332,7 @@ static void Cmd_trainerslideout(void);
 static void Cmd_lu_extensions(void);
 static void Cmd_attackstringandanimation(void);
 static void Cmd_trystatchange(void);
+static void Cmd_showstatchange(void);
 
 void (*const gBattleScriptingCommandsTable[])(void) =
 {
@@ -587,6 +588,7 @@ void (*const gBattleScriptingCommandsTable[])(void) =
     Cmd_lu_extensions,                           //0xF9 // EXTENSION
     Cmd_attackstringandanimation,                //0xFA // EXTENSION
     Cmd_trystatchange,                           //0xFB // EXTENSION
+    Cmd_showstatchange,                          //0xFC // EXTENSION
 };
 
 struct StatFractions
@@ -10638,6 +10640,25 @@ static void Cmd_attackstringandanimation(void) {
 #include "battle_util/stat_change.h"
 #include "gba/isagbprint.h"
 
+static void DisplayStatChange(void) {
+   struct BattleLastStatChange* remember = &gBattleStruct->lastStatChange;
+   
+   gActiveBattler = remember->battlers.affected;
+   BtlController_EmitReportStatChange(
+      B_COMM_TO_CONTROLLER,
+      remember->battlers.cause,
+      remember->stats.changed,
+      remember->stats.failed,
+      remember->magnitude,
+      remember->flags,
+      remember->cause,
+      remember->failures.all_failed_reason,
+      remember->failures.per_stat.ability,
+      remember->failures.per_stat.bounded
+   );
+   MarkBattlerForControllerExec(gActiveBattler);
+}
+
 static void Cmd_trystatchange(void) {
    if (gBattleControllerExecFlags)
       return;
@@ -10646,6 +10667,14 @@ static void Cmd_trystatchange(void) {
    u8 flags     = gBattlescriptCurrInstr[2];
    s8 magnitude = gBattlescriptCurrInstr[3];
    u8 cause     = gBattlescriptCurrInstr[4];
+   
+   if (flags & STAT_CHANGE_USE_QUEUED_CHANGE) {
+      magnitude = GET_STAT_BUFF_VALUE(gBattleScripting.statChanger);
+      stats     = 1 << (GET_STAT_BUFF_ID(gBattleScripting.statChanger));
+      if (gBattleScripting.statChanger & STAT_BUFF_NEGATIVE)
+         magnitude = -magnitude;
+DebugPrintf("[Battle script command: trystatchange] Recovered queued data: stat-mask %u magnitude %d.", stats, magnitude);
+   }
    
    u8 battler_cause   = gBattlerAttacker;
    u8 battler_subject = gBattlerTarget;
@@ -10661,37 +10690,60 @@ static void Cmd_trystatchange(void) {
    u8 per_stat_failure_ability = 0;
    u8 per_stat_failure_bounded = 0;
    
-   u8 fail_all = CheckDecreaseBattlerAnyStats(battler_subject, gCurrentMove, certain, bypass_protect);
-   if (fail_all != CANNOTDECREASEANYSTATSREASON_NONE) {
+   u8 fail_all = 0;
+   if (magnitude < 0) {
+      //
+      // Decreasing a stat.
+      //
+      fail_all = CheckDecreaseBattlerAnyStats(battler_subject, gCurrentMove, certain, bypass_protect);
+      if (fail_all != CANNOTDECREASEANYSTATSREASON_NONE) {
 DebugPrintf("[Battle script command: trystatchange] All stats guarded (%u).", fail_all);
-      stats_failed = stats;
+         stats_failed = stats;
+      } else {
+         for(u8 i = 1; i < 8; ++i) {
+            u8 mask = 1 << i;
+            if ((stats & mask) == 0)
+               continue;
+            
+            u8 failure_reason = CheckDecreaseBattlerStat(battler_subject, i, certain);
+            if (failure_reason == CANNOTDECREASESPECIFICSTATREASON_NONE) {
+               //
+               // NOTE: If we factor this code out into a more generalized function that 
+               // isn't specific to move scripts, but rather is also used by built-in 
+               // move effects, then we'll want to here check for Shield Dust and block 
+               // stat changes that are secondary effects.
+               //
+DebugPrintf("[Battle script command: trystatchange] Stat %u will change.", i);
+               stats_changed |= mask;
+            } else {
+DebugPrintf("[Battle script command: trystatchange] Stat %u cannot change (%u).", i, failure_reason);
+               stats_failed |= mask;
+               switch (failure_reason) {
+                  case CANNOTDECREASESPECIFICSTATREASON_ABILITY:
+                     per_stat_failure_ability |= mask;
+                     break;
+                  case CANNOTDECREASESPECIFICSTATREASON_BOUNDED:
+                     per_stat_failure_bounded |= mask;
+                     break;
+               }
+            }
+         }
+      }
    } else {
+      //
+      // Increasing a stat.
+      //
       for(u8 i = 1; i < 8; ++i) {
          u8 mask = 1 << i;
          if ((stats & mask) == 0)
             continue;
          
-         u8 failure_reason = CheckDecreaseBattlerStat(battler_subject, i, certain);
-         if (failure_reason == CANNOTDECREASESPECIFICSTATREASON_NONE) {
-            //
-            // NOTE: If we factor this code out into a more generalized function that 
-            // isn't specific to move scripts, but rather is also used by built-in 
-            // move effects, then we'll want to here check for Shield Dust and block 
-            // stat changes that are secondary effects.
-            //
+         if (gBattleMons[battler_subject].statStages[i] >= MAX_STAT_STAGE) {
+DebugPrintf("[Battle script command: trystatchange] Stat %u cannot change (maxed).", i);
+            stats_failed |= mask;
+         } else {
 DebugPrintf("[Battle script command: trystatchange] Stat %u will change.", i);
             stats_changed |= mask;
-         } else {
-DebugPrintf("[Battle script command: trystatchange] Stat %u cannot change (%u).", i, failure_reason);
-            stats_failed |= mask;
-            switch (failure_reason) {
-               case CANNOTDECREASESPECIFICSTATREASON_ABILITY:
-                  per_stat_failure_ability |= mask;
-                  break;
-               case CANNOTDECREASESPECIFICSTATREASON_BOUNDED:
-                  per_stat_failure_bounded |= mask;
-                  break;
-            }
          }
       }
    }
@@ -10716,30 +10768,46 @@ DebugPrintf("[Battle script command: trystatchange] Stat %u cannot change (%u)."
       }
    }
    
-DebugPrintf("[Battle script command: trystatchange] Dispatching to battle controller...");
-   gActiveBattler = battler_subject;
-   BtlController_EmitReportStatChange(
-      B_COMM_TO_CONTROLLER,
-      battler_cause,
-      stats_changed,
-      stats_failed,
-      magnitude,
-      flags,
-      cause,
-      fail_all,
-      per_stat_failure_ability,
-      per_stat_failure_bounded
-   );
-   MarkBattlerForControllerExec(gActiveBattler);
+   struct BattleLastStatChange* remember = &gBattleStruct->lastStatChange;
+   remember->battlers.cause             = battler_cause;
+   remember->battlers.affected          = battler_subject;
+   remember->stats.changed              = stats_changed;
+   remember->stats.failed               = stats_failed;
+   remember->magnitude                  = magnitude;
+   remember->cause                      = cause;
+   remember->flags                      = flags;
+   remember->failures.all_failed_reason = fail_all;
+   remember->failures.per_stat.ability  = per_stat_failure_ability;
+   remember->failures.per_stat.bounded  = per_stat_failure_bounded;
+   
+   if (!(flags & STAT_CHANGE_DEFER_ALL_VISUALS)) {
+      DisplayStatChange();
+   }
    
    if (stats_changed == 0) {
       u8* jump_target = T1_READ_PTR(gBattlescriptCurrInstr + 5);
       if (jump_target) {
-DebugPrintf("[Battle script command: trystatchange] No stats changed; jumping to failure label.");
+DebugPrintf("[Battle script command: trystatchange] Taking jump...");
          gBattlescriptCurrInstr = jump_target;
          return;
       }
    }
    
    gBattlescriptCurrInstr += 9;
+}
+
+static void Cmd_showstatchange(void) {
+   if (gBattleControllerExecFlags)
+      return;
+   
+DebugPrintf("[Battle script command: showstatchange]");
+   struct BattleLastStatChange* remember = &gBattleStruct->lastStatChange;
+   if (remember->stats.changed || remember->stats.failed) {
+DebugPrintf("[Battle script command: showstatchange] Activating...");
+      DisplayStatChange();
+   } else {
+DebugPrintf("[Battle script command: showstatchange] Skipping.");
+   }
+   
+   ++gBattlescriptCurrInstr;
 }
