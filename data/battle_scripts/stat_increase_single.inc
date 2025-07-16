@@ -43,11 +43,3 @@ BattleScript_StatUpPrintString::
 	attackstring
 	showstatchange
 	goto BattleScript_MoveEnd
-
-@ Called by native code, if a stat change applied by native code (i.e. in a 
-@ MOVE_EFFECT handler) succeeds.
-BattleScript_StatUp::
-	playanimation BS_EFFECT_BATTLER, B_ANIM_STATS_CHANGE, sB_ANIM_ARG1
-	printfromtable gStatUpStringIds
-	waitmessage B_WAIT_TIME_LONG
-	return

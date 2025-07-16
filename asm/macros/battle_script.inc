@@ -394,16 +394,11 @@
 	.4byte \arg
 	.endm
 
-	.macro setgraphicalstatchangevalues
-	.byte 0x47
-	.endm
+   @ 0x47 used to be `setgraphicalstatchangevalues`, but it has been 
+   @ superseded by `trystatchange` and `showstatchange`.
 
-	.macro playstatchangeanimation battler:req, stats:req, statchange:req
-	.byte 0x48
-	.byte \battler
-	.byte \stats
-	.byte \statchange
-	.endm
+   @ 0x48 used to be `playstatchangeanimation`, but it has been superseded 
+   @ by `trystatchange` and `showstatchange`.
 
 	.macro moveend endMode:req, endState:req
 	.byte 0x49
@@ -745,11 +740,8 @@
 	.byte 0x88
 	.endm
 
-	.macro statbuffchange flags:req, jumpptr:req
-	.byte 0x89
-	.byte \flags
-	.4byte \jumpptr
-	.endm
+   @ 0x89 used to be `statbuffchange`, but it has been superseded 
+   @ by `trystatchange` and `showstatchange`.
 
 	.macro normalisebuffs
 	.byte 0x8a

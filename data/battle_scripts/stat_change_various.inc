@@ -35,3 +35,10 @@ BattleScript_AtkDefDown::
 BattleScript_SAtkDown2::
 	trystatchange (BIT_SPATK), (MOVE_EFFECT_AFFECTS_USER | MOVE_EFFECT_CERTAIN | STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES), -2, STAT_CHANGE_CAUSE_MOVE_EFFECT_SECONDARY, 0
 	return
+
+@ Called by native code, if a stat change applied by native code (i.e. in a 
+@ MOVE_EFFECT handler) succeeds.
+BattleScript_ReportNativelyAppliedStatChange::
+	showstatchange
+	return
+
