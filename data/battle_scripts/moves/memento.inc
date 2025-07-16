@@ -7,14 +7,16 @@ BattleScript_EffectMemento::
 	attackstringandanimation
 	waitanimation
 	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_EffectMementoPrintNoEffect
-   trystatchange (BIT_ATK | BIT_DEF), (STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES), -2, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, BattleScript_EffectMementoTryFaint
+   trystatchange (BIT_ATK | BIT_DEF), (STAT_CHANGE_SUPPRESS_FAILURE_MESSAGES), -2, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, 0
 BattleScript_EffectMementoTryFaint:
 	tryfaintmon BS_ATTACKER
 	goto BattleScript_MoveEnd
+
 BattleScript_EffectMementoPrintNoEffect:
 	printstring STRINGID_BUTNOEFFECT
 	waitmessage B_WAIT_TIME_LONG
 	goto BattleScript_EffectMementoTryFaint
+
 @ If the target is protected there's no need to check the target's stats or animate, the user will just faint
 BattleScript_MementoTargetProtect:
 	attackstring

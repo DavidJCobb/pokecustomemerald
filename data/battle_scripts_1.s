@@ -1468,10 +1468,7 @@ BattleScript_BerryConfuseHealEnd2::
 
 BattleScript_BerryStatRaiseEnd2::
 	playanimation BS_ATTACKER, B_ANIM_HELD_ITEM_EFFECT
-	statbuffchange MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_ALLOW_PTR, BattleScript_BerryStatRaiseDoStatUp
-BattleScript_BerryStatRaiseDoStatUp::
-	setbyte cMULTISTRING_CHOOSER, B_MSG_STAT_ROSE_ITEM
-	call BattleScript_StatUp
+	trystatchange 0, (STAT_CHANGE_USE_QUEUED_CHANGE | MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_SUPPRESS_ANIMATIONS), 0, STAT_CHANGE_CAUSE_ITEM_HELD, 0
 	removeitem BS_ATTACKER
 	end2
 
