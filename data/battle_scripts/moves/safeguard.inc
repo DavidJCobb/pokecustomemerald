@@ -1,6 +1,5 @@
 BattleScript_EffectSafeguard::
 	attackcanceler
-	attackstring
 	ppreduce
 	setsafeguard
 	goto BattleScript_PrintReflectLightScreenSafeguardString

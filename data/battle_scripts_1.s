@@ -185,7 +185,7 @@ gBattleScriptsForMoveEffects::
 	.4byte BattleScript_EffectHail						 @ EFFECT_HAIL
 	.4byte BattleScript_EffectTorment					 @ EFFECT_TORMENT
 	.4byte BattleScript_EffectFlatter					 @ EFFECT_FLATTER
-	.4byte BattleScript_EffectWillOWisp				  @ EFFECT_WILL_O_WISP
+	.4byte BattleScript_EffectBurn				  @ EFFECT_WILL_O_WISP
 	.4byte BattleScript_EffectMemento					 @ EFFECT_MEMENTO
 	.4byte BattleScript_EffectFacade					  @ EFFECT_FACADE
 	.4byte BattleScript_EffectFocusPunch				 @ EFFECT_FOCUS_PUNCH
@@ -257,6 +257,7 @@ gBattleScriptsForMoveEffects::
 .include "data/battle_scripts/shared_move_effects/recharge.inc"
 .include "data/battle_scripts/shared_move_effects/recoil.inc"
 .include "data/battle_scripts/shared_move_effects/recoil_if_miss.inc"
+.include "data/battle_scripts/shared_move_effects/status_burn.inc"
 .include "data/battle_scripts/shared_move_effects/status_confuse.inc"
 .include "data/battle_scripts/shared_move_effects/status_paralyze.inc"
 .include "data/battle_scripts/shared_move_effects/status_poison.inc"
@@ -389,7 +390,6 @@ gBattleScriptsForMoveEffects::
 .include "data/battle_scripts/moves/twister.inc"
 .include "data/battle_scripts/moves/uproar.inc"
 .include "data/battle_scripts/moves/weather_ball.inc"
-.include "data/battle_scripts/moves/will_o_wisp.inc"
 .include "data/battle_scripts/moves/wish.inc"
 .include "data/battle_scripts/moves/yawn.inc"
 
@@ -407,7 +407,6 @@ BattleScript_HitFromAtkCanceler::
 BattleScript_HitFromAccCheck::
 	accuracycheck BattleScript_PrintMoveMissed, ACC_CURR_MOVE
 BattleScript_HitFromAtkString::
-	@attackstring @ Commented out, in favor of the attackstringandanimation command.
 	ppreduce
 BattleScript_HitFromCritCalc::
 	critcalc
@@ -415,8 +414,7 @@ BattleScript_HitFromCritCalc::
 	typecalc
 	adjustnormaldamage
 BattleScript_HitFromAtkAnimation::
-	@attackanimation @ Commented out, in favor of the attackstringandanimation command.
-   attackstringandanimation @ ADDED
+   attackstringandanimation
 	waitanimation
 	effectivenesssound
 	hitanimation BS_TARGET
@@ -455,6 +453,15 @@ BattleScript_MoveMissed::
 BattleScript_WasntAffected::
 	pause B_WAIT_TIME_SHORT
 	printstring STRINGID_PKMNWASNTAFFECTED
+	waitmessage B_WAIT_TIME_LONG
+	goto BattleScript_MoveEnd
+
+BattleScript_PrintBankAbilityMadeIneffective::
+	copybyte sBATTLER, sBATTLER_WITH_ABILITY
+BattleScript_PrintAbilityMadeIneffective::
+	attackstring
+	pause B_WAIT_TIME_SHORT
+	printstring STRINGID_PKMNSXMADEITINEFFECTIVE
 	waitmessage B_WAIT_TIME_LONG
 	goto BattleScript_MoveEnd
 
@@ -740,19 +747,6 @@ BattleScript_NotAffected::
 	pause B_WAIT_TIME_SHORT
 	orbyte gMoveResultFlags, MOVE_RESULT_DOESNT_AFFECT_FOE
 	resultmessage
-	waitmessage B_WAIT_TIME_LONG
-	goto BattleScript_MoveEnd
-
-BattleScript_WaterVeilPrevents::
-	copybyte gEffectBattler, gBattlerTarget
-	setbyte cMULTISTRING_CHOOSER, B_MSG_ABILITY_PREVENTS_MOVE_STATUS
-	call BattleScript_BRNPrevention
-	goto BattleScript_MoveEnd
-
-BattleScript_AlreadyBurned::
-	setalreadystatusedmoveattempt BS_ATTACKER
-	pause B_WAIT_TIME_SHORT
-	printstring STRINGID_PKMNALREADYHASBURN
 	waitmessage B_WAIT_TIME_LONG
 	goto BattleScript_MoveEnd
 

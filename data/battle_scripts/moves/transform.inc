@@ -1,9 +1,8 @@
 BattleScript_EffectTransform::
 	attackcanceler
-	attackstring
 	ppreduce
 	transformdataexecution
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	printfromtable gTransformUsedStringIds
 	waitmessage B_WAIT_TIME_LONG

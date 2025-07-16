@@ -1,13 +1,20 @@
 BattleScript_EffectLeechSeed::
 	attackcanceler
-	attackstring
 	pause B_WAIT_TIME_SHORT
 	ppreduce
-	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_ButItFailed
+	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_Failed_AtkStringNoPPReduce
 	accuracycheck BattleScript_DoLeechSeed, ACC_CURR_MOVE
+	@
+	@ That `accuracycheck` command might seem redundant, since it doesn't jump out 
+	@ of this script if the attack "misses." However, the `setseeded` command will 
+   @ vary its behavior based on whether the move result flags include "missed" 
+   @ (and `accuracycheck` contains a hardcoded conditional jump to scripts for 
+   @ Protect, as well). The `attackanimation` and `attackstringandanimation` 
+   @ commands check the same result flag.
+	@
 BattleScript_DoLeechSeed::
 	setseeded
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	printfromtable gLeechSeedStringIds
 	waitmessage B_WAIT_TIME_LONG

@@ -1,19 +1,17 @@
 BattleScript_EffectCurse::
 	jumpiftype2 BS_ATTACKER, TYPE_GHOST, BattleScript_GhostCurse
 	attackcanceler
-	attackstring
 	ppreduce
-	jumpifstat BS_ATTACKER, CMP_GREATER_THAN, STAT_SPEED, MIN_STAT_STAGE, BattleScript_CurseTrySpeed
-	jumpifstat BS_ATTACKER, CMP_NOT_EQUAL, STAT_ATK, MAX_STAT_STAGE, BattleScript_CurseTrySpeed
-	jumpifstat BS_ATTACKER, CMP_EQUAL, STAT_DEF, MAX_STAT_STAGE, BattleScript_ButItFailed
-BattleScript_CurseTrySpeed::
+	jumpifstat BS_ATTACKER, CMP_GREATER_THAN, STAT_SPEED, MIN_STAT_STAGE, BattleScript_Curse_Success
+	jumpifstat BS_ATTACKER, CMP_NOT_EQUAL, STAT_ATK, MAX_STAT_STAGE, BattleScript_Curse_Success
+	jumpifstat BS_ATTACKER, CMP_EQUAL, STAT_DEF, MAX_STAT_STAGE, BattleScript_Failed_AtkStringNoPPReduce
+BattleScript_Curse_Success::
 	copybyte gBattlerTarget, gBattlerAttacker
 	setbyte sB_ANIM_TURN, 1
-	attackanimation
+	attackstringandanimation
 	waitanimation
 	trystatchange (BIT_SPEED), (MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_SUPPRESS_ANIMATIONS), -1, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, 0
 	trystatchange (BIT_ATK | BIT_DEF), (MOVE_EFFECT_AFFECTS_USER | STAT_CHANGE_SUPPRESS_ANIMATIONS), 1, STAT_CHANGE_CAUSE_MOVE_EFFECT_PRIMARY, 0
-BattleScript_CurseEnd::
 	goto BattleScript_MoveEnd
 
 BattleScript_GhostCurse::

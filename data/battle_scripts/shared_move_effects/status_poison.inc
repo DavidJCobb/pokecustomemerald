@@ -13,6 +13,11 @@ BattleScript_EffectToxic::
 BattleScript_EffectPoisonAnyVariety::
 	attackcanceler
 	ppreduce
+   @
+   @ The checks run here should be kept consistent with SetMoveEffect's handler 
+   @ for STATUS1_POISON. The Safeguard check should match SetMoveEffect's more 
+   @ general behavior as well.
+   @
 	jumpifability BS_TARGET, ABILITY_IMMUNITY,     BattleScript_ImmunityProtected
 	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE,   BattleScript_Failed_AtkStringNoPPReduce
 	jumpifstatus  BS_TARGET, STATUS1_POISON,       BattleScript_AlreadyPoisoned
@@ -20,6 +25,7 @@ BattleScript_EffectPoisonAnyVariety::
 	jumpifstatus  BS_TARGET, STATUS1_ANY,          BattleScript_Failed_AtkStringNoPPReduce
 	jumpiftype    BS_TARGET, TYPE_POISON,          BattleScript_NotAffectedWithAtkString
 	jumpiftype    BS_TARGET, TYPE_STEEL,           BattleScript_NotAffectedWithAtkString
+   @
 	accuracycheck BattleScript_Failed_AtkStringNoPPReduce, ACC_CURR_MOVE
 	jumpifsideaffecting BS_TARGET, SIDE_STATUS_SAFEGUARD, BattleScript_SafeguardProtectedWithAtkString
 	attackstringandanimation

@@ -1,8 +1,17 @@
 BattleScript_EffectParalyze::
 	attackcanceler
 	ppreduce
+   @
+   @ Most of the checks run here should be kept consistent with SetMoveEffect's 
+   @ handler for STATUS1_PARALYSIS. The Safeguard check should match SetMoveEffect's 
+   @ more general behavior as well.
+   @
+   @ However, the type effectiveness check is not present in SetMoveEffect. Reason 
+   @ unclear.
+   @
 	jumpifability BS_TARGET, ABILITY_LIMBER,     BattleScript_LimberProtected
 	jumpifstatus2 BS_TARGET, STATUS2_SUBSTITUTE, BattleScript_Failed_AtkStringNoPPReduce
+   @
 	typecalc
 	jumpifmovehadnoeffect BattleScript_Failed_AtkStringNoPPReduce
 	jumpifstatus  BS_TARGET, STATUS1_PARALYSIS,  BattleScript_AlreadyParalyzed
