@@ -39,11 +39,13 @@
 #include "field_weather.h" // SetNextWeather
 #include "fldeff.h" // SetUpFieldMove_RockSmash and friends
 #include "global.fieldmap.h" // gPlayerAvatar, PLAYER_AVATAR_FLAG_...
+#include "money.h" // GetMoney, SetMoney
 #include "overworld.h" // CB2_ReturnToField, IsOverworldLinkActive
 #include "pokedex.h"
 #include "region_map.h" // CB2_OpenFlyMap
 #include "wallclock.h" // CB2_StartWallClock
 #include "lu/pick_species_menu.h"
+#include "lu/widgets/num_edit_modal.h"
 
 EWRAM_DATA struct FieldDebugMenuState gFieldDebugMenuState = {0};
 
@@ -75,6 +77,7 @@ enum {
    MENU_ACTION_USE_ANY_FIELD_MOVE,
    MENU_ACTION_USE_ANY_FISHING_ROD,
    MENU_ACTION_VIEW_POKEDEX_ENTRY,
+   MENU_ACTION_SET_MONEY,
    MENU_ACTION_SET_TIME,
    MENU_ACTION_SET_WEATHER,
    MENU_ACTION_TEST_BATTLE_TRANSITION,
@@ -99,6 +102,7 @@ static void FieldDebugMenuActionHandler_DisableWildEncounters(u8 taskId);
 static u8   FieldDebugMenuActionStateGetter_EnableNationalDex(void);
 static void FieldDebugMenuActionHandler_EnableNationalDex(u8 taskId);
 static void FieldDebugMenuActionHandler_FastTravel(u8 taskId);
+static void FieldDebugMenuActionHandler_SetMoney(u8 taskId);
 static void FieldDebugMenuActionHandler_SetTime(u8 taskId);
 static void FieldDebugMenuActionHandler_SetWeather(u8 taskId);
 static void FieldDebugMenuActionHandler_BattleTransition(u8 taskId);
@@ -148,6 +152,10 @@ static const struct FieldDebugMenuAction sFieldDebugMenuActions[] = {
    [MENU_ACTION_VIEW_POKEDEX_ENTRY] = {
       .label   = gText_lu_FieldDebugMenu_ViewPokedexEntry,
       .handler = FieldDebugMenuActionHandler_ViewPokedexEntry,
+   },
+   [MENU_ACTION_SET_MONEY] = {
+      .label   = gText_lu_FieldDebugMenu_SetMoney,
+      .handler = FieldDebugMenuActionHandler_SetMoney,
    },
    [MENU_ACTION_SET_TIME] = {
       .label   = gText_lu_FieldDebugMenu_SetTime,
@@ -507,6 +515,53 @@ static void FieldDebugMenuActionHandler_FastTravel(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
    SetMainCallback2(CB2_OpenFlyMap);
 }
+
+static void FieldDebugMenuActionHandler_SetMoney_callback(bool8 accepted, s32 value) {
+   ScriptUnfreezeObjectEvents();
+   UnlockPlayerFieldControls();
+   if (accepted) {
+      DebugPrintf("[Field Debug Menu] Setting money to %u...", value);
+      SetMoney(&gSaveBlock1Ptr->money, value);
+   }
+}
+static void FieldDebugMenuActionHandler_SetMoney(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   
+   if (!IsOverworldLinkActive()) {
+      FreezeObjectEvents();
+      PlayerFreeze();
+      StopPlayerAvatar();
+   }
+   LockPlayerFieldControls();
+   
+   struct LuNumEditModalInitParams params = {
+      .min_value = 0,
+      .max_value = 999999,
+      .cur_value = GetMoney(&gSaveBlock1Ptr->money),
+      .callback  = FieldDebugMenuActionHandler_SetMoney_callback,
+      .use_task  = TRUE,
+      .window    = {
+         .bg_layer      = 0,
+         .first_tile_id = 0x139,
+         .palette_id    = 15,
+         .x             = 2,
+         .y             = 2,
+      },
+      .text_colors = {
+         .back   = 1,
+         .text   = 2,
+         .shadow = 3,
+      },
+      .sprite_tags = {
+         .cursor = {
+            0xFFFF,
+            0xFFFF
+         },
+      },
+   };
+   FireAndForgetNumEditModal(&params);
+}
+
 static void FieldDebugMenuActionHandler_SetTime(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
    SetMainCallback2(CB2_StartWallClock);

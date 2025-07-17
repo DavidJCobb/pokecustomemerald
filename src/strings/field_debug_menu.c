@@ -8,6 +8,7 @@ const u8 gText_lu_FieldDebugMenu_UseAnyBike[] = _("Use any bike");
 const u8 gText_lu_FieldDebugMenu_UseAnyFieldMove[] = _("Use any field move");
 const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod[] = _("Use any fishing rod");
 const u8 gText_lu_FieldDebugMenu_ViewPokedexEntry[] = _("View Pokedex entry");
+const u8 gText_lu_FieldDebugMenu_SetMoney[] = _("Set money");
 const u8 gText_lu_FieldDebugMenu_SetTime[] = _("Set time of day");
 const u8 gText_lu_FieldDebugMenu_SetWeather[] = _("Set weather");
 const u8 gText_lu_FieldDebugMenu_TestBattleTransition[] = _("Test battle transition");

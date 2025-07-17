@@ -207,7 +207,7 @@ struct Sprite
              #endif
     /*0x10*/ const union AffineAnimCmd *const *affineAnims;
              #ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
-    /*0x0C*/ union {
+    /*0x14*/ union {
                 const struct SpriteTemplate* template;
                 struct SpriteTemplate*       template_owned;
              };

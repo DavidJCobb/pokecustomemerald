@@ -6,6 +6,9 @@
 #include "main.h"
 #include "palette.h"
 
+// Added correctness assertions.
+#include "gba/isagbprint.h"
+
 #define MAX_SPRITE_COPY_REQUESTS 64
 
 #define sAnchorX data[6]
@@ -564,6 +567,11 @@ u8 CreateSpriteAt(u8 index, const struct SpriteTemplate *template, s16 x, s16 y,
 
     if (template->tileTag == TAG_NONE)
     {
+        #ifndef NDEBUG
+            // If you don't specify a tile tag, then you must specify the image data 
+            // yourself.
+            AGB_WARNING(template->images != NULL);
+        #endif
         s16 tileNum;
         sprite->images = template->images;
         tileNum = AllocSpriteTiles((u8)(sprite->images->size / TILE_SIZE_4BPP));
@@ -583,6 +591,11 @@ u8 CreateSpriteAt(u8 index, const struct SpriteTemplate *template, s16 x, s16 y,
     else
     {
         sprite->sheetTileStart = GetSpriteTileStartByTag(template->tileTag);
+        #ifndef NDEBUG
+            // If you specify a tile tag, you must have previously loaded the 
+            // spritesheet with that tag, using LoadSpriteSheets.
+            AGB_WARNING(sprite->sheetTileStart != 0xFFFF);
+        #endif
         SetSpriteSheetFrameTileNum(sprite);
     }
 
@@ -691,10 +704,23 @@ void SetOamMatrix(u8 matrixNum, u16 a, u16 b, u16 c, u16 d)
     gOamMatrices[matrixNum].d = d;
 }
 
+static bool8 PointerIsInROM(const void* ptr) {
+   return (u32)ptr >= 0x08000000 && (u32)ptr < 0x09000000;
+}
+
 void ResetSprite(struct Sprite *sprite) {
    #ifdef LU_SPRITE_RESOURCE_LIFETIME_FIXES
       if (sprite->ownsImageList) {
          if (sprite->images != NULL) {
+            #ifndef NDEBUG
+               // Owned images should be on the heap, not in ROM.
+               AGB_WARNING(!PointerIsInROM(sprite->images));
+               //
+               // NOTE: A sprite should only be listed as owning its images if 
+               // you called SpriteTakeOwnershipOfImages on it. If you didn't 
+               // call that function, then this may instead be a memory stomp 
+               // (did you forget that sprite data can only go up to index 7?).
+            #endif
             Free(sprite->images_owned);
             sprite->images = NULL;
          }
@@ -702,6 +728,15 @@ void ResetSprite(struct Sprite *sprite) {
       }
       if (sprite->ownsTemplate) {
          if (sprite->template != NULL) {
+            #ifndef NDEBUG
+               // Owned templates should be on the heap, not in ROM.
+               AGB_WARNING(!PointerIsInROM(sprite->template));
+               //
+               // NOTE: A sprite should only be listed as owning its template if 
+               // you called SpriteTakeOwnershipOfTemplate on it. If you didn't 
+               // call that function, then this may instead be a memory stomp 
+               // (did you forget that sprite data can only go up to index 7?).
+            #endif
             Free(sprite->template_owned);
             sprite->template = NULL;
          }
