@@ -278,50 +278,32 @@ It'd be nice if we could modify the core sprite library to support keeping only 
 
 * The dialogue for sending out a Pokemon should play in unison with the ball-throw/send-out animation.
 * Concurrent animations and text for moves and for stat changes.
-  * Curse (non-Ghost)
-  * Dragon Dance
-  * Dragon Rage
   * Earthquake
-  * Endeavor
   * Explosion
   * Fury Cutter
-  * Leech Seed
-  * Light Screen
-  * Low Kick
   * Magnitude
   * Metronome
-  * Mimic
   * Mirror Coat
   * Mirror Move
   * Nature Power
   * Present
-  * Psywave
-  * Razor Wind
-  * Reflect
   * Rest
   * Rollout
-  * Safeguard
-  * Skull Bash
-  * Sky Attack
   * Sleep Talk
   * SmellingSalt
   * Snore
   * Softboiled
-  * Solar Beam
-  * Sonicboom
   * Spit Up
   * Swallow
-  * Super Fang
   * Teeter Dance
-  * Teleport
-  * Tickle
-  * Transform
   * Triple Kick
   * Twineedle
-  * Uproar
-  * Will-O-Wisp
-  * Yawn
   * Multi-hit moves
+  * Some two-turn moves
+    * Razor Wind
+    * Skull Bash
+    * Sky Attack
+    * Solar Beam
   * Recover-from-sunlight moves
     * Moonlight
     * Morning Sun
@@ -334,16 +316,6 @@ It'd be nice if we could modify the core sprite library to support keeping only 
   * Moves that heal the target
     * Present (when not damaging)
     * Softboiled
-  * All stat-change animations
-* Synch more battle animations with message text
-  * Status animations
-    * Attract (before move)
-    * Burn (end-of-turn damage)
-    * Confusion (before move)
-    * Freeze
-    * Paralysis (move use failure)
-    * Poison (end-of-turn damage)
-    * Sleep (move use failure)
 * Health bar changes should animate in proportion with the damage done. When a Lv. 100 Mewtwo annihilates some bug in Viridian Forest, the health bar should drain rapidly both to emphasize the sheer power of the hit and to avoid keeping players waiting as they swat trivial foes out of their way.
   
 #### Coalesced battle text
@@ -493,7 +465,7 @@ This will require thorough investigation of the battle script engine as well as 
 ### PC
 
 * Releasing a Pokemon should return its held item to the bag.
-  * If there's insufficient bag space, then show a confirmation prompt warning that the held item will e lost.
+  * If there's insufficient bag space, then show a confirmation prompt warning that the held item will be lost.
     * Better yet: redirect to player's PC if possible; warn of loss if not.
 * Wallpapers
   * The menu for choosing a wallpaper should use two columns, not one, and should support horizontal scrolling.
