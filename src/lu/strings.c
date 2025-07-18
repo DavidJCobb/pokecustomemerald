@@ -42,6 +42,7 @@ const u8 gText_lu_UI_KeybindEnterSubmenu[]  = _("ENTER SUBMENU");
 const u8 gText_lu_UI_KeybindHelp[]          = _("HELP");   // open a help screen
 const u8 gText_lu_UI_KeybindPick[]          = _("PICK");   // move the cursor within a menu
 const u8 gText_lu_UI_KeybindReturnToMenu[]  = _("RETURN TO MENU"); // return from an informational screen
+const u8 gText_lu_UI_KeybindTypeIn[]        = _("TYPE IN");
 const u8 gText_lu_UI_KeybindViewSearchResults[] = _("VIEW SEARCH RESULTS");
 
 const u8 gText_lu_CGO_menuTitle[] = _("CUSTOM GAME OPTIONS");

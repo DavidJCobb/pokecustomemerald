@@ -26,6 +26,7 @@
 #include "string_util.h"
 #include "lu/widgets/enum_picker.h"
 #include "lu/widgets/keybind_strip.h"
+#include "lu/widgets/num_edit_modal.h"
 #include "lu/widgets/scrollbar_v.h"
 #include "lu/string_wrap.h"
 #include "lu/strings.h"
@@ -144,9 +145,11 @@ struct MenuState {
    u8 task_id;
    u8 cursor_pos;
    u8 menu_view;
+   u8 help_window_id;
    struct {
       struct LuEnumPicker   enum_picker;
       struct LuKeybindStrip keybind_strip;
+      struct LuNumEditModal num_edit_modal;
       struct LuScrollbar    scrollbar;
    } widgets;
 };
@@ -188,7 +191,12 @@ static void HighlightCGOptionMenuItem();
 static void OpenSubscreen_PickSpeciesMenu(void);
 static void OnSubscreenClosed_PickSpeciesMenu(PokemonSpeciesID);
 
+static void OpenNumEditModal(LuNumEditModalValue min, LuNumEditModalValue max, LuNumEditModalValue current);
+static void Task_CGOptionMenuWaitForNumEditModal(u8 taskId);
+static void OpenNumEditModal_Callback(bool8, LuNumEditModalValue);
+
 static void TryDisplayHelp(const struct CGOptionMenuItem* item);
+static void TryCloseHelp(void);
 
 static void UpdateDisplayedMenuName(void);
 static void DrawMenuItem(const struct CGOptionMenuItem* item, u8 row, bool8 is_single_update);
@@ -228,7 +236,7 @@ static const u8 sTextColor_HelpBodyText[] = {1, 2, 3};
 
 #define BACKGROUND_LAYER_NORMAL  0
 #define BACKGROUND_LAYER_OPTIONS 1
-#define BACKGROUND_LAYER_HELP    2
+#define BACKGROUND_LAYER_OVERLAY 2 // help, modals
 
 #define BACKGROUND_PALETTE_ID_MENU     0
 #define BACKGROUND_PALETTE_ID_TEXT     1
@@ -260,6 +268,7 @@ static const u8 sTextColor_HelpBodyText[] = {1, 2, 3};
 
 
 #define BG_LAYER_HELP_TILESET_INDEX 2
+#define BG_LAYER_WIDGETS_TILESET_INDEX 3
 
 // Never instantiated. Just a marginally less hideous way to manage all this 
 // compared to preprocessor macros. Unit of measurement is 4bpp tile IDs.
@@ -279,11 +288,27 @@ typedef struct {
    // We have the help screen set to use Tileset 2, so it can address tiles in the range [1536, 2047].
    // We want to skip a tile so that we have a blank/transparent tile we can display.
    VRAMTile VRAM_BG_AT_CHAR_BASE_INDEX(BG_LAYER_HELP_TILESET_INDEX) blank_tile_for_help;
-   VRAMTile win_tiles_for_help[WIN_HELP_TILE_WIDTH * WIN_HELP_TILE_HEIGHT];
+   union {
+      VRAMTile win_tiles_for_help[WIN_HELP_TILE_WIDTH * WIN_HELP_TILE_HEIGHT];
+      struct {
+         VRAMTile num_edit_modal_border[9];
+         VRAMTile num_edit_modal_body[NUM_EDIT_MODAL_INNER_TILE_WIDTH_MAX * NUM_EDIT_MODAL_INNER_TILE_HEIGHT];
+      }; // LuNumEditModal
+   };
 } VRAMTileLayout;
 //
 // ensure we fit within 64KB VRAM limit.
 STATIC_ASSERT(sizeof(VRAMTileLayout) <= BG_VRAM_SIZE, sStaticAssertion01_VramUsage);
+
+enum {
+   KEYBIND_INDEX_PICK,
+   KEYBIND_INDEX_CHANGE,
+   KEYBIND_INDEX_TYPE_IN,
+   KEYBIND_INDEX_ENTER_SUBMENU,
+   KEYBIND_INDEX_RETURN_TO_MENU,
+   KEYBIND_INDEX_BACK,
+   KEYBIND_INDEX_HELP,
+};
 
 static const struct LuEnumPickerInitParams sEnumPickerInit = {
    .base_pos = {
@@ -297,27 +322,31 @@ static const struct LuEnumPickerInitParams sEnumPickerInit = {
    .width = OPTION_VALUE_COLUMN_WIDTH,
 };
 static const struct LuKeybindStripEntry sKeybindStripEntries[] = {
-   {
+   [KEYBIND_INDEX_PICK] = {
       .buttons = (1 << CHAR_DPAD_UPDOWN),
       .text    = gText_lu_UI_KeybindPick
    },
-   {
+   [KEYBIND_INDEX_CHANGE] = {
       .buttons = (1 << CHAR_DPAD_LEFTRIGHT),
       .text    = gText_lu_UI_KeybindChange
    },
-   {
+   [KEYBIND_INDEX_TYPE_IN] = {
+      .buttons = (1 << CHAR_A_BUTTON),
+      .text    = gText_lu_UI_KeybindTypeIn
+   },
+   [KEYBIND_INDEX_ENTER_SUBMENU] = {
       .buttons = (1 << CHAR_A_BUTTON),
       .text    = gText_lu_UI_KeybindEnterSubmenu
    },
-   {
+   [KEYBIND_INDEX_RETURN_TO_MENU] = {
       .buttons = (1 << CHAR_B_BUTTON),
       .text    = gText_lu_UI_KeybindReturnToMenu
    },
-   {
+   [KEYBIND_INDEX_BACK] = {
       .buttons = (1 << CHAR_B_BUTTON),
       .text    = gText_lu_UI_KeybindBack
    },
-   {
+   [KEYBIND_INDEX_HELP] = {
       .buttons = (1 << CHAR_L_BUTTON) | (1 << CHAR_R_BUTTON),
       .text    = gText_lu_UI_KeybindHelp
    },
@@ -347,7 +376,7 @@ static const struct BgTemplate sOptionMenuBgTemplates[] = {
       .mapBaseIndex  = VRAM_BG_MapBaseIndex(VRAMTileLayout, tilemaps[BACKGROUND_LAYER_NORMAL]),
       .screenSize    = 0,
       .paletteMode   = 0,
-      .priority      = 2,
+      .priority      = 3,
       .baseTile      = 0
    },
    {
@@ -357,17 +386,17 @@ static const struct BgTemplate sOptionMenuBgTemplates[] = {
       .mapBaseIndex  = VRAM_BG_MapBaseIndex(VRAMTileLayout, tilemaps[BACKGROUND_LAYER_OPTIONS]),
       .screenSize    = 0,
       .paletteMode   = 0,
-      .priority      = 1,
+      .priority      = 2,
       .baseTile      = 0
    },
    {
-      .bg = BACKGROUND_LAYER_HELP,
+      .bg = BACKGROUND_LAYER_OVERLAY,
       //
       .charBaseIndex = BG_LAYER_HELP_TILESET_INDEX,
-      .mapBaseIndex  = VRAM_BG_MapBaseIndex(VRAMTileLayout, tilemaps[BACKGROUND_LAYER_HELP]),
+      .mapBaseIndex  = VRAM_BG_MapBaseIndex(VRAMTileLayout, tilemaps[BACKGROUND_LAYER_OVERLAY]),
       .screenSize    = 0,
       .paletteMode   = 0,
-      .priority      = 0,
+      .priority      = 1,
       .baseTile      = 0
    },
 };
@@ -391,17 +420,17 @@ static const struct WindowTemplate sOptionMenuWinTemplates[] = {
         .paletteNum  = BACKGROUND_PALETTE_ID_TEXT,
         .baseBlock   = VRAM_BG_TileID(VRAMTileLayout, win_tiles_for_options)
     },
-    [WIN_HELP] = {
-        .bg          = BACKGROUND_LAYER_HELP,
-        .tilemapLeft = 0,
-        .tilemapTop  = 2,
-        .width       = WIN_HELP_TILE_WIDTH,
-        .height      = WIN_HELP_TILE_HEIGHT,
-        .paletteNum  = BACKGROUND_PALETTE_ID_TEXT,
-        .baseBlock   = VRAM_BG_CharBasedTileID(BG_LAYER_HELP_TILESET_INDEX, VRAMTileLayout, win_tiles_for_help)
-    },
     //
-    [WIN_COUNT] = DUMMY_WIN_TEMPLATE
+    [2] = DUMMY_WIN_TEMPLATE
+};
+static const struct WindowTemplate sHelpWindowTemplate = {
+   .bg          = BACKGROUND_LAYER_OVERLAY,
+   .tilemapLeft = 0,
+   .tilemapTop  = 2,
+   .width       = WIN_HELP_TILE_WIDTH,
+   .height      = WIN_HELP_TILE_HEIGHT,
+   .paletteNum  = BACKGROUND_PALETTE_ID_TEXT,
+   .baseBlock   = VRAM_BG_CharBasedTileID(BG_LAYER_HELP_TILESET_INDEX, VRAMTileLayout, win_tiles_for_help)
 };
 
 static const u16 sOptionMenuBg_Pal[] = {RGB(17, 18, 31)};
@@ -423,6 +452,7 @@ static void ResetMenuState(void) {
    }
    sMenuState->cursor_pos = 0;
    sMenuState->menu_view  = MENUVIEW_OPEN;
+   sMenuState->help_window_id = WINDOW_NONE;
 }
 
 static const struct CGOptionMenuItem* GetCurrentMenuItemList(void) {
@@ -550,9 +580,9 @@ void CB2_InitCustomGameOptionMenu(void) {
          
          ShowBg(BACKGROUND_LAYER_NORMAL);
          ShowBg(BACKGROUND_LAYER_OPTIONS);
-         //HideBg(BACKGROUND_LAYER_HELP); // done by `LuUI_ResetBackgroundsAndVRAM`
+         ShowBg(BACKGROUND_LAYER_OVERLAY);
          
-         SetGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_OBJ_ON); // enable sprite layer
+         SetGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_OBJ_ON | DISPCNT_OBJ_1D_MAP); // enable sprite layer
          
          gMain.state++;
          break;
@@ -589,7 +619,7 @@ void CB2_InitCustomGameOptionMenu(void) {
          gMain.state++;
          break;
        case 7:
-         PutWindowTilemap(WIN_HELP);
+         //PutWindowTilemap(WIN_HELP);
          gMain.state++;
          break;
        case 8:
@@ -662,9 +692,7 @@ static void Task_CGOptionMenuFadeIn(u8 taskId) {
 static void Task_CGOptionMenuProcessInput(u8 taskId) {
    if (sMenuState->menu_view == MENUVIEW_IN_HELP) {
       if (JOY_NEW(B_BUTTON)) {
-         sMenuState->menu_view = MENUVIEW_OPEN;
-         HideBg(BACKGROUND_LAYER_HELP);
-         UpdateDisplayedControls();
+         TryCloseHelp();
          PlaySE(SOUND_EFFECT_HELP_EXIT);
       }
       return;
@@ -692,11 +720,14 @@ static void Task_CGOptionMenuProcessInput(u8 taskId) {
          HighlightCGOptionMenuItem();
          return;
       }
-      
-      //
-      // TODO: For integral options, pop a number entry box (i.e. let the user type in a number).
-      //
-      
+      if (MenuItemTypeIsIntegral(item->value_type)) {
+         OpenNumEditModal(
+            item->values.integral.min,
+            item->values.integral.max,
+            GetOptionValue(item)
+         );
+         return;
+      }
       if (item->value_type == VALUE_TYPE_POKEMON_SPECIES) {
          OpenSubscreen_PickSpeciesMenu();
          return;
@@ -835,6 +866,84 @@ static void OnSubscreenClosed_PickSpeciesMenu(PokemonSpeciesID sel) {
    }
 }
 
+static void OpenNumEditModal(LuNumEditModalValue min, LuNumEditModalValue max, LuNumEditModalValue current) {
+   gTasks[sMenuState->task_id].func = Task_CGOptionMenuWaitForNumEditModal;
+   
+   SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
+   
+   u8 row = GetScreenRowForCursorPos();
+   u8 y   = (row * TEXT_ROW_HEIGHT_IN_TILES) + WIN_OPTIONS_Y_TILES;
+   y -= 1;
+   
+   struct LuNumEditModalInitParams params = {
+      .min_value = min,
+      .max_value = max,
+      .cur_value = current,
+      .callback  = OpenNumEditModal_Callback,
+      .use_task  = FALSE,
+      .window    = {
+         .bg_layer      = BACKGROUND_LAYER_OVERLAY,
+         .first_tile_id = VRAM_BG_CharBasedTileID(BG_LAYER_HELP_TILESET_INDEX, VRAMTileLayout, num_edit_modal_body),
+         .palette_id    = BACKGROUND_PALETTE_ID_TEXT,
+         .x             = 21,
+         .y             = y,
+      },
+      .border = {
+         .first_tile_id  = VRAM_BG_CharBasedTileID(BG_LAYER_HELP_TILESET_INDEX, VRAMTileLayout, num_edit_modal_border),
+         .palette_id     = BACKGROUND_PALETTE_BOX_FRAME,
+         .already_loaded = FALSE,
+      },
+      .text_colors = {
+         .back   = 1,
+         .text   = 2,
+         .shadow = 3,
+      },
+      .sprite_tags = {
+         .cursor = {
+            0xFFFF,
+            1234
+         },
+      },
+   };
+   
+   InitNumEditModal(
+      &sMenuState->widgets.num_edit_modal,
+      &params
+   );
+   NumEditModalTakeOverKeybindStrip(&sMenuState->widgets.keybind_strip);
+}
+static void Task_CGOptionMenuWaitForNumEditModal(u8 taskId) {
+   HandleNumEditModalInput(&sMenuState->widgets.num_edit_modal);
+}
+static void OpenNumEditModal_Callback(bool8 accepted, LuNumEditModalValue value) {
+   DestroyNumEditModal(&sMenuState->widgets.num_edit_modal);
+   sMenuState->widgets.keybind_strip.entries     = sKeybindStripEntries;
+   sMenuState->widgets.keybind_strip.entry_count = ARRAY_COUNT(sKeybindStripEntries);
+   UpdateDisplayedControls();
+   HighlightCGOptionMenuItem(); // update enumpicker arrow visibility
+   
+   gTasks[sMenuState->task_id].func = Task_CGOptionMenuProcessInput;
+   
+   if (!accepted)
+      return;
+   const struct CGOptionMenuItem* item;
+   const struct CGOptionMenuItem* items = GetCurrentMenuItemList();
+   if (items) {
+      item = &items[sMenuState->cursor_pos];
+      if (item) {
+         switch (item->value_type) {
+            case VALUE_TYPE_U8:
+            case VALUE_TYPE_U16:
+               break;
+            default:
+               return;
+         }
+         SetOptionValue(item, value);
+         DrawMenuItem(item, GetScreenRowForCursorPos(), TRUE);
+      }
+   }
+}
+
 static void TryDisplayHelp(const struct CGOptionMenuItem* item) {
    const u8* text = NULL;
    
@@ -848,18 +957,36 @@ static void TryDisplayHelp(const struct CGOptionMenuItem* item) {
    
    sMenuState->menu_view = MENUVIEW_IN_HELP;
    
-   FillWindowPixelBuffer(WIN_HELP, PIXEL_FILL(1));
+   u8 window_id = AddWindow(&sHelpWindowTemplate);
+   sMenuState->help_window_id = window_id;
+   PutWindowTilemap(window_id);
+   FillWindowPixelBuffer(window_id, PIXEL_FILL(1));
    
    StringExpandPlaceholders(gStringVar4, text);
-   lu_PrepStringWrap(WIN_HELP, FONT_NORMAL);
+   lu_PrepStringWrap(window_id, FONT_NORMAL);
    lu_StringWrap(gStringVar4);
    
-   AddTextPrinterParameterized3(WIN_HELP, FONT_NORMAL, 2, 1, sTextColor_OptionNames, TEXT_SKIP_DRAW, gStringVar4);
+   AddTextPrinterParameterized3(window_id, FONT_NORMAL, 2, 1, sTextColor_OptionNames, TEXT_SKIP_DRAW, gStringVar4);
    
-   CopyWindowToVram(WIN_HELP, COPYWIN_FULL);
+   CopyWindowToVram(window_id, COPYWIN_FULL);
    
+   SetEnumPickerVisible(&sMenuState->widgets.enum_picker, FALSE);
    UpdateDisplayedControls();
-   ShowBg(BACKGROUND_LAYER_HELP);
+   ShowBg(BACKGROUND_LAYER_OVERLAY);
+}
+static void TryCloseHelp(void) {
+   if (sMenuState->menu_view != MENUVIEW_IN_HELP)
+      return;
+   
+   sMenuState->menu_view = MENUVIEW_OPEN;
+   
+   ClearWindowTilemap(sMenuState->help_window_id);
+   CopyWindowToVram(sMenuState->help_window_id, COPYWIN_MAP);
+   RemoveWindow(sMenuState->help_window_id);
+   sMenuState->help_window_id = WINDOW_NONE;
+   
+   HighlightCGOptionMenuItem(); // update enumpicker arrow visibility
+   UpdateDisplayedControls();
 }
 
 static void HighlightCGOptionMenuItem() {
@@ -1143,10 +1270,10 @@ static void RepaintScrollbar(void) {
 static void UpdateDisplayedControls(void) {
    u8 enabled_entries = 0;
    if (sMenuState->menu_view == MENUVIEW_IN_HELP) {
-      enabled_entries |= 1 << 3; // Return to Menu
+      enabled_entries |= 1 << KEYBIND_INDEX_RETURN_TO_MENU;
    } else {
-      enabled_entries |= 1 << 0; // Pick
-      enabled_entries |= 1 << 4; // Back
+      enabled_entries |= 1 << KEYBIND_INDEX_PICK;
+      enabled_entries |= 1 << KEYBIND_INDEX_BACK;
       
       const struct CGOptionMenuItem* item;
       const struct CGOptionMenuItem* items = GetCurrentMenuItemList();
@@ -1160,12 +1287,15 @@ static void UpdateDisplayedControls(void) {
             (item->flags & (1 << MENUITEM_FLAG_IS_SUBMENU)) != 0 ||
             item->value_type == VALUE_TYPE_POKEMON_SPECIES
          ) {
-            enabled_entries |= 1 << 2; // Enter Submenu
+            enabled_entries |= 1 << KEYBIND_INDEX_ENTER_SUBMENU;
          } else {
-            enabled_entries |= 1 << 1; // Change
+            enabled_entries |= 1 << KEYBIND_INDEX_CHANGE;
+            if (MenuItemTypeIsIntegral(item->value_type)) {
+               enabled_entries |= 1 << KEYBIND_INDEX_TYPE_IN;
+            }
          }
          if (GetRelevantHelpText(item) != NULL) {
-            enabled_entries |= 1 << 5; // Help
+            enabled_entries |= 1 << KEYBIND_INDEX_HELP;
          }
       }
    }

@@ -7,6 +7,9 @@ typedef s32 LuNumEditModalValue;
 
 typedef void(*LuNumEditModalCallback)(bool8 accepted, LuNumEditModalValue value);
 
+#define NUM_EDIT_MODAL_INNER_TILE_WIDTH_MAX 22
+#define NUM_EDIT_MODAL_INNER_TILE_HEIGHT    2
+
 struct LuNumEditModal {
    LuNumEditModalCallback callback;
    LuNumEditModalValue    min_value;
@@ -43,6 +46,11 @@ struct LuNumEditModalInitParams {
       u8  y; // in tiles; includes the border
    } window;
    struct {
+      u16   first_tile_id;
+      u8    palette_id;
+      bool8 already_loaded;
+   } border;
+   struct {
       u8 back;
       u8 text;
       u8 shadow;
@@ -61,5 +69,8 @@ extern void DestroyNumEditModal(struct LuNumEditModal*);
 
 // Spawns the modal data on the heap, and spawns a task to run it.
 extern void FireAndForgetNumEditModal(const struct LuNumEditModalInitParams*);
+
+struct LuKeybindStrip;
+extern void NumEditModalTakeOverKeybindStrip(struct LuKeybindStrip*);
 
 #endif

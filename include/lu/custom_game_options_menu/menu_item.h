@@ -77,4 +77,13 @@ void CycleOptionSelectedValue(const struct CGOptionMenuItem* item, s8 by);
 
 const u8* GetRelevantHelpText(const struct CGOptionMenuItem* item);
 
+inline bool8 MenuItemTypeIsIntegral(u8 value_type) {
+   switch (value_type) {
+      case VALUE_TYPE_U8:
+      case VALUE_TYPE_U16:
+         return TRUE;
+   }
+   return FALSE;
+}
+
 #endif

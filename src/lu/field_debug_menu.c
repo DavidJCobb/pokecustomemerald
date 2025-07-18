@@ -547,6 +547,11 @@ static void FieldDebugMenuActionHandler_SetMoney(u8 taskId) {
          .x             = 2,
          .y             = 2,
       },
+      .border = {
+         .first_tile_id  = 0x130,
+         .palette_id     = 14,
+         .already_loaded = FALSE,
+      },
       .text_colors = {
          .back   = 1,
          .text   = 2,

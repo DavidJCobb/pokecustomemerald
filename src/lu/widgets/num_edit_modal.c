@@ -13,7 +13,9 @@
 #include "sprite.h"
 #include "task.h"
 #include "text.h"
+#include "text_window.h" // LoadMessageBoxGfx
 #include "window.h"
+#include "lu/ui_helpers.h"
 
 static u8 CountDigitsIn(LuNumEditModalValue);
 
@@ -29,7 +31,13 @@ extern void InitNumEditModal(
 ) {
    AGB_ASSERT(params->min_value < params->max_value);
    
-   LoadMessageBoxAndBorderGfx();
+   if (!params->border.already_loaded) {
+      LuUI_LoadPlayerWindowFrame(
+         params->window.bg_layer,
+         params->border.palette_id,
+         params->border.first_tile_id
+      );
+   }
    
    widget->heap_free_on_destroy = FALSE;
    widget->cursor_sprite_id = SPRITE_NONE;
@@ -83,9 +91,18 @@ extern void InitNumEditModal(
       
       PutWindowTilemap(window_id);
       FillWindowPixelBuffer(window_id, PIXEL_FILL(widget->text_colors.back));
-      CopyWindowToVram(window_id, COPYWIN_FULL);
       
-      SetStandardWindowBorderStyle(widget->window_id, TRUE);
+      LuUI_DrawWindowFrame(
+         params->window.bg_layer,
+         params->border.first_tile_id,
+         params->border.palette_id,
+         tile_x + 1,
+         tile_y + 1,
+         tile_w - 2,
+         tile_h - 2
+      );
+      
+      CopyWindowToVram(window_id, COPYWIN_FULL); // actually copies the whole BG layer to VRAM
    }
    
    widget->cursor_sprite_id = CreateCursorSprite(
@@ -515,4 +532,39 @@ extern void FireAndForgetNumEditModal(const struct LuNumEditModalInitParams* par
    InitNumEditModal(widget, params);
    AGB_ASSERT(widget->task_id != TASK_NONE);
    widget->heap_free_on_destroy = TRUE;
+}
+
+// Keybind strip helpers:
+
+#include "lu/widgets/keybind_strip.h"
+
+static const u8 sText_Keybinds_MoveCursor[] = _("MOVE CURSOR");
+static const u8 sText_Keybinds_ChangeDigit[] = _("EDIT");
+static const u8 sText_Keybinds_Confirm[] = _("CONFIRM");
+static const u8 sText_Keybinds_Cancel[] = _("CANCEL");
+
+static const struct LuKeybindStripEntry sKeybindStripEntries[] = {
+   {
+      .buttons = (1 << CHAR_DPAD_LEFTRIGHT),
+      .text    = sText_Keybinds_MoveCursor
+   },
+   {
+      .buttons = (1 << CHAR_DPAD_UPDOWN),
+      .text    = sText_Keybinds_ChangeDigit
+   },
+   {
+      .buttons = (1 << CHAR_A_BUTTON),
+      .text    = sText_Keybinds_Confirm
+   },
+   {
+      .buttons = (1 << CHAR_B_BUTTON),
+      .text    = sText_Keybinds_Cancel
+   },
+};
+
+extern void NumEditModalTakeOverKeybindStrip(struct LuKeybindStrip* widget) {
+   widget->entries     = sKeybindStripEntries;
+   widget->entry_count = ARRAY_COUNT(sKeybindStripEntries);
+   widget->enabled_entries = 0x0F;
+   RepaintKeybindStrip(widget);
 }

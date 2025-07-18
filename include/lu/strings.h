@@ -34,6 +34,7 @@ extern const u8 gText_lu_UI_KeybindEnterSubmenu[];
 extern const u8 gText_lu_UI_KeybindHelp[];
 extern const u8 gText_lu_UI_KeybindPick[];
 extern const u8 gText_lu_UI_KeybindReturnToMenu[];
+extern const u8 gText_lu_UI_KeybindTypeIn[];
 extern const u8 gText_lu_UI_KeybindViewSearchResults[];
 
 extern const u8 gText_lu_CGO_menuTitle[];
