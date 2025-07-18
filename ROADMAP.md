@@ -222,6 +222,7 @@ Add new options:
 * Support for dynamic overworld palettes
 * Modify the tile IDs used by overworld dialog boxes, overlapping the ID ranges of mutually-exclusive boxes, so we can use tile IDs closer to the end of VRAM. This will free up more tile IDs for use by overworld tilesets.
   * Remember that the Save info dialog box can appear alongside the Yes/No choice box, so they can't overlap.
+  * Don't forget about PC Item Storage and Shop menus, too.
 
 ### Pokemon forms
 * Deoxys (selectable form *a la* Gen IV, instead of fixed per-game-version form *a la* Gen III)
