@@ -555,7 +555,7 @@ static void FieldDebugMenuActionHandler_SetMoney(u8 taskId) {
       .sprite_tags = {
          .cursor = {
             0xFFFF,
-            0xFFFF
+            1234
          },
       },
    };

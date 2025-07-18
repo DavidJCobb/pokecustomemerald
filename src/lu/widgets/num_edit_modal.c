@@ -14,7 +14,6 @@
 #include "task.h"
 #include "text.h"
 #include "window.h"
-#include "lu/ui_helpers.h"
 
 static u8 CountDigitsIn(LuNumEditModalValue);
 
@@ -52,10 +51,6 @@ extern void InitNumEditModal(
       
       u8 a = CountDigitsIn(params->min_value);
       u8 b = CountDigitsIn(params->max_value);
-      if (params->min_value < 0)
-         ++a;
-      if (params->max_value < 0)
-         ++b;
       
       widget->digit_count = (a < b) ? b : a;
    }
@@ -72,7 +67,6 @@ extern void InitNumEditModal(
    widget->text_colors.text   = params->text_colors.text;
    widget->text_colors.shadow = params->text_colors.shadow;
    
-   DebugPrintf("[LuNumEditModal][Init] Spawning paint window...");
    {  // Create window.
       const struct WindowTemplate tmpl = {
          .bg          = params->window.bg_layer,
@@ -91,30 +85,19 @@ extern void InitNumEditModal(
       FillWindowPixelBuffer(window_id, PIXEL_FILL(widget->text_colors.back));
       CopyWindowToVram(window_id, COPYWIN_FULL);
       
-      LuUI_DrawWindowFrame(
-         params->window.bg_layer,
-         0x214,          // see LoadMessageBoxAndBorderGfx
-         BG_PLTT_ID(15), // see LoadMessageBoxAndBorderGfx
-         tile_x + 1,
-         tile_y + 1,
-         tile_w - 2,
-         tile_h - 2
-      );
-      CopyBgTilemapBufferToVram(params->window.bg_layer);
+      SetStandardWindowBorderStyle(widget->window_id, TRUE);
    }
-   DebugPrintf("[LuNumEditModal][Init] Paint window ready.");
    
    widget->cursor_sprite_id = CreateCursorSprite(
       params->sprite_tags.cursor.tile,
       params->sprite_tags.cursor.palette
    );
-   DebugPrintf("[LuNumEditModal][Init] Cursor sprite ID is %u.", widget->cursor_sprite_id);
    {
       struct Sprite* sprite = &gSprites[widget->cursor_sprite_id];
-      sprite->oam.priority = 1;
+      sprite->oam.priority = 0;
       sprite->oam.objMode = ST_OAM_OBJ_BLEND;
-      sprite->x = 8 + (tile_x + 1) * TILE_WIDTH;
-      sprite->y = 8 + (tile_y + 1) * TILE_HEIGHT;
+      sprite->x = 3 + (tile_x + 1) * TILE_WIDTH;
+      sprite->y = 9 + (tile_y + 1) * TILE_HEIGHT;
       sprite->invisible = FALSE;
    }
    
@@ -151,6 +134,9 @@ static void GetCursorSpriteColorState(struct Sprite* sprite, struct CursorSprite
    dst->increment = UNPACK(packed,  4, 4);
    dst->delay     = UNPACK(packed,  8, 3);
    dst->flashing  = UNPACK(packed, 11, 1);
+   if (dst->increment & (1 << 3)) { // sign-extend
+      dst->increment |= 0xF0;
+   }
 }
 static void SetCursorSpriteColorState(struct Sprite* sprite, struct CursorSpriteColorState* src) {
    u16 state = 0;
@@ -232,17 +218,7 @@ static const struct SpriteFrameImage sImageTable_Cursor[] = {
 
 static u8 CreateCursorSprite(u16 tile_tag, u16 palette_tag) {
    const struct SpritePalette palette = { gNamingScreenMenu_Pal[5], palette_tag };
-   DebugPrintf("[LuNumEditModal][Init] Loading cursor sprite palette...");
    LoadSpritePalette(&palette);
-   
-   /*//
-   const struct SpriteSheet spritesheets[] = {
-      { gNamingScreenCursor_Gfx, 0x80, tile_tag },
-      { 0 }
-   };
-   DebugPrintf("[LuNumEditModal][Init] Loading cursor spritesheet...");
-   LoadSpriteSheets(spritesheets);
-   //*/
    
    const struct SpriteTemplate tmpl = {
       .tileTag     = TAG_NONE,
@@ -254,7 +230,6 @@ static u8 CreateCursorSprite(u16 tile_tag, u16 palette_tag) {
       .callback    = SpriteCB_Cursor
    };
    
-   DebugPrintf("[LuNumEditModal][Init] Spawning cursor sprite...");
    u8 sprite_id = CreateSprite(&tmpl, 8, 8, 1);
    
    struct Sprite* sprite = &gSprites[sprite_id];
@@ -262,6 +237,8 @@ static u8 CreateCursorSprite(u16 tile_tag, u16 palette_tag) {
    {
       struct CursorSpriteColorState state = { 0 };
       state.increment = 2;
+      state.delay     = 2;
+      state.flashing  = TRUE;
       SetCursorSpriteColorState(sprite, &state);
    }
    sprite->sPaletteTag = palette_tag;
@@ -297,7 +274,6 @@ extern void HandleNumEditModalInput(struct LuNumEditModal* widget) {
       return;
    
    if (JOY_NEW(A_BUTTON)) {
-      DebugPrintf("[LuNumEditModal] Pressed A!");
       LuNumEditModalCallback callback = widget->callback;
       LuNumEditModalValue    value    = widget->cur_value;
       
@@ -308,7 +284,6 @@ extern void HandleNumEditModalInput(struct LuNumEditModal* widget) {
       return;
    }
    if (JOY_NEW(B_BUTTON)) {
-      DebugPrintf("[LuNumEditModal] Pressed B!");
       LuNumEditModalCallback callback = widget->callback;
       LuNumEditModalValue    value    = widget->cur_value;
       
@@ -327,7 +302,6 @@ extern void HandleNumEditModalInput(struct LuNumEditModal* widget) {
          by = -1;
       }
       if (by != 0) {
-         DebugPrintf("[LuNumEditModal] Modifying digit by %d...", by);
          ModCurrentDigit(widget, by);
          return;
       }
@@ -341,7 +315,6 @@ extern void HandleNumEditModalInput(struct LuNumEditModal* widget) {
          by = 1;
       
       if (by != 0) {
-         DebugPrintf("[LuNumEditModal] Moving cursor by %d...", by);
          MoveCursor(widget, by);
          return;
       }
@@ -406,7 +379,6 @@ static void ModCurrentDigit(struct LuNumEditModal* widget, s8 by) {
       digit_value      = big_part - more_significant;
       more_significant *= powers_of_ten[power_index];
    }
-   DebugPrintf("[LuNumEditModal][ModCurrentDigit] Digit %u (%u) is %d...", digit, powers_of_ten[power_index]*digit_value, digit_value);
    //
    // Example: extracting 3 from 12345:
    //
@@ -453,9 +425,9 @@ static void MoveCursor(struct LuNumEditModal* widget, s8 by) {
       --widget->cursor_pos;
    } else if (by > 0) {
       u8 max = widget->digit_count;
-      if (widget->min_value < 0 || widget->max_value > 0)
+      if (widget->min_value < 0 && widget->max_value > 0)
          ++max;
-      if (widget->cursor_pos == max)
+      if (widget->cursor_pos > max)
          return;
       ++widget->cursor_pos;
    }
@@ -503,16 +475,13 @@ static void RepaintValue(struct LuNumEditModal* widget) {
 }
 
 extern void DestroyNumEditModal(struct LuNumEditModal* widget) {
-   DebugPrintf("[LuNumEditModal] Destroying widget at %08X...", widget);
    
    widget->active = FALSE;
    if (widget->task_id != TASK_NONE) {
-      DebugPrintf("[LuNumEditModal] Destroying task...");
       DestroyTask(widget->task_id);
       widget->task_id = TASK_NONE;
    }
    if (widget->window_id != WINDOW_NONE) {
-      DebugPrintf("[LuNumEditModal] Clearing BG tiles...");
       const struct Window* win = &gWindows[widget->window_id];
       FillBgTilemapBufferRect(
          win->window.bg,
@@ -525,25 +494,20 @@ extern void DestroyNumEditModal(struct LuNumEditModal* widget) {
       );
       CopyBgTilemapBufferToVram(win->window.bg);
       
-      DebugPrintf("[LuNumEditModal] Destroying window...");
       RemoveWindow(widget->window_id);
       widget->window_id = WINDOW_NONE;
    }
    if (widget->cursor_sprite_id != SPRITE_NONE) {
-      DebugPrintf("[LuNumEditModal] Destroying cursor sprite...");
       DestroySprite(&gSprites[widget->cursor_sprite_id]);
       widget->cursor_sprite_id = SPRITE_NONE;
    }
    if (widget->heap_free_on_destroy) {
-      DebugPrintf("[LuNumEditModal] Heap-freeing...");
       widget->heap_free_on_destroy = FALSE;
       Free(widget);
    }
 }
 
 extern void FireAndForgetNumEditModal(const struct LuNumEditModalInitParams* params) {
-   //
-   DebugPrintf("[LuNumEditModal] Heap-allocating and fire-and-forgetting...");
    AGB_ASSERT(params->use_task);
    AGB_ASSERT(!!params->callback);
    struct LuNumEditModal* widget = AllocZeroed(sizeof(struct LuNumEditModal));
@@ -551,19 +515,4 @@ extern void FireAndForgetNumEditModal(const struct LuNumEditModalInitParams* par
    InitNumEditModal(widget, params);
    AGB_ASSERT(widget->task_id != TASK_NONE);
    widget->heap_free_on_destroy = TRUE;
-   //*/
-   
-   /*//
-   AGB_ASSERT(!params->use_task);
-   AGB_ASSERT(!!params->callback);
-   
-   u8 task_id = CreateTask(NULL, 50);
-   AGB_ASSERT(task_id != TASK_NONE);
-   
-   struct Task*           task   = &gTasks[task_id];
-   struct LuNumEditModal* widget = (struct LuNumEditModal*) &task->data[2];
-   InitNumEditModal(widget, params);
-   widget->task_id = task_id;
-   SetWordTaskArg(widget->task_id, 0, (u32)widget);
-   //*/
 }
