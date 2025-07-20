@@ -43,7 +43,9 @@
 #include "overworld.h" // CB2_ReturnToField, IsOverworldLinkActive
 #include "pokedex.h"
 #include "region_map.h" // CB2_OpenFlyMap
+#include "string_util.h"
 #include "wallclock.h" // CB2_StartWallClock
+#include "lu/naming_screen.h"
 #include "lu/pick_species_menu.h"
 #include "lu/widgets/num_edit_modal.h"
 
@@ -81,6 +83,7 @@ enum {
    MENU_ACTION_SET_TIME,
    MENU_ACTION_SET_WEATHER,
    MENU_ACTION_TEST_BATTLE_TRANSITION,
+   MENU_ACTION_TEST_VUI_NAMING_SCREEN,
    MENU_ACTION_WALK_THROUGH_WALLS,
    //
    NUM_MENU_ACTIONS
@@ -106,6 +109,7 @@ static void FieldDebugMenuActionHandler_SetMoney(u8 taskId);
 static void FieldDebugMenuActionHandler_SetTime(u8 taskId);
 static void FieldDebugMenuActionHandler_SetWeather(u8 taskId);
 static void FieldDebugMenuActionHandler_BattleTransition(u8 taskId);
+static void FieldDebugMenuActionHandler_TestVUINamingScreen(u8 taskId);
 static void FieldDebugMenuActionHandler_UseAnyBike(u8 taskId);
 static void FieldDebugMenuActionHandler_UseAnyFishingRod(u8 taskId);
 static void FieldDebugMenuActionHandler_UseAnyFieldMove(u8 taskId);
@@ -168,6 +172,10 @@ static const struct FieldDebugMenuAction sFieldDebugMenuActions[] = {
    [MENU_ACTION_TEST_BATTLE_TRANSITION] = {
       .label   = gText_lu_FieldDebugMenu_TestBattleTransition,
       .handler = FieldDebugMenuActionHandler_BattleTransition,
+   },
+   [MENU_ACTION_TEST_VUI_NAMING_SCREEN] = {
+      .label   = gText_lu_FieldDebugMenu_TestVUINamingScreen,
+      .handler = FieldDebugMenuActionHandler_TestVUINamingScreen,
    },
    [MENU_ACTION_WALK_THROUGH_WALLS] = {
       .label   = gText_lu_FieldDebugMenu_WalkThroughWalls,
@@ -572,6 +580,24 @@ static void FieldDebugMenuActionHandler_SetTime(u8 taskId) {
    SetMainCallback2(CB2_StartWallClock);
     gMain.savedCallback = CB2_ReturnToField;
 }
+
+static void FieldDebugMenuActionHandler_TestVUINamingScreen_Callback(const u8* buffer) {
+   if (buffer && buffer[0] != EOS) {
+      StringCopy(gSaveBlock2Ptr->playerName, buffer);
+   }
+   SetMainCallback2(CB2_ReturnToField);
+}
+static void FieldDebugMenuActionHandler_TestVUINamingScreen(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   
+   struct LuNamingScreenParams params = {
+      .callback      = FieldDebugMenuActionHandler_TestVUINamingScreen_Callback,
+      .initial_value = gSaveBlock2Ptr->playerName,
+      .max_length    = PLAYER_NAME_LENGTH,
+   };
+   LuNamingScreen(&params);
+}
+
 static void FieldDebugMenuActionHandler_UseAnyBike(u8 taskId) {
    MENU_TASK_SET_MENU(sBikeActions);
 }

@@ -17,6 +17,9 @@ typedef struct {
 } ALIGNED(BG_SCREEN_SIZE) __vram_bg_tilemap;
 
 #define vram_bg_layout struct __vram_bg_layout
+#define __verify_vram_bg_layout \
+   _Static_assert(sizeof(vram_bg_layout) <= BG_VRAM_SIZE, "VRAM layout is too large!")
+
 /*
 
    Usage:
@@ -25,6 +28,7 @@ typedef struct {
          __vram_bg_tile    my_tile;
          __vram_bg_tilemap my_tilemap;
       };
+      __verify_vram_bg_layout;
 
 */
 
@@ -43,7 +47,7 @@ typedef struct {
 #define V_LOAD_TILES(bg_layer, tiles_member, src) \
    do { \
       _Static_assert(sizeof(src) == sizeof((( vram_bg_layout *)NULL)-> tiles_member ), "size of tile source data doesn't match size allotted in your VRAM layout"); \
-      LoadBgTiles(bg, src, sizeof(src), V_TILE_ID(tiles_member )); \
+      LoadBgTiles(bg_layer, src, sizeof(src), V_TILE_ID(tiles_member )); \
    } while (0)
 
 #define V_LOAD_COMPRESSED(tiles_member, src) \
