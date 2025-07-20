@@ -5,9 +5,9 @@ A widget-based UI framework, wherein UI widgets have simple V-tables.
 
 All UIs exist within a `VUIContext`, which can be thought of as an *abstract grid*. A UI element takes up a rectangular area of grid tiles, and the D-Pad can be used to move from one widget to any directly adjacent widget.
 
-Widgets can optionally contain an *abstract subgrid*, with its own size and with an *abstract inner cursor*. If a widget contains an abstract subgrid and inner cursor, then these influence directional navigation from that widget to an adjacent widget.
+Widgets can optionally contain an *abstract subgrid*, consisting of a *size* and a *focus position*. If a widget contains an abstract subgrid, then these two properties influence directional navigation from that widget to an adjacent widget.
 
-To understand the intended use case for this, consider the vanilla naming screen: a four-row keyboard next to three rows of buttons. You can move a cursor within the keyboard, and if you move it outside of either edge of the keyboard, it'll be placed on one of the buttons. The game dynamically maps from the four-row coordinate space into the three-row coordinate space. Within VUI, you could implement the keyboard as a widget with a 1x3 size and an 8x4 abstract subgrid, and then place the buttons in the column to the widget's right:
+To understand the intended use case for this, consider the vanilla naming screen: a four-row keyboard next to three rows of buttons. You can move a cursor within the keyboard, and if you move it outside of either edge of the keyboard, it'll be placed on one of the buttons. The game dynamically maps from the four-row coordinate space into the three-row coordinate space. Within VUI, you could implement the keyboard as a widget with a 1x3 size and an 8x4 subgrid, and then place the button widgets in the grid column to the keyboard widget's right:
 
 <table>
 <tbody>
@@ -30,6 +30,8 @@ Keyboard
 </tbody>
 </table>
 
+Then, the keyboard widget could use the subgrid focus position as its cursor position, such that when you move the cursor rightward out of the widget, we'll move widget focus to the correct button based on where the cursor was within the keyboard.
+
 ## Classes
 
 ### `VUIContext`
@@ -45,6 +47,10 @@ Base class for VUI widgets.
 | Field group | Fields | Description |
 | :- | :- | :- |
 | Header | `functions` | Pointer to a v-table-like structure. |
-| Flags | `disabled`<br/>`focusable`<br/>`has_inner_cursor` |
+| Flags | `disabled`<br/>`focusable`<br/>`has_subgrid` |
 | Grid metrics | `pos`<br/>`size` | Fields describing the area that the widget takes up within the containing context's grid. |
-| Subgrid | `inner_size`<br/>`cursor_pos` | If the widget `has_inner_cursor`, then these fields indicate the size of the widget's subgrid, and the position of its abstract cursor within that subgrid. |
+| Subgrid | `subgrid_size`<br/>`subgrid_focus` | If the widget `has_subgrid`, then these fields indicate the size of the widget's subgrid, and the position of the focus position within that subgrid. |
+
+A widget's size within the context grid must be non-zero on both axes.
+
+If the subgrid is enabled but its size is 0 along any axis, then the size that is used is the widget's size within the context grid.

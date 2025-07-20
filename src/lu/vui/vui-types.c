@@ -23,6 +23,12 @@ extern bool8 VUI_ExtentOverlaps(const VUIExtent* extent, u8 point) {
    return TRUE;
 }
 
+extern void VUI_ConstrainPos(VUIPos* pos, const VUISize* size) {
+   if (pos->x >= size->w)
+      pos->x = size->w - 1;
+   if (pos->y >= size->h)
+      pos->y = size->h - 1;
+}
 extern void VUI_MapBoxToExtents(
    const VUIPos*    pos,
    const VUISize*   size,

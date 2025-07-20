@@ -72,8 +72,6 @@ extern void VUIKeyboardValue_Construct(VUIKeyboardValue* this, const VUIKeyboard
    }
    
    VUIKeyboardValue_ShowValue(this, NULL);
-   
-   DebugPrintf("[VUIKeyboardValue] Constructed on BG %u with window ID %u, from tile ID %u.", params->bg_layer, this->rendering.window_id, params->first_tile_id);
 }
 
 extern void VUIKeyboardValue_SetUnderscoreVisibility(VUIKeyboardValue* this, bool8 v) {
@@ -115,7 +113,6 @@ extern void VUIKeyboardValue_ShowValue(VUIKeyboardValue* this, const u8* string)
       }
    }
    
-   PutWindowTilemap(this->rendering.window_id);
    CopyWindowToVram(this->rendering.window_id, COPYWIN_FULL);
    
    for(u8 i = 0; i < sizeof(this->underscore_sprite_ids); ++i) {
@@ -134,13 +131,11 @@ static u8 VFunc_DestroyImpl(VUIWidget* widget) {
    for(u8 i = 0; i < 10; ++i) {
       u8 sprite_id = this->underscore_sprite_ids[i];
       if (sprite_id != SPRITE_NONE) {
-         DebugPrintf("[VUIKeyboardValue][Destroy-Impl] Destroying underscore %u (sprite ID %u)...", i, sprite_id);
          DestroySprite(&gSprites[sprite_id]);
          this->underscore_sprite_ids[i] = SPRITE_NONE;
       }
    }
    if (this->rendering.window_id != WINDOW_NONE) {
-      DebugPrintf("[VUIKeyboardValue][Destroy-Impl] Destroying window ID %u...", this->rendering.window_id);
       RemoveWindow(this->rendering.window_id);
       this->rendering.window_id = WINDOW_NONE;
    }

@@ -28,9 +28,9 @@ extern const struct VTable_VUIWidget gVTable_VUIWidget;
 
 typedef struct VUIWidget {
    const struct VTable_VUIWidget* functions;
-   bool8 disabled         : 1;
-   bool8 focusable        : 1;
-   bool8 has_inner_cursor : 1;
+   bool8 disabled    : 1;
+   bool8 focusable   : 1;
+   bool8 has_subgrid : 1;
    //
    // Used to influence directional navigation between widgets.
    // Directional navigation will jump to the nearest widget 
@@ -40,10 +40,10 @@ typedef struct VUIWidget {
    VUISize size;
    //
    // Fields that influence directional navigation if the 
-   // `has_inner_cursor` flag is set.
+   // `has_subgrid` flag is set.
    //
-   VUISize inner_size; // subgrid size; 0 = default, per axis
-   VUIPos  cursor_pos;
+   VUISize subgrid_size; // subgrid size; 0 = default, per axis
+   VUIPos  subgrid_focus;
 } VUIWidget;
 
 extern void  VUIWidget_Construct   (VUIWidget* this);

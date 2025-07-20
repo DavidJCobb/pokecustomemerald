@@ -81,11 +81,11 @@ static void _VUIContext_FocusAnyWidget(VUIContext* this) {
    best_dist    = diff;
 
 #define MAP_CURSOR \
-   VUI_MapPosAcrossSizes(&cursor, &best_match->size, &best_match->inner_size);
+   VUI_MapPosAcrossSizes(&cursor, &best_match->size, &best_match->subgrid_size);
 
 #define COORD_FROM_EDGE(axis, axis_size)              \
    if (d##axis < 0) {                                 \
-      cursor.axis = best_match->inner_size.axis_size; \
+      cursor.axis = best_match->subgrid_size.axis_size; \
       if (!cursor.axis)                               \
          cursor.axis = best_match->size.axis_size;    \
       --cursor.axis;                                  \
@@ -94,7 +94,7 @@ static void _VUIContext_FocusAnyWidget(VUIContext* this) {
    }
 
 #define SET_CURSOR \
-   best_match->cursor_pos = cursor;
+   best_match->subgrid_focus = cursor;
 
 static bool8 _VUIContext_TryNavigateHorizontally(
    VUIContext*      this,
@@ -117,7 +117,7 @@ static bool8 _VUIContext_TryNavigateHorizontally(
    }
    if (!best_match)
       return FALSE;
-   if (best_match->has_inner_cursor) {
+   if (best_match->has_subgrid) {
       VUIPos cursor = { adjacent, preferred->y };
       MAP_CURSOR
       COORD_FROM_EDGE(x, w);
@@ -147,7 +147,7 @@ static bool8 _VUIContext_TryNavigateVertically(
    }
    if (!best_match)
       return FALSE;
-   if (best_match->has_inner_cursor) {
+   if (best_match->has_subgrid) {
       VUIPos cursor = { preferred->x, adjacent };
       MAP_CURSOR
       COORD_FROM_EDGE(y, h);
@@ -181,9 +181,9 @@ static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy) {
    
    VUI_MapBoxToExtents(&prior->pos, &prior->size, &x_extent, &y_extent);
    
-   if (prior->has_inner_cursor) {
-      preferred = prior->cursor_pos;
-      VUI_MapPosAcrossSizes(&preferred, &prior->inner_size, &prior->size);
+   if (prior->has_subgrid) {
+      preferred = prior->subgrid_focus;
+      VUI_MapPosAcrossSizes(&preferred, &prior->subgrid_size, &prior->size);
    } else {
       preferred = prior->pos;
       preferred.x += (prior->size.w / 2);

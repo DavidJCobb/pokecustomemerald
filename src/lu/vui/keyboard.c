@@ -91,9 +91,9 @@ extern void VUIKeyboard_Construct(
    const VUIKeyboard_InitParams* params
 ) {
    VUIWidget_Construct(&widget->base);
-   widget->base.functions = &sVTable;
-   widget->base.focusable = TRUE;
-   widget->base.has_inner_cursor = TRUE;
+   widget->base.functions   = &sVTable;
+   widget->base.focusable   = TRUE;
+   widget->base.has_subgrid = TRUE;
    
    widget->callbacks.on_text_changed      = NULL;
    widget->callbacks.on_text_at_maxlength = NULL;
@@ -145,8 +145,6 @@ extern void VUIKeyboard_Construct(
    }
    
    VUIKeyboard_SetCharset(widget, 0);
-   
-   DebugPrintf("[VUIKeyboard] Constructed on BG %u with window ID %u, from tile ID %u.", params->bg_layer, widget->rendering.window_id, params->first_tile_id);
 }
 extern void VUIKeyboard_Backspace(VUIKeyboard* this) {
    AGB_WARNING(!!this->value.buffer && this->value.max_length > 0);
@@ -170,23 +168,15 @@ extern void VUIKeyboard_SetCharset(VUIKeyboard* this, enum VUIKeyboardCharsetID 
    id %= VUIKEYBOARD_CHARSET_COUNT;
    this->charset = id;
    {
-      //
-      // Update row/col count, and cursor position.
-      //
       VUISize new_size;
       new_size.w = sCharsets[id].cols;
       new_size.h = ROW_COUNT;
       if (!new_size.w)
          new_size.w = COL_COUNT;
-      //VUI_MapPosAcrossSizes(&this->base.cursor_pos, &this->base.inner_size, &new_size);
-      this->base.inner_size = new_size;
-      if (this->base.cursor_pos.x >= new_size.w)
-         this->base.cursor_pos.x = new_size.w - 1;
-      if (this->base.cursor_pos.y >= new_size.h)
-         this->base.cursor_pos.y = new_size.h - 1;
-      
-      UpdateCursorSprite(this);
+      this->base.subgrid_size = new_size;
+      VUI_ConstrainPos(&this->base.subgrid_focus, &new_size);
    }
+   UpdateCursorSprite(this);
    RepaintKeys(this);
 }
 
@@ -207,7 +197,6 @@ static u8 VFunc_DestroyImpl(VUIWidget* widget) {
 static u8 VFunc_OnFrame(VUIWidget* widget) {
    VUIKeyboard* this = (VUIKeyboard*)widget;
    if (JOY_NEW(A_BUTTON)) {
-      DebugPrintf("[VUIKeyboard] Typing key...");
       AppendGlyph(this);
       return VWIDGET_FRAMEHANDLER_CONSUMED_DPAD;
    }
@@ -225,15 +214,13 @@ static u8 VFunc_OnFrame(VUIWidget* widget) {
    }
    
    if (
-      (move_x < 0 && this->base.cursor_pos.x == 0)
-   || (move_x > 0 && this->base.cursor_pos.x + 1 == GetColCount(this))
+      (move_x < 0 && this->base.subgrid_focus.x == 0)
+   || (move_x > 0 && this->base.subgrid_focus.x + 1 == GetColCount(this))
    ) {
-      DebugPrintf("[VUIKeyboard] Cursor already at H-edge (%d, %d)", this->base.cursor_pos.x, this->base.cursor_pos.y);
       return 0;
    }
-   MoveCursor(this, move_x, move_y);
    if (move_x || move_y)
-      DebugPrintf("[VUIKeyboard] Returning VWIDGET_FRAMEHANDLER_CONSUMED_DPAD");
+      MoveCursor(this, move_x, move_y);
    return VWIDGET_FRAMEHANDLER_CONSUMED_DPAD;
 }
 
@@ -253,19 +240,16 @@ static u8 GetColCount(const VUIKeyboard* this) {
    return cols;
 }
 static void MoveCursor(VUIKeyboard* this, s8 x, s8 y) {
-   if (!x && !y)
-      return;
-   DebugPrintf("[VUIKeyboard] Moving cursor by %d, %d", x, y);
    if (x) {
       u8 col_count = GetColCount(this);
-      this->base.cursor_pos.x += x;
-      if (this->base.cursor_pos.x >= col_count)
-         this->base.cursor_pos.x %= col_count;
+      this->base.subgrid_focus.x += x;
+      if (this->base.subgrid_focus.x >= col_count)
+         this->base.subgrid_focus.x %= col_count;
    }
    if (y) {
-      this->base.cursor_pos.y += y;
-      if (this->base.cursor_pos.y >= ROW_COUNT)
-         this->base.cursor_pos.y %= ROW_COUNT;
+      this->base.subgrid_focus.y += y;
+      if (this->base.subgrid_focus.y >= ROW_COUNT)
+         this->base.subgrid_focus.y %= ROW_COUNT;
    }
    //
    // Update sprite.
@@ -277,19 +261,18 @@ static void AppendGlyph(VUIKeyboard* this) {
    if (!this->value.buffer || !this->value.max_length)
       return;
    if (this->value.buffer[this->value.max_length - 1] != EOS) {
-      DebugPrintf("[VUIKeyboard] Cannot append key; max length already reached.");
       if (this->callbacks.on_text_at_maxlength)
          (this->callbacks.on_text_at_maxlength)();
       return;
    }
    
-   u8 character = sCharsetChars[this->charset][this->base.cursor_pos.y][this->base.cursor_pos.x];
+   u8 character = sCharsetChars[this->charset][this->base.subgrid_focus.y][this->base.subgrid_focus.x];
    u8 i = 0;
    for(; i < this->value.max_length; ++i)
       if (this->value.buffer[i] == EOS)
          break;
    AGB_WARNING(i <= this->value.max_length);
-   this->value.buffer[i] = character;
+   this->value.buffer[i]     = character;
    this->value.buffer[i + 1] = EOS;
    if (this->callbacks.on_text_changed)
       (this->callbacks.on_text_changed)(this->value.buffer);
@@ -332,7 +315,6 @@ static u8 GetKeyRowPx(VUIKeyboard* this, u8 n) {
    return n * VUIKEYBOARD_PX_ROW_H;
 }
 static void RepaintKeys(VUIKeyboard* this) {
-   DebugPrintf("[VUIKeyboard] Repainting keys...");
    FillWindowPixelBuffer(this->rendering.window_id, PIXEL_FILL(this->colors.back));
    
    const struct CharsetInfo* info = &sCharsets[this->charset];
@@ -367,7 +349,6 @@ static void RepaintKeys(VUIKeyboard* this) {
       }
    }
    
-   PutWindowTilemap(this->rendering.window_id);
    CopyWindowToVram(this->rendering.window_id, COPYWIN_FULL);
 }
 
@@ -458,9 +439,9 @@ static void UpdateCursorSprite(VUIKeyboard* this) {
    if (this->cursor_sprite_id == SPRITE_NONE)
       return;
    struct Sprite* sprite = &gSprites[this->cursor_sprite_id];
-   sprite->x2 = GetKeyColPx(this, this->base.cursor_pos.x);
-   sprite->y2 = GetKeyRowPx(this, this->base.cursor_pos.y);
+   sprite->x2 = GetKeyColPx(this, this->base.subgrid_focus.x);
+   sprite->y2 = GetKeyRowPx(this, this->base.subgrid_focus.y);
    
    sprite->sPrevCoords = sprite->sCoords;
-   sprite->sCoords     = ((u16)this->base.cursor_pos.y << 8) | this->base.cursor_pos.x;
+   sprite->sCoords     = ((u16)this->base.subgrid_focus.y << 8) | this->base.subgrid_focus.x;
 }

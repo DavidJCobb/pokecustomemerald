@@ -23,6 +23,7 @@ typedef struct VUISize {
    u8 h;
 } VUISize;
 
+extern void VUI_ConstrainPos(VUIPos*, const VUISize*);
 extern void VUI_MapBoxToExtents(const VUIPos*, const VUISize*, VUIExtent* x, VUIExtent* y);
 extern void VUI_MapPosAcrossSizes(VUIPos*, const VUISize* src, const VUISize* dst);
 
