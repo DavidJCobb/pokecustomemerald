@@ -3,7 +3,7 @@
 
 A widget-based UI framework, wherein UI widgets have simple V-tables.
 
-All UIs exist within a `VUIContext`, which can be thought of as an *abstract grid*. A UI element takes up a rectangular area of grid tiles, and the D-Pad can be used to move from one widget to any adjacent widget.
+All UIs exist within a `VUIContext`, which can be thought of as an *abstract grid*. A UI element takes up a rectangular area of grid tiles, and the D-Pad can be used to move from one widget to any directly adjacent widget.
 
 Widgets can optionally contain an *abstract subgrid*, with its own size and with an *abstract inner cursor*. If a widget contains an abstract subgrid and inner cursor, then these influence directional navigation from that widget to an adjacent widget.
 
@@ -29,3 +29,22 @@ Keyboard
 <tr><td>Cancel</td></tr>
 </tbody>
 </table>
+
+## Classes
+
+### `VUIContext`
+
+A container for `VUIWidget`s. A context manages widget focus and directional navigation between widgets.
+
+You can optionally (on a per-axis basis) enable wraparound on the context. If you do, you must define the context's size (`w` and `h`). If you `allow_wraparound_x`, then it'll become possible to navigate between any widget whose X-extent includes the `0` coordinate, and any widget whose X-extent includes the `w - 1` coordinate; thus, also, for the Y-axis.
+
+### `VUIWidget`
+
+Base class for VUI widgets.
+
+| Field group | Fields | Description |
+| :- | :- | :- |
+| Header | `functions` | Pointer to a v-table-like structure. |
+| Flags | `disabled`<br/>`focusable`<br/>`has_inner_cursor` |
+| Grid metrics | `pos`<br/>`size` | Fields describing the area that the widget takes up within the containing context's grid. |
+| Subgrid | `inner_size`<br/>`cursor_pos` | If the widget `has_inner_cursor`, then these fields indicate the size of the widget's subgrid, and the position of its abstract cursor within that subgrid. |

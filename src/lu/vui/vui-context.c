@@ -32,7 +32,9 @@ extern void VUIContext_HandleInput(VUIContext* this) {
       } else if (JOY_NEW(DPAD_RIGHT)) {
          dx = 1;
       }
-      _VUIContext_MoveFocus(this, dx, dy);
+      if (dx || dy) {
+         _VUIContext_MoveFocus(this, dx, dy);
+      }
    }
 }
 extern void VUIContext_FocusWidget(VUIContext* this, VUIWidget* widget) {
@@ -55,27 +57,123 @@ static void _VUIContext_FocusAnyWidget(VUIContext* this) {
    }
 }
 
-static void _VUIContext_SetFocusAndCursor(
-   VUIContext* this,
-   VUIWidget*  widget,
-   VUIPos*     cursor
-) {
-   if (widget->has_inner_cursor) {
-      VUI_MapPosAcrossSizes(
-         cursor,
-         &widget->size,
-         &widget->inner_size
-      );
-      widget->cursor_pos = *cursor;
+//
+// Below are the functions used by directional navigation to find a 
+// widget to navigate to, given a target main-axis coordinate and a 
+// preferred cross-axis coordinate. One function exists for each 
+// choice of main axis (X or Y), and they do essentially the same 
+// things but query slightly different fields. Some macros are used 
+// here to unify the logic.
+//
+
+#define WIDGET_LOOP_START                                                  \
+   if (!widget || widget == prior || !VUIWidget_IsFocusable(widget))       \
+      continue;                                                            \
+   VUIExtent u_extent;                                                     \
+   VUIExtent v_extent;                                                     \
+   VUI_MapBoxToExtents(&widget->pos, &widget->size, &u_extent, &v_extent);
+
+#define WIDGET_LOOP_MATCH(extent, axis)                    \
+   u8 diff = VUI_ExtentDistance(&extent, preferred->axis); \
+   if (best_match && diff >= best_dist)                    \
+      continue;                                            \
+   best_match   = widget;                                  \
+   best_dist    = diff;
+
+#define MAP_CURSOR \
+   VUI_MapPosAcrossSizes(&cursor, &best_match->size, &best_match->inner_size);
+
+#define COORD_FROM_EDGE(axis, axis_size)              \
+   if (d##axis < 0) {                                 \
+      cursor.axis = best_match->inner_size.axis_size; \
+      if (!cursor.axis)                               \
+         cursor.axis = best_match->size.axis_size;    \
+      --cursor.axis;                                  \
+   } else {                                           \
+      cursor.axis = 0;                                \
    }
-   VUIContext_FocusWidget(this, widget);
+
+#define SET_CURSOR \
+   best_match->cursor_pos = cursor;
+
+static bool8 _VUIContext_TryNavigateHorizontally(
+   VUIContext*      this,
+   VUIWidget*       prior,
+   u8               adjacent,
+   const VUIExtent* y_extent,
+   VUIPos*          preferred,
+   s8               dx
+) {
+   VUIWidget* best_match = NULL;
+   s8         best_dist  = 0;
+   
+   vui_context_foreach(this, widget) {
+      WIDGET_LOOP_START
+      if (!VUI_ExtentOverlaps(&u_extent, adjacent)) // not adjacent
+         continue;
+      if (!VUI_ExtentsOverlap(&v_extent, y_extent)) // wholly above or below
+         continue;
+      WIDGET_LOOP_MATCH(v_extent, y)
+   }
+   if (!best_match)
+      return FALSE;
+   if (best_match->has_inner_cursor) {
+      VUIPos cursor = { adjacent, preferred->y };
+      MAP_CURSOR
+      COORD_FROM_EDGE(x, w);
+      SET_CURSOR
+   }
+   VUIContext_FocusWidget(this, best_match);
+   return TRUE;
 }
+static bool8 _VUIContext_TryNavigateVertically(
+   VUIContext*      this,
+   VUIWidget*       prior,
+   const VUIExtent* x_extent,
+   u8               adjacent,
+   VUIPos*          preferred,
+   s8               dy
+) {
+   VUIWidget* best_match = NULL;
+   s8         best_dist  = 0;
+   
+   vui_context_foreach(this, widget) {
+      WIDGET_LOOP_START
+      if (!VUI_ExtentOverlaps(&v_extent, adjacent)) // not adjacent
+         continue;
+      if (!VUI_ExtentsOverlap(&u_extent, x_extent)) // wholly to the left or right
+         continue;
+      WIDGET_LOOP_MATCH(u_extent, x)
+   }
+   if (!best_match)
+      return FALSE;
+   if (best_match->has_inner_cursor) {
+      VUIPos cursor = { preferred->x, adjacent };
+      MAP_CURSOR
+      COORD_FROM_EDGE(y, h);
+      SET_CURSOR
+   }
+   VUIContext_FocusWidget(this, best_match);
+   return TRUE;
+}
+
+#undef WIDGET_LOOP_START
+#undef WIDGET_LOOP_MATCH
+#undef MAP_CURSOR
+#undef COORD_FROM_EDGE
+#undef SET_CURSOR
 
 static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy) {
    VUIWidget* prior = this->focused;
    AGB_ASSERT(!!prior);
-   AGB_WARNING(prior->size.w >= VWIDGET_MIN_SIZE);
-   AGB_WARNING(prior->size.h >= VWIDGET_MIN_SIZE);
+   #if NDEBUG
+      vui_context_foreach(this, widget) {
+         if (!widget)
+            continue;
+         AGB_WARNING(widget->size.w >= VWIDGET_MIN_SIZE);
+         AGB_WARNING(widget->size.h >= VWIDGET_MIN_SIZE);
+      }
+   #endif
    
    VUIExtent x_extent;
    VUIExtent y_extent;
@@ -96,74 +194,55 @@ static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy) {
    s8         best_dist  = 0;
    
    if (dx) {
-      vui_context_foreach(this, widget) {
-         if (!widget || widget == prior || !VUIWidget_IsFocusable(widget))
-            continue;
-         AGB_WARNING(widget->size.w >= VWIDGET_MIN_SIZE);
-         AGB_WARNING(widget->size.h >= VWIDGET_MIN_SIZE);
-         VUIExtent u_extent;
-         VUIExtent v_extent;
-         VUI_MapBoxToExtents(&widget->pos, &widget->size, &u_extent, &v_extent);
-         
-         if (!VUI_ExtentsOverlap(&v_extent, &y_extent)) // wholly above or below
-            continue;
-         
-         if (dx > 0) { // searching rightward
-            if (u_extent.end <= x_extent.start) // is wholly to the left
-               continue;
-         } else { // searching leftward
-            if (u_extent.start >= x_extent.end) // is wholly to the right
-               continue;
-         }
-         
-         u8 diff = VUI_ExtentDistance(&v_extent, preferred.y);
-         if (best_match && diff >= best_dist)
-            continue;
-         best_match = widget;
-         best_dist  = diff;
-      }
-      if (best_match) {
-DebugPrintf("[VUIContext] Transferring focus horizontally to other another control...");
-         preferred.x = best_match->pos.x;
-         if (dx < 0)
-            preferred.x += best_match->size.w;
-         _VUIContext_SetFocusAndCursor(this, best_match, &preferred);
+      if (_VUIContext_TryNavigateHorizontally(
+         this,
+         prior,
+         ((dx < 0) ? x_extent.start - 1 : x_extent.end),
+         &y_extent,
+         &preferred,
+         dx
+      )) {
          return;
       }
    }
-   if (!best_match && dy) {
-      vui_context_foreach(this, widget) {
-         if (!widget || widget == prior || !VUIWidget_IsFocusable(widget))
-            continue;
-         AGB_WARNING(widget->size.w >= VWIDGET_MIN_SIZE);
-         AGB_WARNING(widget->size.h >= VWIDGET_MIN_SIZE);
-         VUIExtent u_extent;
-         VUIExtent v_extent;
-         VUI_MapBoxToExtents(&widget->pos, &widget->size, &u_extent, &v_extent);
-         
-         if (!VUI_ExtentsOverlap(&u_extent, &x_extent)) // wholly to the left or right
-            continue;
-         
-         if (dy > 0) { // searching downward
-            if (v_extent.end <= y_extent.start) // is wholly above
-               continue;
-         } else { // searching upward
-            if (v_extent.start >= y_extent.end) // is wholly below
-               continue;
-         }
-         
-         u8 diff = VUI_ExtentDistance(&u_extent, preferred.x);
-         if (best_match && diff >= best_dist)
-            continue;
-         best_match = widget;
-         best_dist  = diff;
+   if (dy) {
+      if (_VUIContext_TryNavigateVertically(
+         this,
+         prior,
+         &x_extent,
+         ((dy < 0) ? y_extent.start - 1 : y_extent.end),
+         &preferred,
+         dy
+      )) {
+         return;
       }
-      if (best_match) {
-DebugPrintf("[VUIContext] Transferring focus vertically to other another control...");
-         preferred.y = best_match->pos.y;
-         if (dx < 0)
-            preferred.y += best_match->size.h;
-         _VUIContext_SetFocusAndCursor(this, best_match, &preferred);
+   }
+   //
+   // Nowhere to navigate to in the desired direction. Try wraparound.
+   //
+   if (dx && this->allow_wraparound_x) {
+      AGB_WARNING(this->w > 0);
+      if (_VUIContext_TryNavigateHorizontally(
+         this,
+         prior,
+         ((dx > 0) ? 0 : this->w - 1),
+         &y_extent,
+         &preferred,
+         dx
+      )) {
+         return;
+      }
+   }
+   if (dy && this->allow_wraparound_y) {
+      AGB_WARNING(this->h > 0);
+      if (_VUIContext_TryNavigateVertically(
+         this,
+         prior,
+         &x_extent,
+         ((dy > 0) ? 0 : this->h - 1),
+         &preferred,
+         dy
+      )) {
          return;
       }
    }

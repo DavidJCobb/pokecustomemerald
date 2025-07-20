@@ -126,6 +126,10 @@ static void InitState(const struct LuNamingScreenParams* params) {
    //
    sMenuState->vui.context.widgets.list = sMenuState->vui.widget_list;
    sMenuState->vui.context.widgets.size = 4;
+   sMenuState->vui.context.w = 2;
+   sMenuState->vui.context.h = 3;
+   sMenuState->vui.context.allow_wraparound_x = TRUE;
+   sMenuState->vui.context.allow_wraparound_y = TRUE;
    {
       VUIKeyboardValue* widget = &sMenuState->vui.widgets.value;
       
@@ -159,7 +163,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
       widget->callbacks.on_text_at_maxlength = OnTextEntryFull;
       
       widget->base.pos.x  = 0;
-      widget->base.pos.y  = 5;
+      widget->base.pos.y  = 0;
       widget->base.size.w = 1;
       widget->base.size.h = 3;
    }
@@ -167,7 +171,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
       VUISpriteButton* widget = &sMenuState->vui.widgets.button_ok;
       VUISpriteButton_Construct(widget);
       widget->base.pos.x  = 1;
-      widget->base.pos.y  = 5;
+      widget->base.pos.y  = 0;
       widget->base.size.w = 1;
       widget->base.size.h = 1;
    }
@@ -175,7 +179,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
       VUISpriteButton* widget = &sMenuState->vui.widgets.button_backspace;
       VUISpriteButton_Construct(widget);
       widget->base.pos.x  = 1;
-      widget->base.pos.y  = 6;
+      widget->base.pos.y  = 1;
       widget->base.size.w = 1;
       widget->base.size.h = 1;
    }
@@ -183,7 +187,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
       VUISpriteButton* widget = &sMenuState->vui.widgets.button_charset;
       VUISpriteButton_Construct(widget);
       widget->base.pos.x  = 1;
-      widget->base.pos.y  = 7;
+      widget->base.pos.y  = 2;
       widget->base.size.w = 1;
       widget->base.size.h = 1;
    }

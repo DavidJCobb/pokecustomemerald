@@ -93,6 +93,7 @@ extern void VUIKeyboard_Construct(
    VUIWidget_Construct(&widget->base);
    widget->base.functions = &sVTable;
    widget->base.focusable = TRUE;
+   widget->base.has_inner_cursor = TRUE;
    
    widget->callbacks.on_text_changed      = NULL;
    widget->callbacks.on_text_at_maxlength = NULL;
@@ -143,8 +144,7 @@ extern void VUIKeyboard_Construct(
       PutWindowTilemap(window_id);
    }
    
-   RepaintKeys(widget);
-   UpdateCursorSprite(widget);
+   VUIKeyboard_SetCharset(widget, 0);
    
    DebugPrintf("[VUIKeyboard] Constructed on BG %u with window ID %u, from tile ID %u.", params->bg_layer, widget->rendering.window_id, params->first_tile_id);
 }
@@ -168,8 +168,6 @@ extern void VUIKeyboard_NextCharset(VUIKeyboard* this) {
 }
 extern void VUIKeyboard_SetCharset(VUIKeyboard* this, enum VUIKeyboardCharsetID id) {
    id %= VUIKEYBOARD_CHARSET_COUNT;
-   if (this->charset == id)
-      return;
    this->charset = id;
    {
       //
@@ -244,6 +242,7 @@ static void VFunc_OnFocusChange(VUIWidget* widget, bool8 gained, VUIWidget* othe
    if (this->cursor_sprite_id != SPRITE_NONE) {
       struct Sprite* sprite = &gSprites[this->cursor_sprite_id];
       sprite->invisible = !gained;
+      UpdateCursorSprite(this);
    }
 }
 
