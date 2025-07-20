@@ -21,7 +21,7 @@ typedef struct VUIKeyboardValue_InitParams {
 } VUIKeyboardValue_InitParams;
 
 typedef struct VUIKeyboardValue {
-   VUIWidget base;
+   VUI_WIDGET_SUBCLASS_HEADER(VUIWidget);
    VUITextColors colors;
    struct {
       u8  bg_layer : 2;

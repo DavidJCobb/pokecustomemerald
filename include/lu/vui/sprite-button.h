@@ -4,7 +4,7 @@
 #include "lu/vui/vui-widget.h"
 
 typedef struct VUISpriteButton {
-   VUIWidget base;
+   VUI_WIDGET_SUBCLASS_HEADER(VUIWidget);
    void(*on_press)(void);
    u8  sprite_id;
    u16 state_data_index; // gSprites[sprite_id].data[state_data_index] = state

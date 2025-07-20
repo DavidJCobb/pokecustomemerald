@@ -49,9 +49,7 @@ typedef struct VUIKeyboard_InitParams {
 } VUIKeyboard_InitParams;
 
 typedef struct VUIKeyboard {
-   VUIWidget base;
-   
-   // Configuration:
+   VUI_WIDGET_SUBCLASS_HEADER(VUIWidget);
    struct {
       void(*on_text_changed)(const u8* buffer);
       void(*on_text_at_maxlength)(void);

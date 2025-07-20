@@ -14,6 +14,27 @@ enum {
    VWIDGET_MIN_SIZE = 1,
 };
 
+#define VUI_WIDGET_CLASS_HEADER \
+   int __is_vui_widget__[0]
+#define VUI_WIDGET_SUBCLASS_HEADER(base_class_name) \
+   VUI_WIDGET_CLASS_HEADER; base_class_name base
+
+// Helper macro, used when defining other macros, to fake function names that 
+// accept pointers to VUIWidgets or any subclass thereof.
+#define VUI_WIDGET_TYPECHECK_AND_CALL(func, widget, ...) \
+   _Generic( \
+      (widget)->__is_vui_widget__[0], \
+      int : func((VUIWidget*)(widget),##__VA_ARGS__) \
+   )
+// Helper macro, used when defining other macros, to create function-like 
+// expressions that act on pointers to VUIWidgets or any subclass thereof.
+#define VUI_WIDGET_TYPECHECK_AND_EXEC(widget, expr) \
+   _Generic( \
+      (widget)->__is_vui_widget__[0], \
+      int : (expr) \
+   )
+   
+
 // ---
 
 struct VUIWidget;
@@ -27,6 +48,7 @@ struct VTable_VUIWidget {
 extern const struct VTable_VUIWidget gVTable_VUIWidget;
 
 typedef struct VUIWidget {
+   VUI_WIDGET_CLASS_HEADER;
    const struct VTable_VUIWidget* functions;
    bool8 disabled    : 1;
    bool8 focusable   : 1;
@@ -49,5 +71,15 @@ typedef struct VUIWidget {
 extern void  VUIWidget_Construct   (VUIWidget* this);
 extern void  VUIWidget_Destroy     (VUIWidget* this);
 extern bool8 VUIWidget_IsFocusable (const VUIWidget* this);
+
+extern void VUIWidget_SetGridMetrics_(VUIWidget* this, u8 x, u8 y, u8 w, u8 h);
+#define VUIWidget_SetGridMetrics(widget, _x, _y, _w, _h) \
+   VUI_WIDGET_TYPECHECK_AND_EXEC(widget, (\
+      (((VUIWidget*)widget)->pos.x = (_x)), \
+      (((VUIWidget*)widget)->pos.y = (_y)), \
+      (((VUIWidget*)widget)->size.w = (_w)), \
+      (((VUIWidget*)widget)->size.h = (_h)), \
+      0 \
+   ))
 
 #endif

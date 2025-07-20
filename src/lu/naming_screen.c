@@ -124,12 +124,14 @@ static void InitState(const struct LuNamingScreenParams* params) {
    sMenuState->vui.widget_list[3] = (VUIWidget*)&sMenuState->vui.widgets.button_backspace;
    sMenuState->vui.widget_list[4] = (VUIWidget*)&sMenuState->vui.widgets.button_charset;
    //
-   sMenuState->vui.context.widgets.list = sMenuState->vui.widget_list;
-   sMenuState->vui.context.widgets.size = 4;
-   sMenuState->vui.context.w = 2;
-   sMenuState->vui.context.h = 3;
-   sMenuState->vui.context.allow_wraparound_x = TRUE;
-   sMenuState->vui.context.allow_wraparound_y = TRUE;
+   {
+      VUIContext* context = &sMenuState->vui.context;
+      context->widgets.list = sMenuState->vui.widget_list;
+      context->widgets.size = 4;
+      context->w = 2;
+      context->h = 3;
+      context->allow_wraparound_x = context->allow_wraparound_y = TRUE;
+   }
    {
       VUIKeyboardValue* widget = &sMenuState->vui.widgets.value;
       
@@ -156,43 +158,30 @@ static void InitState(const struct LuNamingScreenParams* params) {
          .first_tile_id = V_TILE_ID(keyboard_body),
       };
       VUIKeyboard_Construct(widget, &params);
+      VUIWidget_SetGridMetrics(widget, 0, 0, 1, 3);
       
       widget->value.buffer     = sMenuState->buffer;
       widget->value.max_length = max_length;
       widget->callbacks.on_text_changed      = OnTextEntryChanged;
       widget->callbacks.on_text_at_maxlength = OnTextEntryFull;
-      
-      widget->base.pos.x  = 0;
-      widget->base.pos.y  = 0;
-      widget->base.size.w = 1;
-      widget->base.size.h = 3;
    }
    {
       VUISpriteButton* widget = &sMenuState->vui.widgets.button_ok;
       VUISpriteButton_Construct(widget);
-      widget->base.pos.x  = 1;
-      widget->base.pos.y  = 0;
-      widget->base.size.w = 1;
-      widget->base.size.h = 1;
+      VUIWidget_SetGridMetrics(widget, 1, 0, 1, 1);
+      //
+      widget->on_press = OnButtonOK;
    }
    {
       VUISpriteButton* widget = &sMenuState->vui.widgets.button_backspace;
       VUISpriteButton_Construct(widget);
-      widget->base.pos.x  = 1;
-      widget->base.pos.y  = 1;
-      widget->base.size.w = 1;
-      widget->base.size.h = 1;
+      VUIWidget_SetGridMetrics(widget, 1, 1, 1, 1);
    }
    {
       VUISpriteButton* widget = &sMenuState->vui.widgets.button_charset;
       VUISpriteButton_Construct(widget);
-      widget->base.pos.x  = 1;
-      widget->base.pos.y  = 2;
-      widget->base.size.w = 1;
-      widget->base.size.h = 1;
+      VUIWidget_SetGridMetrics(widget, 1, 2, 1, 1);
    }
-   
-   sMenuState->vui.widgets.button_ok.on_press = OnButtonOK;
 }
 static void Task_WaitFadeIn(u8 task_id) {
    if (!gPaletteFade.active) {

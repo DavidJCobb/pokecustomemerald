@@ -42,7 +42,7 @@ You can optionally (on a per-axis basis) enable wraparound on the context. If yo
 
 ### `VUIWidget`
 
-Base class for VUI widgets.
+Base class for VUI widgets. Subclasses must have field lists that begin with `VUI_WIDGET_SUBCLASS_HEADER;`, and must not define a field named `base` (as the macro defines that field as
 
 | Field group | Fields | Description |
 | :- | :- | :- |
@@ -54,3 +54,25 @@ Base class for VUI widgets.
 A widget's size within the context grid must be non-zero on both axes.
 
 If the subgrid is enabled but its size is 0 along any axis, then the size that is used is the widget's size within the context grid.
+
+## Macros
+
+### `VUI_WIDGET_TYPECHECK_AND_CALL`
+Helper macro, used to define macro-based shims for `VUIWidget` functions. These shims type-check and adapt pointer-type arguments, such that you can pass a `VUIWidget*` pointer *or* a pointer of any subclass type, and the latter will be cast for you (since C doesn't formally *have* subclasses and we have to do shenanigans to recreate their effect).
+
+For example:
+
+```c
+extern void VUIWidget_SetGridMetrics_(VUIWidget* this, u8 x, u8 y, u8 w, u8 h);
+#define VUIWidget_SetGridMetrics(widget, x, y, w, h) \
+   VUI_WIDGET_TYPECHECK_AND_CALL(VUIWidget_SetGridMetrics_, widget, x, y, w, h)
+```
+
+Here, `VUIWidget_SetGridMetrics_` is the real function, but the compiler will error if you pass a pointer of any type other than `VUIWidget*`. The `VUIWidget_SetGridMetrics` macro (note the lack of a trailing underscore) will accept a pointer to an instance of `VUIWidget` or any subclass thereof.
+
+The way this macro works is by using `_Generic` to check for the presence of a `__is_vui_widget__[0]` member at the start of the pointed-to widget. Each widget class has, at the start of its member list, a macro that adds a zero-length array by that name. [Zero-length arrays are a GNU C extension](https://gcc.gnu.org/onlinedocs/gcc/Zero-Length.html) which are guaranteed not to increase the size of a struct unless they cause the compiler to generate tail padding. This means that even if we have sub-sub-classes and deeper, giving each its own ZLA as a header field won't create "head padding" on the structs.
+
+(A more portable equivalent to this would entail defining `VUI_WIDGET_TYPECHECK_AND_EXEC` so that it generates an anonymous union field like `union { int __is_vui_widget__[1]; VUIWidget base; }`, such that we have `__is_vui_widget__` as a referenceable identifier that doesn't actually add any size to the struct, by overlapping it with the `base` member that we also need. This would only allow subclasses to be passed in, but we could allow the `__is_vui_widget__` check to work on the base `VUIWidget` class by performing similar union trickery on its v-table pointer. Hm... Perhaps I should do exactly these things.)
+
+### `VUI_WIDGET_TYPECHECK_AND_EXEC`
+Similar to `VUI_WIDGET_TYPECHECK_AND_CALL`, but for expressions rather than function calls.
