@@ -39,7 +39,15 @@ enum {
 };
 #undef PX_TO_TILES
 
+struct VUIKeyboard_Callbacks {
+   void(*on_text_changed)(const u8* buffer);
+   void(*on_text_at_maxlength)(void);
+};
+
 typedef struct VUIKeyboard_InitParams {
+   VUIStringRef buffer;
+   struct VUIKeyboard_Callbacks callbacks;
+   VUIGridArea grid;
    u8  bg_layer : 2;
    u8  palette  : 4;
    VUITextColors colors;
@@ -50,20 +58,14 @@ typedef struct VUIKeyboard_InitParams {
 
 typedef struct VUIKeyboard {
    VUI_WIDGET_SUBCLASS_HEADER(VUIWidget);
-   struct {
-      void(*on_text_changed)(const u8* buffer);
-      void(*on_text_at_maxlength)(void);
-   } callbacks;
+   struct VUIKeyboard_Callbacks callbacks;
    VUITextColors colors;
    struct {
       u8  bg_layer : 2;
       u8  palette  : 4;
       u8  window_id;
    } rendering;
-   struct {
-      u8* buffer;     // always EOS-terminated
-      u8  max_length; // not including EOS, e.g. max length of a Pokemon name is 10 in vanilla
-   } value;
+   VUIStringRef value;
    u8 charset;
    u8 cursor_sprite_id;
 } VUIKeyboard;

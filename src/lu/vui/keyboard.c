@@ -94,14 +94,14 @@ extern void VUIKeyboard_Construct(
    widget->base.functions   = &sVTable;
    widget->base.focusable   = TRUE;
    widget->base.has_subgrid = TRUE;
+   VUIWidget_SetGridMetrics(widget, params->grid.pos.x, params->grid.pos.y, params->grid.size.w, params->grid.size.h);
    
-   widget->callbacks.on_text_changed      = NULL;
-   widget->callbacks.on_text_at_maxlength = NULL;
+   widget->value     = params->buffer;
+   widget->callbacks = params->callbacks;
+   AGB_WARNING(!VUIStringRef_IsNull(&widget->value));
    
    widget->rendering.window_id = WINDOW_NONE;
    
-   widget->value.buffer     = NULL;
-   widget->value.max_length = 0;
    widget->charset = 0;
    widget->cursor_sprite_id = SPRITE_NONE;
    
@@ -147,19 +147,19 @@ extern void VUIKeyboard_Construct(
    VUIKeyboard_SetCharset(widget, 0);
 }
 extern void VUIKeyboard_Backspace(VUIKeyboard* this) {
-   AGB_WARNING(!!this->value.buffer && this->value.max_length > 0);
-   if (!this->value.buffer || !this->value.max_length)
+   AGB_WARNING(!VUIStringRef_IsNull(&this->value));
+   if (VUIStringRef_IsNull(&this->value))
       return;
    
-   u16 len = StringLength(this->value.buffer);
-   AGB_WARNING(len <= this->value.max_length);
+   u16 len = StringLength(this->value.data);
+   AGB_WARNING(len <= this->value.size);
    if (len == 0) {
       DebugPrintf("[VUIKeyboard] Can't backspace; string already empty.");
       return;
    }
-   this->value.buffer[len - 1] = EOS;
+   this->value.data[len - 1] = EOS;
    if (this->callbacks.on_text_changed)
-      (this->callbacks.on_text_changed)(this->value.buffer);
+      (this->callbacks.on_text_changed)(this->value.data);
 }
 extern void VUIKeyboard_NextCharset(VUIKeyboard* this) {
    VUIKeyboard_SetCharset(this, this->charset + 1);
@@ -257,10 +257,10 @@ static void MoveCursor(VUIKeyboard* this, s8 x, s8 y) {
    UpdateCursorSprite(this);
 }
 static void AppendGlyph(VUIKeyboard* this) {
-   AGB_WARNING(!!this->value.buffer && this->value.max_length > 0);
-   if (!this->value.buffer || !this->value.max_length)
+   AGB_WARNING(!VUIStringRef_IsNull(&this->value));
+   if (VUIStringRef_IsNull(&this->value))
       return;
-   if (this->value.buffer[this->value.max_length - 1] != EOS) {
+   if (this->value.data[this->value.size - 1] != EOS) {
       if (this->callbacks.on_text_at_maxlength)
          (this->callbacks.on_text_at_maxlength)();
       return;
@@ -268,15 +268,15 @@ static void AppendGlyph(VUIKeyboard* this) {
    
    u8 character = sCharsetChars[this->charset][this->base.subgrid_focus.y][this->base.subgrid_focus.x];
    u8 i = 0;
-   for(; i < this->value.max_length; ++i)
-      if (this->value.buffer[i] == EOS)
+   for(; i < this->value.size; ++i)
+      if (this->value.data[i] == EOS)
          break;
-   AGB_WARNING(i <= this->value.max_length);
-   this->value.buffer[i]     = character;
-   this->value.buffer[i + 1] = EOS;
+   AGB_WARNING(i <= this->value.size);
+   this->value.data[i]     = character;
+   this->value.data[i + 1] = EOS;
    if (this->callbacks.on_text_changed)
-      (this->callbacks.on_text_changed)(this->value.buffer);
-   if (i == this->value.max_length - 1)
+      (this->callbacks.on_text_changed)(this->value.data);
+   if (i == this->value.size - 1)
       if (this->callbacks.on_text_at_maxlength)
          (this->callbacks.on_text_at_maxlength)();
 }

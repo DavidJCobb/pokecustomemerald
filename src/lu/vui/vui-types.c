@@ -54,3 +54,15 @@ extern void VUI_MapPosAcrossSizes(VUIPos* pos, const VUISize* src, const VUISize
          pos->y = dst->h - 1;
    }
 }
+
+#include "constants/characters.h"
+
+extern void VUIStringRef_Clear(VUIStringRef* v) {
+   if (!v->data || !v->size)
+      return;
+   for(u8 i = 0; i < v->size; ++i)
+      v->data[i] = EOS;
+}
+extern bool8 VUIStringRef_IsNull(const VUIStringRef* v) {
+   return !v->data || !v->size;
+}

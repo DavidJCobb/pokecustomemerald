@@ -35,7 +35,7 @@ else
    exit 1
 fi
 
-make modern -j$(nproc)
+make modern DINFO=1 DDEBUG=1 -j$(nproc)
 if [ $? -eq 0 ]; then
    echo "The build succeeded. Running post-build steps..."
    

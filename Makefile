@@ -138,7 +138,11 @@ else
 endif
 # Enable debug info if set
 ifeq ($(DINFO),1)
-  override CFLAGS += -g
+  ifeq ($(MODERN),0)
+    override CFLAGS += -g
+  else
+    override CFLAGS += -ggdb
+  endif
 endif
 
 # Variable filled out in other make files
@@ -388,6 +392,9 @@ libagbsyscall:
 
 # Elf from object files
 LDFLAGS = -Map ../../$(MAP)
+ifeq ($(DINFO),1)
+  override LDFLAGS += -g
+endif
 $(ELF): $(LD_SCRIPT) $(LD_SCRIPT_DEPS) $(OBJS) libagbsyscall
 	@cd $(OBJ_DIR) && $(LD) $(LDFLAGS) -T ../../$< --print-memory-usage -o ../../$@ $(OBJS_REL) $(LIB) | cat
 	@echo "cd $(OBJ_DIR) && $(LD) $(LDFLAGS) -T ../../$< --print-memory-usage -o ../../$@ <objs> <libs> | cat"

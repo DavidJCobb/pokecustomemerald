@@ -15,11 +15,13 @@ static const struct VTable_VUIWidget sVTable = {
    VFunc_OnFocusChange,
 };
 
-extern void VUISpriteButton_Construct(VUISpriteButton* this) {
+extern void VUISpriteButton_Construct(VUISpriteButton* this, const VUISpriteButton_InitParams* params) {
    VUIWidget_Construct(&this->base);
    this->base.functions   = &sVTable;
    this->base.focusable   = TRUE;
-   this->on_press         = NULL;
+   VUIWidget_SetGridMetrics(this, params->grid.pos.x, params->grid.pos.y, params->grid.size.w, params->grid.size.h);
+   
+   this->callbacks        = params->callbacks;
    this->sprite_id        = SPRITE_NONE;
    this->state_data_index = 7;
 }
@@ -40,8 +42,8 @@ static u8 VFunc_DestroyImpl(VUIWidget* widget) {
 static u8 VFunc_OnFrame(VUIWidget* widget) {
    VUISpriteButton* this = (VUISpriteButton*)widget;
    if (JOY_NEW(A_BUTTON)) {
-      if (this->on_press)
-         (this->on_press)();
+      if (this->callbacks.on_press)
+         (this->callbacks.on_press)();
       return VWIDGET_FRAMEHANDLER_CONSUMED_DPAD;
    }
    return 0;

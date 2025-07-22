@@ -6,15 +6,15 @@
 
 typedef struct {
    u8 bytes[TILE_SIZE_4BPP];
-} ALIGNED(TILE_SIZE_4BPP) __vram_bg_tile;
+} ALIGNED(TILE_SIZE_4BPP) vram_bg_tile;
 
 typedef struct {
    u8 bytes[TILE_SIZE_8BPP];
-} ALIGNED(TILE_SIZE_8BPP) __vram_bg_tile_256; // 256-color
+} ALIGNED(TILE_SIZE_8BPP) vram_bg_tile_256; // 256-color
 
 typedef struct {
    u8 bytes[BG_SCREEN_SIZE];
-} ALIGNED(BG_SCREEN_SIZE) __vram_bg_tilemap;
+} ALIGNED(BG_SCREEN_SIZE) vram_bg_tilemap;
 
 #define vram_bg_layout struct __vram_bg_layout
 #define __verify_vram_bg_layout \
@@ -47,10 +47,15 @@ typedef struct {
 #define V_LOAD_TILES(bg_layer, tiles_member, src) \
    do { \
       _Static_assert(sizeof(src) == sizeof((( vram_bg_layout *)NULL)-> tiles_member ), "size of tile source data doesn't match size allotted in your VRAM layout"); \
-      LoadBgTiles(bg_layer, src, sizeof(src), V_TILE_ID(tiles_member )); \
+      LoadBgTiles((bg_layer), (src), sizeof(src), V_TILE_ID(tiles_member)); \
    } while (0)
 
 #define V_LOAD_COMPRESSED(tiles_member, src) \
    do { LZ77UnCompVram(src, (void*) (BG_VRAM + offsetof(vram_bg_layout, member)) ); } while (0)
+
+#define V_SET_TILE(bg, tile_id, x, y, palette) \
+   do { \
+      FillBgTilemapBufferRect(bg, tile_id, x, y, 1, 1, palette); \
+   } while (0)
 
 #endif

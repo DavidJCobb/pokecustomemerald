@@ -553,6 +553,18 @@ u8 CreateSpriteAt(u8 index, const struct SpriteTemplate *template, s16 x, s16 y,
     sprite->animBeginning = TRUE;
     sprite->affineAnimBeginning = TRUE;
     sprite->usingSheet = TRUE;
+    
+    // If you don't want OAM data, pass gDummyOamData.
+    AGB_WARNING(template->oam != NULL);
+    
+    // If you don't want animations, pass gDummySpriteAnimTable.
+    AGB_WARNING(template->anims != NULL);
+    
+    // If you don't want affine animations, pass gDummySpriteAffineAnimTable.
+    AGB_WARNING(template->affineAnims != NULL);
+    
+    // If you don't want a callback, pass SpriteCallbackDummy.
+    AGB_WARNING(template->callback != NULL);
 
     sprite->subpriority = subpriority;
     sprite->oam = *template->oam;
