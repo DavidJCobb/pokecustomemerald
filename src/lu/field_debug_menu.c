@@ -581,6 +581,8 @@ static void FieldDebugMenuActionHandler_SetTime(u8 taskId) {
     gMain.savedCallback = CB2_ReturnToField;
 }
 
+static const u8 sRenamePlayerNamingScreenTitle[] = _("Change your name to…?");
+//
 static void FieldDebugMenuActionHandler_TestVUINamingScreen_Callback(const u8* buffer) {
    if (buffer && buffer[0] != EOS) {
       StringCopy(gSaveBlock2Ptr->playerName, buffer);
@@ -594,6 +596,8 @@ static void FieldDebugMenuActionHandler_TestVUINamingScreen(u8 taskId) {
       .callback      = FieldDebugMenuActionHandler_TestVUINamingScreen_Callback,
       .initial_value = gSaveBlock2Ptr->playerName,
       .max_length    = PLAYER_NAME_LENGTH,
+      //
+      .title         = sRenamePlayerNamingScreenTitle,
    };
    LuNamingScreen(&params);
 }

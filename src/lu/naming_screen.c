@@ -10,6 +10,7 @@
 #include "gpu_regs.h"
 #include "main.h"
 #include "malloc.h"
+#include "menu.h" // AddTextPrinterParameterized3
 #include "palette.h"
 #include "sound.h" // PlaySE
 #include "string_util.h"
@@ -198,37 +199,10 @@
                   so, then this oughta be simple. If not, we'll need to look into 
                   that.
    
-    - Create a variation on `Keyboard` that allows the including context to specify 
-      how many key pages there are, and what keys are on each page.
-      
-       - We want five pages for this particular screen: uppercase letters; lowercase 
-         letters; symbols; accented uppercase letters; accented lowercase letters.
-   
-    - Figure out why the five charset buttons below the keyboard can't be navigated 
-      to.
-      
-       - Probably wraparound code within the keyboard itself. We'd have to adjust 
-         that to do horizontal wraparound rather than vertical.
-         
-       - Actually, a better option may be to modify VUIContext so that a widget can 
-         perform wraparound navigation to itself, if it spans the full length of 
-         the context grid on the axis we're navigating along. We would of course 
-         want to have a per-widget flag indicating whether the widget itself wants 
-         wraparound-to-self behavior.
-   
-    - Remove the "next charset" button, keeping the dedicated per-charset buttons.
-    
-    - Implement L_BUTTON and R_BUTTON mappings for switching between charsets 
-      without having to move to the buttons.
-   
     - Create either sprites or tile-basde graphics for the "OK" and "Backspace" 
       buttons to the right of the keyboard. I'm thinking we should do tile-based 
       graphics, with the label on the upper half of the button, and a TextPrinter 
       used to print the mapped button (Start or B) below that label.
-   
-    - Implement having the menu accept and store an optional pointer to a title 
-      string, and displaying that title string up top. If no title string is given, 
-      we should use a default.
       
     - Implement the various cases for which the vanilla naming screen is used.
     
@@ -245,6 +219,12 @@
              - Gender
           - Overworld sprite ID (Walda or the player)
           - Generic sprite params (PC box sprite)
+          
+          = Maybe we want to allow a gender symbol for non-Pokemon too, e.g. when 
+            the player is entering their name?
+       
+       = When a Pokemon is given, and no title is given, we should print the title 
+         as "<SPECIES>'s nickname?"
 
 //*/
 
@@ -280,7 +260,7 @@ static const u8 sCharsetCharactersAccentLower[] = __(
 );
 
 static const struct VUICustomKeyboardCharset sCharsets[] = {
-   {
+   {  // Upper
       .characters = sCharsetCharactersUpper,
       .rows = 4,
       .cols = 8,
@@ -289,7 +269,7 @@ static const struct VUICustomKeyboardCharset sCharsets[] = {
          .positions = { 2, 6 }
       }
    },
-   {
+   {  // Lower
       .characters = sCharsetCharactersLower,
       .rows = 4,
       .cols = 8,
@@ -298,7 +278,7 @@ static const struct VUICustomKeyboardCharset sCharsets[] = {
          .positions = { 2, 6 }
       }
    },
-   {
+   {  // Symbol
       .characters = sCharsetCharactersSymbol,
       .rows = 4,
       .cols = 6,
@@ -306,7 +286,7 @@ static const struct VUICustomKeyboardCharset sCharsets[] = {
          .count = 0
       }
    },
-   {
+   {  // Accent Upper
       .characters = sCharsetCharactersAccentUpper,
       .rows = 4,
       .cols = 8,
@@ -315,7 +295,7 @@ static const struct VUICustomKeyboardCharset sCharsets[] = {
          .positions = { 3 }
       }
    },
-   {
+   {  // Accent Lower
       .characters = sCharsetCharactersAccentLower,
       .rows = 4,
       .cols = 8,
@@ -343,6 +323,11 @@ enum {
    
    SPRITE_GFX_TAG_CHARSET_LABEL = 0x9000,
    SPRITE_PAL_TAG_CHARSET_LABEL = 0x9000,
+   
+   TITLE_WINDOW_TILE_X      = 6,
+   TITLE_WINDOW_TILE_WIDTH  = DISPLAY_TILE_WIDTH - TITLE_WINDOW_TILE_X - 1,
+   TITLE_WINDOW_TILE_HEIGHT = 2,
+   TITLE_WINDOW_TILE_COUNT  = TITLE_WINDOW_TILE_WIDTH * TITLE_WINDOW_TILE_HEIGHT,
 };
 vram_bg_layout {
    vram_bg_tilemap tilemaps[4];
@@ -354,6 +339,7 @@ vram_bg_layout {
    vram_bg_tile user_window_frame[9];
    vram_bg_tile keyboard_value[VUIKEYBOARDVALUE_WINDOW_TILE_COUNT];
    vram_bg_tile backdrop[4*4];
+   vram_bg_tile title_text_window[TITLE_WINDOW_TILE_COUNT];
 };
 __verify_vram_bg_layout;
 
@@ -382,6 +368,8 @@ struct MenuState {
    u8 task_id;
    void(*callback)(const u8*);
    u8 buffer[VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE + 1];
+   const u8* title; // optional
+   u8 title_window_id;
    struct {
       VUIContext context;
       struct {
@@ -389,16 +377,18 @@ struct MenuState {
          VUIKeyboardValue  value;
          VUISpriteButton   button_ok;
          VUISpriteButton   button_backspace;
-         VUISpriteButton   button_charset;
-         struct {
-            VUISpriteButton upper;
-            VUISpriteButton lower;
-            VUISpriteButton symbol;
-            VUISpriteButton accent_u;
-            VUISpriteButton accent_l;
+         union {
+            VUISpriteButton list[5];
+            struct {
+               VUISpriteButton upper;
+               VUISpriteButton lower;
+               VUISpriteButton symbol;
+               VUISpriteButton accent_u;
+               VUISpriteButton accent_l;
+            };
          } charset_buttons;
       } widgets;
-      VUIWidget* widget_list[10];
+      VUIWidget* widget_list[9];
    } vui;
    u8 charset_label_separator_sprite_ids[4];
    u8 charset_label_button_l_sprite_id;
@@ -421,7 +411,6 @@ static void OnButtonCharset_Lower(void);
 static void OnButtonCharset_Symbol(void);
 static void OnButtonCharset_AccentUpper(void);
 static void OnButtonCharset_AccentLower(void);
-static void OnButtonCharset(void);
 static void OnButtonOK(void);
 
 static void InitCB2(void);
@@ -431,6 +420,7 @@ static void VBlankCB(void);
 static void SetUpBackdrop(void);
 static void AnimateBackdrop(void);
 static void PaintTitleBarTiles(void);
+static void PaintTitleText(void);
 static void SetUpCharsetLabels(void);
 
 // -----------------------------------------------------------------------
@@ -456,7 +446,10 @@ static void InitState(const struct LuNamingScreenParams* params) {
    AGB_ASSERT(!sMenuState);
    sMenuState = AllocZeroed(sizeof(struct MenuState));
    
-   // Why the actual hell do we even need to do this? The BG library should 
+   sMenuState->title = params->title;
+   sMenuState->title_window_id = WINDOW_NONE;
+   
+   // Why the actual heck do we even need to do this? The BG library should 
    // maintain its own buffers! Every single function meant to interact 
    // with the content of a BG layer assumes that it has a CPU-side tilemap 
    // buffer to write to, and seemingly 99% of the time, Game Freak only 
@@ -510,13 +503,9 @@ static void InitState(const struct LuNamingScreenParams* params) {
       list[1] = (VUIWidget*)&widgets->value;
       list[2] = (VUIWidget*)&widgets->button_ok;
       list[3] = (VUIWidget*)&widgets->button_backspace;
-      list[4] = (VUIWidget*)&widgets->button_charset;
-      
-      list[5] = (VUIWidget*)&widgets->charset_buttons.upper;
-      list[6] = (VUIWidget*)&widgets->charset_buttons.lower;
-      list[7] = (VUIWidget*)&widgets->charset_buttons.symbol;
-      list[8] = (VUIWidget*)&widgets->charset_buttons.accent_u;
-      list[9] = (VUIWidget*)&widgets->charset_buttons.accent_l;
+      for(u8 i = 0; i < 5; ++i) {
+         list[4 + i] = (VUIWidget*)&widgets->charset_buttons.list[i];
+      }
    }
    
    LoadSpriteSheets(sSpriteSheets);
@@ -525,7 +514,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
    {
       VUIContext* context = &sMenuState->vui.context;
       context->widgets.list = sMenuState->vui.widget_list;
-      context->widgets.size = 10;
+      context->widgets.size = ARRAY_COUNT(sMenuState->vui.widget_list);
       context->w = 6;
       context->h = 4;
       context->allow_wraparound_x = context->allow_wraparound_y = TRUE;
@@ -596,19 +585,6 @@ static void InitState(const struct LuNamingScreenParams* params) {
       };
       VUISpriteButton_Construct(widget, &params);
    }
-   {
-      VUISpriteButton* widget = &sMenuState->vui.widgets.button_charset;
-      const struct VUISpriteButton_InitParams params = {
-         .callbacks = {
-            .on_press = NULL,
-         },
-         .grid = {
-            .pos  = { 6, 2 },
-            .size = { 1, 1 },
-         },
-      };
-      VUISpriteButton_Construct(widget, &params);
-   }
    SetUpCharsetLabels();
 }
 static void Task_WaitFadeIn(u8 task_id) {
@@ -623,21 +599,63 @@ static void Task_WaitFadeIn(u8 task_id) {
 }
 static void Task_OnFrame(u8 task_id) {
    AnimateBackdrop();
+   
+   VUICustomKeyboard* keyboard = &sMenuState->vui.widgets.keyboard;
    if (JOY_NEW(START_BUTTON)) {
       VUIContext_FocusWidget(&sMenuState->vui.context, (VUIWidget*)&sMenuState->vui.widgets.button_ok);
    } else if (JOY_NEW(SELECT_BUTTON)) {
-      VUICustomKeyboard_NextCharset(&sMenuState->vui.widgets.keyboard);
+      VUICustomKeyboard_NextCharset(keyboard);
    } else if (JOY_NEW(B_BUTTON)) {
-      VUICustomKeyboard_Backspace(&sMenuState->vui.widgets.keyboard);
+      VUICustomKeyboard_Backspace(keyboard);
+   } else if (JOY_NEW(L_BUTTON)) {
+      u8 charset = keyboard->charset;
+      if (charset == 0) {
+         charset = keyboard->charsets_count - 1;
+      } else {
+         --charset;
+      }
+      VUICustomKeyboard_SetCharset(keyboard, charset);
+   } else if (JOY_NEW(R_BUTTON)) {
+      VUICustomKeyboard_NextCharset(keyboard);
    } else {
       VUIContext_HandleInput(&sMenuState->vui.context);
+      
+      //
+      // Each harset button has a background and outline color done 
+      // up in its own color within the palette. We set all such 
+      // colors to white by default, and this means we can show an 
+      // outline around the button the cursor is over, or shade in 
+      // the currently active button, by just messing with the 
+      // palette.
+      //
+      {
+         const u16 SELECTED_BACK = ( 0 << 10) | (20 << 5) | 31; // BGR colors
+         
+         u8 palette_id = IndexOfSpritePaletteTag(SPRITE_PAL_TAG_CHARSET_LABEL);
+         if (palette_id != 0xFF) {
+            const u16 base_bgcolor = OBJ_PLTT_ID(palette_id) + 8;
+            const u16 base_fgcolor = OBJ_PLTT_ID(palette_id) + 2;
+            for(u8 i = 0; i < 5; ++i) {
+               VUIWidget* button = (VUIWidget*)&sMenuState->vui.widgets.charset_buttons.list[i];
+               if (keyboard->charset == i) {
+                  gPlttBufferFaded[base_bgcolor + i] = SELECTED_BACK;
+               } else {
+                  gPlttBufferFaded[base_bgcolor + i] = RGB_WHITE;
+               }
+               if (sMenuState->vui.context.focused == (VUIWidget*)button) {
+                  gPlttBufferFaded[base_fgcolor + i] = RGB_RED;
+               } else {
+                  gPlttBufferFaded[base_fgcolor + i] = gPlttBufferFaded[base_bgcolor + i];
+               }
+            }
+         }
+      }
    }
 }
 static void Teardown(void) {
    DebugPrintf("[LuNamingScreen][Teardown] Tearing down...");
    if (sMenuState) {
-      DebugPrintf("[LuNamingScreen][Teardown] Beginning to destroy menu state at %08X...", sMenuState);
-      
+      DebugPrintf("[LuNamingScreen][Teardown] Unmapping BG tilemap buffers...");
       UnsetBgTilemapBuffer(0);
       UnsetBgTilemapBuffer(1);
       UnsetBgTilemapBuffer(2);
@@ -645,21 +663,22 @@ static void Teardown(void) {
       
       DebugPrintf("[LuNamingScreen][Teardown] Destroying task...");
       DestroyTask(sMenuState->task_id);
-      DebugPrintf("[LuNamingScreen][Teardown] Destroying all widgets...");
+      DebugPrintf("[LuNamingScreen][Teardown] Destroying widgets...");
       vui_context_foreach(&sMenuState->vui.context, widget) {
-         DebugPrintf("[LuNamingScreen][Teardown] Destroying widget %08X...", widget);
+         DebugPrintf("[LuNamingScreen][Teardown] Destroying a widget...");
          if (widget)
             VUIWidget_Destroy(widget);
       }
       
-      DebugPrintf("[LuNamingScreen][Teardown] Destroying charset label separator sprites...");
+      DebugPrintf("[LuNamingScreen][Teardown] Destroying separator sprites...");
       for(u8 i = 0; i < ARRAY_COUNT(sMenuState->charset_label_separator_sprite_ids); ++i) {
-         u8 id = sMenuState->charset_label_separator_sprite_ids[id];
+         u8 id = sMenuState->charset_label_separator_sprite_ids[i];
          if (id != SPRITE_NONE) {
             DestroySprite(&gSprites[id]);
-            sMenuState->charset_label_separator_sprite_ids[id] = SPRITE_NONE;
+            sMenuState->charset_label_separator_sprite_ids[i] = SPRITE_NONE;
          }
       }
+      DebugPrintf("[LuNamingScreen][Teardown] Destroying L-button and R-button sprites...");
       if (sMenuState->charset_label_button_l_sprite_id != SPRITE_NONE) {
          DestroySprite(&gSprites[sMenuState->charset_label_button_l_sprite_id]);
          sMenuState->charset_label_button_l_sprite_id = SPRITE_NONE;
@@ -667,6 +686,12 @@ static void Teardown(void) {
       if (sMenuState->charset_label_button_r_sprite_id != SPRITE_NONE) {
          DestroySprite(&gSprites[sMenuState->charset_label_button_r_sprite_id]);
          sMenuState->charset_label_button_r_sprite_id = SPRITE_NONE;
+      }
+      
+      DebugPrintf("[LuNamingScreen][Teardown] Destroying title text window...");
+      if (sMenuState->title_window_id != WINDOW_NONE) {
+         RemoveWindow(sMenuState->title_window_id);
+         sMenuState->title_window_id = WINDOW_NONE;
       }
       
       DebugPrintf("[LuNamingScreen][Teardown] Freeing menu state...");
@@ -685,9 +710,6 @@ static void OnTextEntryChanged(const u8* value) {
 }
 static void OnTextEntryFull(void) {
    PlaySE(SE_FAILURE);
-}
-static void OnButtonCharset(void) {
-   VUICustomKeyboard_NextCharset(&sMenuState->vui.widgets.keyboard);
 }
 static void OnButtonCharset_Upper(void) {
    VUICustomKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 0);
@@ -771,6 +793,7 @@ static void InitCB2(void) {
          SetMainCallback2(MainCB2);
          SetUpBackdrop();
          PaintTitleBarTiles();
+         PaintTitleText();
          {  // Charset button bar background
             const u16 top = V_TILE_ID(common_tiles[0]);
             const u16 mid = V_TILE_ID(common_tiles[4]);
@@ -854,54 +877,6 @@ static void AnimateBackdrop(void) {
    //
    sMenuState->timer++;
    SetGpuReg(REG_OFFSET_BG0HOFS, ((sMenuState->timer / 4) % 32));
-   
-   /*// DISABLED: THIS LOOKS BAD.
-   //// A possible alternative would be to have a second layer moving overtop 
-   //// of it, parallax-like, with blending.
-   //
-   // Gemstone shine.
-   //
-   {
-      u16* colors_src = &gPlttBufferUnfaded[BG_PLTT_ID(PALETTE_ID_BACKDROP) + 1];
-      u16* colors_dst = &gPlttBufferFaded  [BG_PLTT_ID(PALETTE_ID_BACKDROP) + 1];
-      for(u8 i = 0; i < 3; ++i) {
-         colors_dst[i] = colors_src[i];
-         auto dst = (struct PlttData*) &colors_dst[i];
-         dst->r -= 1;
-         dst->g -= 1;
-         dst->b -= 1;
-      }
-      
-      auto shadow    = (struct PlttData*) &colors_dst[0];
-      auto midtone   = (struct PlttData*) &colors_dst[1];
-      auto highlight = (struct PlttData*) &colors_dst[2];
-      
-      const u8 shine_starts[] = { 30, 60 };
-      const u8 shine_length   = 12;
-      
-      u8 shine_step = sMenuState->timer % 90;
-      for(u8 i = 0; i < sizeof(shine_starts); ++i) {
-         if (shine_step + shine_length < shine_starts[i]) {
-            u8 elapsed = shine_step - shine_starts[i];
-            if (elapsed < 3) {
-               highlight->g += 1;
-            } else if (elapsed < 6) {
-               midtone->r   += 1;
-               midtone->g   -= 1;
-               midtone->b   += 1;
-            } else if (elapsed < 9) {
-               shadow->r    += 1;
-               shadow->g    -= 1;
-            } else {
-               shadow->r    += 1;
-               shadow->b    += 1;
-               highlight->g += 1;
-            }
-            break;
-         }
-      }
-   }
-   //*/
 }
 
 static void PaintTitleBarTiles(void) {
@@ -950,90 +925,126 @@ static void PaintTitleBarTiles(void) {
    V_SET_TILE(BGLAYER_CONTENT, V_TILE_ID(common_tiles[ 7]), 5, 3, PALETTE_ID_CHROME);
    V_SET_TILE(BGLAYER_CONTENT, V_TILE_ID(common_tiles[ 3]), 5, 2, PALETTE_ID_CHROME);
 }
+//
+static const u8 sDefaultTitle[] = _("Enter a name.");
+//
+static void PaintTitleText(void) {
+   u8 window_id = sMenuState->title_window_id;
+   if (window_id == WINDOW_NONE) {
+      const struct WindowTemplate tmpl = {
+         .bg          = BGLAYER_CONTENT,
+         .tilemapLeft = 6,
+         .tilemapTop  = 0,
+         .width       = TITLE_WINDOW_TILE_WIDTH,
+         .height      = TITLE_WINDOW_TILE_HEIGHT,
+         .paletteNum  = PALETTE_ID_TEXT,
+         .baseBlock   = V_TILE_ID(title_text_window)
+      };
+      
+      window_id = sMenuState->title_window_id = AddWindow(&tmpl);
+      if (window_id == WINDOW_NONE)
+         return;
+      PutWindowTilemap(window_id);
+   }
+   
+   FillWindowPixelBuffer(window_id, PIXEL_FILL(1));
+   
+   const u8* text = sMenuState->title;
+   if (text == NULL) {
+      text = sDefaultTitle;
+      //
+      // TODO: If nicknaming a Pokemon, generate text of the form 
+      //       "<species>'s nickname?"
+      //
+   }
+   
+   u8 colors[3] = { 1, 2, 3 };
+   //
+   AddTextPrinterParameterized3(
+      window_id,
+      FONT_BOLD,
+      4,
+      2,
+      colors,
+      TEXT_SKIP_DRAW,
+      text
+   );
+   
+   CopyWindowToVram(window_id, COPYWIN_FULL);
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static const struct OamData sOam_8x8;
 
-static const u32 gCharsetLabelGfx[] = INCBIN_U32("graphics/lu/naming_screen/charset-labels.4bpp");
-static const u16 gCharsetLabelPal[] = INCBIN_U16("graphics/lu/naming_screen/charset-labels.gbapal");
+static const u32 sCharsetLabelGfx[] = INCBIN_U32("graphics/lu/naming_screen/charset-buttons.4bpp");
+static const u16 sCharsetLabelPal[] = INCBIN_U16("graphics/lu/naming_screen/charset-buttons.gbapal");
 
 static const struct SpritePalette sSpritePalettes[] = {
-    { gCharsetLabelPal, SPRITE_PAL_TAG_CHARSET_LABEL },
+    { sCharsetLabelPal, SPRITE_PAL_TAG_CHARSET_LABEL },
     {}
 };
 static const struct SpriteSheet sSpriteSheets[] = {
-   { gCharsetLabelGfx, sizeof(gCharsetLabelGfx), SPRITE_GFX_TAG_CHARSET_LABEL },
+   { sCharsetLabelGfx, sizeof(sCharsetLabelGfx), SPRITE_GFX_TAG_CHARSET_LABEL },
    {},
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static const struct Subsprite sSubsprites_CharsetLabel_Upper[] = {
-   {
-      .x          = 0,
-      .y          = 0,
-      .shape      = SPRITE_SHAPE(32x8),
-      .size       = SPRITE_SIZE(32x8),
-      .tileOffset = 0,
-      .priority   = 1,
+// Helper for defining a rectangular button consisting of four subsprites:
+//  - upper-left corner and upper edge (32x8px)
+//  - lower-left corner and lower edge (32x8px)
+//  - upper-right corner (either 8x8px or 16x8px)
+//  - lower-right corner (either 8x8px or 16x8px)
+#define SPRITE_TILE_WIDTH (232 / TILE_WIDTH)
+#define SUBSPRITE_GROUP(_x, _w) \
+   {                                    \
+      .x          = 0,                  \
+      .y          = 0,                  \
+      .shape      = SPRITE_SHAPE(32x8), \
+      .size       = SPRITE_SIZE(32x8),  \
+      .tileOffset = (_x) / TILE_WIDTH,  \
+      .priority   = 1,                  \
+   },                                   \
+   {                                    \
+      .x          = 0,                  \
+      .y          = 8,                  \
+      .shape      = SPRITE_SHAPE(32x8), \
+      .size       = SPRITE_SIZE(32x8),  \
+      .tileOffset = SPRITE_TILE_WIDTH + (_x) / TILE_WIDTH,  \
+      .priority   = 1,                  \
+   },                                   \
+   {                                    \
+      .x          = 32,                 \
+      .y          =  0,                 \
+      .shape      = (_w) - 32 <= 8 ? SPRITE_SHAPE(8x8) : SPRITE_SHAPE(16x8), \
+      .size       = (_w) - 32 <= 8 ? SPRITE_SIZE(8x8)  : SPRITE_SIZE(16x8),  \
+      .tileOffset = (_x / TILE_WIDTH) + 4, \
+      .priority   = 1,                  \
+   },                                   \
+   {                                    \
+      .x          = 32,                 \
+      .y          =  8,                 \
+      .shape      = (_w) - 32 <= 8 ? SPRITE_SHAPE(8x8) : SPRITE_SHAPE(16x8), \
+      .size       = (_w) - 32 <= 8 ? SPRITE_SIZE(8x8)  : SPRITE_SIZE(16x8),  \
+      .tileOffset = SPRITE_TILE_WIDTH + (_x / TILE_WIDTH) + 4, \
+      .priority   = 1,                  \
    },
+   
+static const struct Subsprite sSubsprites_CharsetLabel_Upper[] = {
+   SUBSPRITE_GROUP(0, 40)
 };
 static const struct Subsprite sSubsprites_CharsetLabel_Lower[] = {
-   {
-      .x          = 0,
-      .y          = 0,
-      .shape      = SPRITE_SHAPE(32x8),
-      .size       = SPRITE_SIZE(32x8),
-      .tileOffset = 4,
-      .priority   = 1,
-   },
+   SUBSPRITE_GROUP(40, 40)
 };
 static const struct Subsprite sSubsprites_CharsetLabel_Symbol[] = {
-   {
-      .x          = 0,
-      .y          = 0,
-      .shape      = SPRITE_SHAPE(32x8),
-      .size       = SPRITE_SIZE(32x8),
-      .tileOffset = 8,
-      .priority   = 1,
-   },
-   {
-      .x          = 32,
-      .y          = 0,
-      .shape      = SPRITE_SHAPE(8x8),
-      .size       = SPRITE_SIZE(8x8),
-      .tileOffset = 12,
-      .priority   = 1,
-   },
+   SUBSPRITE_GROUP(80, 48)
 };
 static const struct Subsprite sSubsprites_CharsetLabel_AccentUpper[] = {
-   {
-      .x          = 0,
-      .y          = 0,
-      .shape      = SPRITE_SHAPE(32x8),
-      .size       = SPRITE_SIZE(32x8),
-      .tileOffset = 13,
-      .priority   = 1,
-   },
-   {
-      .x          = 32,
-      .y          = 0,
-      .shape      = SPRITE_SHAPE(8x8),
-      .size       = SPRITE_SIZE(8x8),
-      .tileOffset = 17,
-      .priority   = 1,
-   },
+   SUBSPRITE_GROUP(128, 48)
 };
 static const struct Subsprite sSubsprites_CharsetLabel_AccentLower[] = {
-   {
-      .x          = 0,
-      .y          = 0,
-      .shape      = SPRITE_SHAPE(32x8),
-      .size       = SPRITE_SIZE(32x8),
-      .tileOffset = 18,
-      .priority   = 1,
-   },
+   SUBSPRITE_GROUP(176, 40)
 };
 static const struct Subsprite sSubsprites_CharsetLabel_Separator[] = {
    {
@@ -1041,7 +1052,7 @@ static const struct Subsprite sSubsprites_CharsetLabel_Separator[] = {
       .y          = 0,
       .shape      = SPRITE_SHAPE(8x8),
       .size       = SPRITE_SIZE(8x8),
-      .tileOffset = 22,
+      .tileOffset = (216 / TILE_WIDTH),
       .priority   = 1,
    },
 };
@@ -1051,7 +1062,7 @@ static const struct Subsprite sSubsprites_CharsetLabel_ButtonL[] = {
       .y          = 0,
       .shape      = SPRITE_SHAPE(8x8),
       .size       = SPRITE_SIZE(8x8),
-      .tileOffset = 23,
+      .tileOffset = SPRITE_TILE_WIDTH + (216 / TILE_WIDTH),
       .priority   = 1,
    },
 };
@@ -1061,10 +1072,14 @@ static const struct Subsprite sSubsprites_CharsetLabel_ButtonR[] = {
       .y          = 0,
       .shape      = SPRITE_SHAPE(8x8),
       .size       = SPRITE_SIZE(8x8),
-      .tileOffset = 24,
+      .tileOffset = SPRITE_TILE_WIDTH + (216 / TILE_WIDTH) + 1,
       .priority   = 1,
    },
 };
+
+#undef SPRITE_TILE_WIDTH
+#undef SUBSPRITE_GROUP
+
 #define MAKE_SUBSPRITE_TABLE(Name) \
    static const struct SubspriteTable sSubspriteTable_CharsetLabel_##Name[] = {       \
       {ARRAY_COUNT(sSubsprites_CharsetLabel_##Name), sSubsprites_CharsetLabel_##Name} \
@@ -1112,7 +1127,7 @@ static void SetUpCharsetLabels(void) {
    } sprite_ids;
    auto widgets = &sMenuState->vui.widgets;
    
-   sprite_ids.upper = CreateSprite(&sSpriteTemplate_CharsetLabel, 18, 144, 0);
+   sprite_ids.upper = CreateSprite(&sSpriteTemplate_CharsetLabel, 14, 140, 0);
    {
       auto sprite = &gSprites[sprite_ids.upper];
       auto widget = &sMenuState->vui.widgets.charset_buttons.upper;
@@ -1124,7 +1139,7 @@ static void SetUpCharsetLabels(void) {
       VUISpriteButton_TakeSprite(widget, sprite_ids.upper);
    }
    
-   sprite_ids.lower = CreateSprite(&sSpriteTemplate_CharsetLabel, 58, 144, 0);
+   sprite_ids.lower = CreateSprite(&sSpriteTemplate_CharsetLabel, 54, 140, 0);
    {
       auto sprite = &gSprites[sprite_ids.lower];
       auto widget = &sMenuState->vui.widgets.charset_buttons.lower;
@@ -1136,7 +1151,7 @@ static void SetUpCharsetLabels(void) {
       VUISpriteButton_TakeSprite(widget, sprite_ids.lower);
    }
    
-   sprite_ids.symbol = CreateSprite(&sSpriteTemplate_CharsetLabel, 97, 144, 0);
+   sprite_ids.symbol = CreateSprite(&sSpriteTemplate_CharsetLabel, 93, 140, 0);
    {
       auto sprite = &gSprites[sprite_ids.symbol];
       auto widget = &sMenuState->vui.widgets.charset_buttons.symbol;
@@ -1148,7 +1163,7 @@ static void SetUpCharsetLabels(void) {
       VUISpriteButton_TakeSprite(widget, sprite_ids.symbol);
    }
    
-   sprite_ids.accent_u = CreateSprite(&sSpriteTemplate_CharsetLabel, 144, 144, 0);
+   sprite_ids.accent_u = CreateSprite(&sSpriteTemplate_CharsetLabel, 140, 140, 0);
    {
       auto sprite = &gSprites[sprite_ids.accent_u];
       auto widget = &sMenuState->vui.widgets.charset_buttons.accent_u;
@@ -1160,7 +1175,7 @@ static void SetUpCharsetLabels(void) {
       VUISpriteButton_TakeSprite(widget, sprite_ids.accent_u);
    }
    
-   sprite_ids.accent_l = CreateSprite(&sSpriteTemplate_CharsetLabel, 189, 144, 0);
+   sprite_ids.accent_l = CreateSprite(&sSpriteTemplate_CharsetLabel, 185, 140, 0);
    {
       auto sprite = &gSprites[sprite_ids.accent_l];
       auto widget = &sMenuState->vui.widgets.charset_buttons.accent_l;

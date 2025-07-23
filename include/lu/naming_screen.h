@@ -7,6 +7,8 @@ struct LuNamingScreenParams {
    void(*callback)(const u8*);
    const u8* initial_value;
    u8 max_length;
+   
+   const u8* title; // optional
 };
 
 extern void LuNamingScreen(const struct LuNamingScreenParams*);
