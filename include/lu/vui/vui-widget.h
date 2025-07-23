@@ -41,9 +41,10 @@ struct VUIWidget;
 
 struct VTable_VUIWidget {
    const void* superclass_vtable;
-   u8  (* _impl_destroy  )(struct VUIWidget* this);
-   u8  (* on_frame       )(struct VUIWidget* this);
-   void(* on_focus_change)(struct VUIWidget* this, bool8 gained, struct VUIWidget*);
+   u8  (* _impl_destroy         )(struct VUIWidget* this);
+   u8  (* on_frame              )(struct VUIWidget* this);
+   void(* on_focus_change       )(struct VUIWidget* this, bool8 gained, struct VUIWidget*);
+   u8  (* on_subgrid_focus_moved)(struct VUIWidget* this);
 };
 extern const struct VTable_VUIWidget gVTable_VUIWidget;
 
@@ -53,6 +54,7 @@ typedef struct VUIWidget {
    bool8 disabled    : 1;
    bool8 focusable   : 1;
    bool8 has_subgrid : 1;
+   bool8 context_controls_subgrid_focus : 1;
    //
    // Used to influence directional navigation between widgets.
    // Directional navigation will jump to the nearest widget 

@@ -57,112 +57,83 @@ static void _VUIContext_FocusAnyWidget(VUIContext* this) {
    }
 }
 
-//
-// Below are the functions used by directional navigation to find a 
-// widget to navigate to, given a target main-axis coordinate and a 
-// preferred cross-axis coordinate. One function exists for each 
-// choice of main axis (X or Y), and they do essentially the same 
-// things but query slightly different fields. Some macros are used 
-// here to unify the logic.
-//
-
-#define WIDGET_LOOP_START                                                  \
-   if (!widget || widget == prior || !VUIWidget_IsFocusable(widget))       \
-      continue;                                                            \
-   VUIExtent u_extent;                                                     \
-   VUIExtent v_extent;                                                     \
-   VUI_MapBoxToExtents(&widget->pos, &widget->size, &u_extent, &v_extent);
-
-#define WIDGET_LOOP_MATCH(extent, axis)                    \
-   u8 diff = VUI_ExtentDistance(&extent, preferred->axis); \
-   if (best_match && diff >= best_dist)                    \
-      continue;                                            \
-   best_match   = widget;                                  \
-   best_dist    = diff;
-
-#define MAP_CURSOR \
-   VUI_MapPosAcrossSizes(&cursor, &best_match->size, &best_match->subgrid_size);
-
-#define COORD_FROM_EDGE(axis, axis_size)              \
-   if (d##axis < 0) {                                 \
-      cursor.axis = best_match->subgrid_size.axis_size; \
-      if (!cursor.axis)                               \
-         cursor.axis = best_match->size.axis_size;    \
-      --cursor.axis;                                  \
-   } else {                                           \
-      cursor.axis = 0;                                \
-   }
-
-#define SET_CURSOR \
-   best_match->subgrid_focus = cursor;
-
-static bool8 _VUIContext_TryNavigateHorizontally(
-   VUIContext*      this,
-   VUIWidget*       prior,
-   u8               adjacent,
-   const VUIExtent* y_extent,
-   VUIPos*          preferred,
-   s8               dx
+static bool8 _VUIContext_TryNavigate(
+   VUIContext*        this,
+   VUIWidget*         from_widget,
+   const enum VUIAxis along_axis,
+   u8                 dst_coord,
+   const u8           from_cross_pos
 ) {
-   VUIWidget* best_match = NULL;
-   s8         best_dist  = 0;
+   VUIWidget* dst_widget   = NULL;
+   s8         dst_distance = 0; // along cross axis from `from_cross_pos`
+   
+   VUIExtent fm_extent; // from-widget main-axis  extent
+   VUIExtent fc_extent; // from-widget cross-axis extent
+   VUI_MapBoxToExtents(
+      &from_widget->pos,
+      &from_widget->size,
+      (along_axis == VUI_AXIS_X) ? &fm_extent : &fc_extent,
+      (along_axis == VUI_AXIS_Y) ? &fm_extent : &fc_extent
+   );
+   
+   VUIExtent dm_extent; // widget-being-checked main-axis  extent
+   VUIExtent dc_extent; // widget-being-checked cross-axis extent
    
    vui_context_foreach(this, widget) {
-      WIDGET_LOOP_START
-      if (!VUI_ExtentOverlaps(&u_extent, adjacent)) // not adjacent
+      if (!widget || widget == from_widget || !VUIWidget_IsFocusable(widget))
          continue;
-      if (!VUI_ExtentsOverlap(&v_extent, y_extent)) // wholly above or below
+      VUI_MapBoxToExtents(
+         &widget->pos,
+         &widget->size,
+         (along_axis == VUI_AXIS_X) ? &dm_extent : &dc_extent,
+         (along_axis == VUI_AXIS_Y) ? &dm_extent : &dc_extent
+      );
+      
+      if (!VUI_ExtentOverlaps(&dm_extent, dst_coord)) // not adjacent
          continue;
-      WIDGET_LOOP_MATCH(v_extent, y)
+      if (!VUI_ExtentsOverlap(&dc_extent, &fc_extent))
+         continue;
+      
+      u8 diff = VUI_ExtentDistance(&dc_extent, from_cross_pos);
+      if (dst_widget && diff >= dst_distance)
+         continue;
+      dst_widget   = widget;
+      dst_distance = diff;
    }
-   if (!best_match)
+   if (!dst_widget)
       return FALSE;
-   if (best_match->has_subgrid) {
-      VUIPos cursor = { adjacent, preferred->y };
-      MAP_CURSOR
-      COORD_FROM_EDGE(x, w);
-      SET_CURSOR
-   }
-   VUIContext_FocusWidget(this, best_match);
-   return TRUE;
-}
-static bool8 _VUIContext_TryNavigateVertically(
-   VUIContext*      this,
-   VUIWidget*       prior,
-   const VUIExtent* x_extent,
-   u8               adjacent,
-   VUIPos*          preferred,
-   s8               dy
-) {
-   VUIWidget* best_match = NULL;
-   s8         best_dist  = 0;
    
-   vui_context_foreach(this, widget) {
-      WIDGET_LOOP_START
-      if (!VUI_ExtentOverlaps(&v_extent, adjacent)) // not adjacent
-         continue;
-      if (!VUI_ExtentsOverlap(&u_extent, x_extent)) // wholly to the left or right
-         continue;
-      WIDGET_LOOP_MATCH(u_extent, x)
+   if (dst_widget->has_subgrid) {
+      VUI_MapBoxToExtents(
+         &dst_widget->pos,
+         &dst_widget->size,
+         (along_axis == VUI_AXIS_X) ? &dm_extent : &dc_extent,
+         (along_axis == VUI_AXIS_Y) ? &dm_extent : &dc_extent
+      );
+      VUIPos cursor = {
+         (along_axis == VUI_AXIS_X) ? dst_coord : from_cross_pos,
+         (along_axis == VUI_AXIS_Y) ? dst_coord : from_cross_pos
+      };
+      VUI_MapPosAcrossSizes(&cursor, &dst_widget->size, &dst_widget->subgrid_size);
+      //
+      // Force destination subgrid-focus position to the subgrid edge that 
+      // we're navigating onto:
+      //
+      if (dst_coord > dm_extent.start) { // coming in from the right/below
+         cursor.coords[along_axis] = dst_widget->subgrid_size.bounds[along_axis];
+         if (!cursor.coords[along_axis])
+            cursor.coords[along_axis] = dst_widget->size.bounds[along_axis];
+         --cursor.coords[along_axis];
+      } else { // coming in from the left/above
+         cursor.coords[along_axis] = 0;
+      }
+      
+      dst_widget->subgrid_focus = cursor;
    }
-   if (!best_match)
-      return FALSE;
-   if (best_match->has_subgrid) {
-      VUIPos cursor = { preferred->x, adjacent };
-      MAP_CURSOR
-      COORD_FROM_EDGE(y, h);
-      SET_CURSOR
-   }
-   VUIContext_FocusWidget(this, best_match);
+   VUIContext_FocusWidget(this, dst_widget);
    return TRUE;
 }
-
-#undef WIDGET_LOOP_START
-#undef WIDGET_LOOP_MATCH
-#undef MAP_CURSOR
-#undef COORD_FROM_EDGE
-#undef SET_CURSOR
-
+//
 static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy) {
    VUIWidget* prior = this->focused;
    AGB_ASSERT(!!prior);
@@ -174,6 +145,37 @@ static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy) {
          AGB_WARNING(widget->size.h >= VWIDGET_MIN_SIZE);
       }
    #endif
+   
+   //
+   // If the currently focused widget allows the context to control its 
+   // subgrid focus, then try moving the subgrid focus.
+   //
+   if (prior->has_subgrid && prior->context_controls_subgrid_focus) {
+      bool8 moved = FALSE;
+      if (dx) {
+         if (
+            (dx < 0 && prior->subgrid_focus.x > 0)
+         || (dx > 0 && prior->subgrid_focus.x < prior->subgrid_size.w - 1)
+         ) {
+            prior->subgrid_focus.x += dx;
+            moved = TRUE;
+         }
+      }
+      if (dy) {
+         if (
+            (dy < 0 && prior->subgrid_focus.y > 0)
+         || (dy > 0 && prior->subgrid_focus.y < prior->subgrid_size.h - 1)
+         ) {
+            prior->subgrid_focus.y += dy;
+            moved = TRUE;
+         }
+      }
+      if (moved) {
+         if (v_can_invoke(prior, on_subgrid_focus_moved))
+            v_invoke(prior, on_subgrid_focus_moved)();
+         return;
+      }
+   }
    
    VUIExtent x_extent;
    VUIExtent y_extent;
@@ -194,26 +196,14 @@ static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy) {
    s8         best_dist  = 0;
    
    if (dx) {
-      if (_VUIContext_TryNavigateHorizontally(
-         this,
-         prior,
-         ((dx < 0) ? x_extent.start - 1 : x_extent.end),
-         &y_extent,
-         &preferred,
-         dx
-      )) {
+      s16 beyond = VUI_PointBeyondExtent(&x_extent, dx);
+      if (beyond >= 0 && _VUIContext_TryNavigate(this, prior, VUI_AXIS_X, beyond, preferred.y)) {
          return;
       }
    }
    if (dy) {
-      if (_VUIContext_TryNavigateVertically(
-         this,
-         prior,
-         &x_extent,
-         ((dy < 0) ? y_extent.start - 1 : y_extent.end),
-         &preferred,
-         dy
-      )) {
+      s16 beyond = VUI_PointBeyondExtent(&y_extent, dy);
+      if (beyond >= 0 && _VUIContext_TryNavigate(this, prior, VUI_AXIS_Y, beyond, preferred.x)) {
          return;
       }
    }
@@ -222,28 +212,42 @@ static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy) {
    //
    if (dx && this->allow_wraparound_x) {
       AGB_WARNING(this->w > 0);
-      if (_VUIContext_TryNavigateHorizontally(
-         this,
-         prior,
-         ((dx > 0) ? 0 : this->w - 1),
-         &y_extent,
-         &preferred,
-         dx
-      )) {
+      s16 beyond = (dx > 0) ? 0 : this->w - 1;
+      if (beyond >= 0 && _VUIContext_TryNavigate(this, prior, VUI_AXIS_X, beyond, preferred.y)) {
          return;
       }
    }
    if (dy && this->allow_wraparound_y) {
       AGB_WARNING(this->h > 0);
-      if (_VUIContext_TryNavigateVertically(
-         this,
-         prior,
-         &x_extent,
-         ((dy > 0) ? 0 : this->h - 1),
-         &preferred,
-         dy
-      )) {
+      s16 beyond = (dy > 0) ? 0 : this->h - 1;
+      if (beyond >= 0 && _VUIContext_TryNavigate(this, prior, VUI_AXIS_Y, beyond, preferred.x)) {
          return;
+      }
+   }
+   //
+   // Try wraparound within the subgrid.
+   //
+   if (prior->has_subgrid && prior->context_controls_subgrid_focus) {
+      bool8 moved = FALSE;
+      if (dx && this->allow_wraparound_x) {
+         if (dx < 0) {
+            prior->subgrid_focus.x = prior->subgrid_size.w - 1;
+         } else {
+            prior->subgrid_focus.x = 0;
+         }
+         moved = TRUE;
+      }
+      if (dy && this->allow_wraparound_y) {
+         if (dy < 0) {
+            prior->subgrid_focus.y = prior->subgrid_size.h - 1;
+         } else {
+            prior->subgrid_focus.y = 0;
+         }
+         moved = TRUE;
+      }
+      if (moved) {
+         if (v_can_invoke(prior, on_subgrid_focus_moved))
+            v_invoke(prior, on_subgrid_focus_moved)();
       }
    }
 }

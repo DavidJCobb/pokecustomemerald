@@ -1,5 +1,6 @@
 #include "lu/naming_screen.h"
 #include "lu/vui/vui-context.h"
+#include "lu/vui/custom-keyboard.h"
 #include "lu/vui/keyboard.h"
 #include "lu/vui/keyboard-value.h"
 #include "lu/vui/sprite-button.h"
@@ -247,6 +248,84 @@
 
 //*/
 
+static const u8 sCharsetCharactersUpper[] = __(
+   "ABCDEF ."
+   "GHIJKL ,"
+   "MNOPRQS "
+   "TUVWXYZ "
+);
+static const u8 sCharsetCharactersLower[] = __(
+   "abcdef ."
+   "ghijkl ,"
+   "mnopqrs "
+   "tuvwxyz "
+);
+static const u8 sCharsetCharactersSymbol[] = __(
+   "01234 "
+   "56789 "
+   "!?♂♀/-"
+   "…“”‘' "
+);
+static const u8 sCharsetCharactersAccentUpper[] = __(
+   "ÁÂÀÄ  ÇŒ"
+   "ÉÊÈË  ßÑ"
+   "ÍÎÌÏ    "
+   "ÓÔÒÖÚÛÙÜ"
+);
+static const u8 sCharsetCharactersAccentLower[] = __(
+   "áâàä  çœ"
+   "éêèë   ñ"
+   "íîìï    "
+   "óôòöúûùü"
+);
+
+static const struct VUICustomKeyboardCharset sCharsets[] = {
+   {
+      .characters = sCharsetCharactersUpper,
+      .rows = 4,
+      .cols = 8,
+      .col_gaps = {
+         .count     = 2,
+         .positions = { 2, 6 }
+      }
+   },
+   {
+      .characters = sCharsetCharactersLower,
+      .rows = 4,
+      .cols = 8,
+      .col_gaps = {
+         .count     = 2,
+         .positions = { 2, 6 }
+      }
+   },
+   {
+      .characters = sCharsetCharactersSymbol,
+      .rows = 4,
+      .cols = 6,
+      .col_gaps = {
+         .count = 0
+      }
+   },
+   {
+      .characters = sCharsetCharactersAccentUpper,
+      .rows = 4,
+      .cols = 8,
+      .col_gaps = {
+         .count     = 1,
+         .positions = { 3 }
+      }
+   },
+   {
+      .characters = sCharsetCharactersAccentLower,
+      .rows = 4,
+      .cols = 8,
+      .col_gaps = {
+         .count     = 1,
+         .positions = { 3 }
+      }
+   },
+};
+
 static const struct SpriteSheet   sSpriteSheets[];
 static const struct SpritePalette sSpritePalettes[];
 static const u8  sBlankBGTile[]     = INCBIN_U8("graphics/lu/cgo_menu/bg-tile-blank.4bpp"); // color 1
@@ -306,11 +385,11 @@ struct MenuState {
    struct {
       VUIContext context;
       struct {
-         VUIKeyboard      keyboard;
-         VUIKeyboardValue value;
-         VUISpriteButton  button_ok;
-         VUISpriteButton  button_backspace;
-         VUISpriteButton  button_charset;
+         VUICustomKeyboard keyboard;
+         VUIKeyboardValue  value;
+         VUISpriteButton   button_ok;
+         VUISpriteButton   button_backspace;
+         VUISpriteButton   button_charset;
          struct {
             VUISpriteButton upper;
             VUISpriteButton lower;
@@ -466,8 +545,8 @@ static void InitState(const struct LuNamingScreenParams* params) {
       VUIKeyboardValue_Construct(widget, &params);
    }
    {
-      VUIKeyboard* widget = &sMenuState->vui.widgets.keyboard;
-      const struct VUIKeyboard_InitParams params = {
+      VUICustomKeyboard* widget = &sMenuState->vui.widgets.keyboard;
+      const struct VUICustomKeyboard_InitParams params = {
          .buffer = {
             .data = sMenuState->buffer,
             .size = max_length,
@@ -476,6 +555,8 @@ static void InitState(const struct LuNamingScreenParams* params) {
             .on_text_changed      = OnTextEntryChanged,
             .on_text_at_maxlength = OnTextEntryFull,
          },
+         .charsets       = sCharsets,
+         .charsets_count = ARRAY_COUNT(sCharsets),
          .grid = {
             .pos  = { 0, 0 },
             .size = { 5, 3 },
@@ -487,7 +568,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
          .tile_y        = 7,
          .first_tile_id = V_TILE_ID(keyboard_body),
       };
-      VUIKeyboard_Construct(widget, &params);
+      VUICustomKeyboard_Construct(widget, &params);
    }
    {
       VUISpriteButton* widget = &sMenuState->vui.widgets.button_ok;
@@ -545,9 +626,9 @@ static void Task_OnFrame(u8 task_id) {
    if (JOY_NEW(START_BUTTON)) {
       VUIContext_FocusWidget(&sMenuState->vui.context, (VUIWidget*)&sMenuState->vui.widgets.button_ok);
    } else if (JOY_NEW(SELECT_BUTTON)) {
-      VUIKeyboard_NextCharset(&sMenuState->vui.widgets.keyboard);
+      VUICustomKeyboard_NextCharset(&sMenuState->vui.widgets.keyboard);
    } else if (JOY_NEW(B_BUTTON)) {
-      VUIKeyboard_Backspace(&sMenuState->vui.widgets.keyboard);
+      VUICustomKeyboard_Backspace(&sMenuState->vui.widgets.keyboard);
    } else {
       VUIContext_HandleInput(&sMenuState->vui.context);
    }
@@ -606,22 +687,22 @@ static void OnTextEntryFull(void) {
    PlaySE(SE_FAILURE);
 }
 static void OnButtonCharset(void) {
-   VUIKeyboard_NextCharset(&sMenuState->vui.widgets.keyboard);
+   VUICustomKeyboard_NextCharset(&sMenuState->vui.widgets.keyboard);
 }
 static void OnButtonCharset_Upper(void) {
-   VUIKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 0);
+   VUICustomKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 0);
 }
 static void OnButtonCharset_Lower(void) {
-   VUIKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 1);
+   VUICustomKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 1);
 }
 static void OnButtonCharset_Symbol(void) {
-   VUIKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 2);
+   VUICustomKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 2);
 }
 static void OnButtonCharset_AccentUpper(void) {
-   VUIKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 3);
+   VUICustomKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 3);
 }
 static void OnButtonCharset_AccentLower(void) {
-   VUIKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 4);
+   VUICustomKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 4);
 }
 static void OnButtonOK(void) {
    void(*callback)(const u8*) = sMenuState->callback;

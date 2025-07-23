@@ -4,6 +4,11 @@
 #include "gba/defines.h" // TRUE, FALSE; stdddef.h: NULL and friends
 #include "gba/types.h"
 
+enum VUIAxis {
+   VUI_AXIS_X = 0,
+   VUI_AXIS_Y = 1,
+};
+
 typedef struct VUIExtent {
    u8 start;
    u8 end;
@@ -12,15 +17,22 @@ typedef struct VUIExtent {
 extern u8 VUI_ExtentDistance(const VUIExtent*, u8);
 extern bool8 VUI_ExtentsOverlap(const VUIExtent*, const VUIExtent*);
 extern bool8 VUI_ExtentOverlaps(const VUIExtent*, u8);
+extern s16 VUI_PointBeyondExtent(const VUIExtent*, s8);
 
-typedef struct VUIPos {
-   u8 x;
-   u8 y;
+typedef union VUIPos {
+   u8 coords[2];
+   struct {
+      u8 x;
+      u8 y;
+   };
 } VUIPos;
 
-typedef struct VUISize {
-   u8 w;
-   u8 h;
+typedef union VUISize {
+   u8 bounds[2];
+   struct {
+      u8 w;
+      u8 h;
+   };
 } VUISize;
 
 extern void VUI_ConstrainPos(VUIPos*, const VUISize*);

@@ -22,6 +22,13 @@ extern bool8 VUI_ExtentOverlaps(const VUIExtent* extent, u8 point) {
       return FALSE;
    return TRUE;
 }
+extern s16 VUI_PointBeyondExtent(const VUIExtent* extent, s8 d) {
+   if (d < 0) {
+      return extent->start + d;
+   } else {
+      return extent->end - 1 + d;
+   }
+}
 
 extern void VUI_ConstrainPos(VUIPos* pos, const VUISize* size) {
    if (pos->x >= size->w)
