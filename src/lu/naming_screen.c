@@ -4,6 +4,7 @@
 #include "lu/vui/keyboard.h"
 #include "lu/vui/keyboard-value.h"
 #include "lu/vui/sprite-button.h"
+#include "lu/vui/tile-button.h"
 #include "gba/gba.h"
 #include "gba/isagbprint.h"
 #include "bg.h"
@@ -324,6 +325,12 @@ enum {
    SPRITE_GFX_TAG_CHARSET_LABEL = 0x9000,
    SPRITE_PAL_TAG_CHARSET_LABEL = 0x9000,
    
+   BIGBUTTON_TILE_X = 23,
+   BIGBUTTON_TILE_Y =  6,
+   BIGBUTTON_TILE_W =  5,
+   BIGBUTTON_TILE_H =  5,
+   BIGBUTTON_WIN_TILE_COUNT = (BIGBUTTON_TILE_W - 2) * (BIGBUTTON_TILE_H - 2),
+   
    TITLE_WINDOW_TILE_X      = 6,
    TITLE_WINDOW_TILE_WIDTH  = DISPLAY_TILE_WIDTH - TITLE_WINDOW_TILE_X - 1,
    TITLE_WINDOW_TILE_HEIGHT = 2,
@@ -340,8 +347,74 @@ vram_bg_layout {
    vram_bg_tile keyboard_value[VUIKEYBOARDVALUE_WINDOW_TILE_COUNT];
    vram_bg_tile backdrop[4*4];
    vram_bg_tile title_text_window[TITLE_WINDOW_TILE_COUNT];
+   vram_bg_tile ok_button_tiles[BIGBUTTON_WIN_TILE_COUNT];
+   vram_bg_tile backspace_button_tiles[BIGBUTTON_WIN_TILE_COUNT];
 };
 __verify_vram_bg_layout;
+
+enum {
+   COMMONTILE_CHARSETBAR_TOP = V_TILE_ID(common_tiles) + 0,
+   COMMONTILE_BIGBUTTON_CORNER,
+   COMMONTILE_TITLEBAR_BACK,
+   COMMONTILE_TITLEBAR_DIAGONAL_4,
+   
+   COMMONTILE_CHARSETBAR_MID,
+   COMMONTILE_BIGBUTTON_EDGE_H,
+   COMMONTILE_TITLEBAR_DIAGONAL_2,
+   COMMONTILE_TITLEBAR_DIAGONAL_3,
+   
+   COMMONTILE_CHARSETBAR_BOT,
+   COMMONTILE_TITLEBAR_EDGE_BOTTOM_A,
+   COMMONTILE_TITLEBAR_DIAGONAL_1,
+   COMMONTILE_TITLEBAR_EDGE_BOTTOM_B,
+   
+   COMMONTILE_TRANSPARENT,
+   COMMONTILE_BIGBUTTONSEL_CORNER,
+   COMMONTILE_BIGBUTTONSEL_EDGE_V,
+   COMMONTILE_BIGBUTTONSEL_EDGE_H,
+   
+   COMMONTILE_BIGBUTTON_EDGE_V,
+   COMMONTILE_BIGBUTTON_FILL,
+};
+
+// The abstract-grid layout for our VUI context.
+enum {
+   /*
+   
+      +--------------+----+
+      |              | OK |
+      |   KEYBOARD   +----+
+      |              | BK |
+      +--------------+----+
+      | Charsets...  |
+      +--------------+
+   
+   */
+   CTXGRID_KEYBOARD_X = 0,
+   CTXGRID_KEYBOARD_Y = 0,
+   CTXGRID_KEYBOARD_W = 5,
+   CTXGRID_KEYBOARD_H = 3,
+   
+   CTXGRID_BUTTON_OK_X = CTXGRID_KEYBOARD_X + CTXGRID_KEYBOARD_W,
+   CTXGRID_BUTTON_OK_Y = CTXGRID_KEYBOARD_Y,
+   CTXGRID_BUTTON_OK_W = 1,
+   CTXGRID_BUTTON_OK_H = CTXGRID_KEYBOARD_H / 2,
+   
+   CTXGRID_BUTTON_BACK_X = CTXGRID_BUTTON_OK_X,
+   CTXGRID_BUTTON_BACK_Y = CTXGRID_BUTTON_OK_Y + CTXGRID_BUTTON_OK_H,
+   CTXGRID_BUTTON_BACK_W = CTXGRID_BUTTON_OK_W,
+   CTXGRID_BUTTON_BACK_H = CTXGRID_KEYBOARD_H - CTXGRID_BUTTON_BACK_Y,
+   
+   CTXGRID_CHARSETBUTTON_UPPER_X       = 0,
+   CTXGRID_CHARSETBUTTON_LOWER_X       = 1,
+   CTXGRID_CHARSETBUTTON_SYMBOL_X      = 2,
+   CTXGRID_CHARSETBUTTON_ACCENTLOWER_X = 3,
+   CTXGRID_CHARSETBUTTON_ACCENTUPPER_X = 4,
+   CTXGRID_CHARSETBUTTON_Y = CTXGRID_KEYBOARD_Y + CTXGRID_KEYBOARD_H,
+   
+   CTXGRID_W = CTXGRID_BUTTON_OK_X + CTXGRID_BUTTON_OK_W,
+   CTXGRID_H = CTXGRID_CHARSETBUTTON_Y + 1,
+};
 
 static const struct BgTemplate sBgTemplates[] = {
    {
@@ -375,8 +448,8 @@ struct MenuState {
       struct {
          VUICustomKeyboard keyboard;
          VUIKeyboardValue  value;
-         VUISpriteButton   button_ok;
-         VUISpriteButton   button_backspace;
+         VUITileButton     button_ok;
+         VUITileButton     button_backspace;
          union {
             VUISpriteButton list[5];
             struct {
@@ -396,6 +469,9 @@ struct MenuState {
    
    u8 tilemap_buffers[4][BG_SCREEN_SIZE];
    u8 timer;
+   
+   u8 ok_button_window_id;
+   u8 backspace_button_window_id;
 };
 static EWRAM_DATA struct MenuState* sMenuState = NULL;
 
@@ -412,6 +488,7 @@ static void OnButtonCharset_Symbol(void);
 static void OnButtonCharset_AccentUpper(void);
 static void OnButtonCharset_AccentLower(void);
 static void OnButtonOK(void);
+static void OnButtonBackspace(void);
 
 static void InitCB2(void);
 static void MainCB2(void);
@@ -442,12 +519,19 @@ extern void LuNamingScreen(const struct LuNamingScreenParams* params) {
 
 static const VUITextColors text_colors = { 1, 2, 3 };
 
+static const u8 sButtonLabel_OK[]          = _("OK");
+static const u8 sButtonLabel_Backspace[]   = _("Del.");
+static const u8 sButtonMapping_OK[]        = _("{START_BUTTON}");
+static const u8 sButtonMapping_Backspace[] = _("{B_BUTTON}");
 static void InitState(const struct LuNamingScreenParams* params) {
    AGB_ASSERT(!sMenuState);
    sMenuState = AllocZeroed(sizeof(struct MenuState));
    
    sMenuState->title = params->title;
    sMenuState->title_window_id = WINDOW_NONE;
+   
+   sMenuState->ok_button_window_id = WINDOW_NONE;
+   sMenuState->backspace_button_window_id = WINDOW_NONE;
    
    // Why the actual heck do we even need to do this? The BG library should 
    // maintain its own buffers! Every single function meant to interact 
@@ -511,15 +595,15 @@ static void InitState(const struct LuNamingScreenParams* params) {
    LoadSpriteSheets(sSpriteSheets);
    LoadSpritePalettes(sSpritePalettes);
    
-   {
+   {  // context
       VUIContext* context = &sMenuState->vui.context;
       context->widgets.list = sMenuState->vui.widget_list;
       context->widgets.size = ARRAY_COUNT(sMenuState->vui.widget_list);
-      context->w = 6;
-      context->h = 4;
+      context->w = CTXGRID_W;
+      context->h = CTXGRID_H;
       context->allow_wraparound_x = context->allow_wraparound_y = TRUE;
    }
-   {
+   {  // keyboard value
       VUIKeyboardValue* widget = &sMenuState->vui.widgets.value;
       
       const struct VUIKeyboardValue_InitParams params = {
@@ -533,7 +617,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
       };
       VUIKeyboardValue_Construct(widget, &params);
    }
-   {
+   {  // keyboard
       VUICustomKeyboard* widget = &sMenuState->vui.widgets.keyboard;
       const struct VUICustomKeyboard_InitParams params = {
          .buffer = {
@@ -547,43 +631,94 @@ static void InitState(const struct LuNamingScreenParams* params) {
          .charsets       = sCharsets,
          .charsets_count = ARRAY_COUNT(sCharsets),
          .grid = {
-            .pos  = { 0, 0 },
-            .size = { 5, 3 },
+            .pos  = { CTXGRID_KEYBOARD_X, CTXGRID_KEYBOARD_Y },
+            .size = { CTXGRID_KEYBOARD_W, CTXGRID_KEYBOARD_H },
          },
          .bg_layer      = BGLAYER_CONTENT,
          .palette       = PALETTE_ID_TEXT,
          .colors        = text_colors,
-         .tile_x        = 8,
+         .tile_x        = 7,
          .tile_y        = 7,
          .first_tile_id = V_TILE_ID(keyboard_body),
       };
       VUICustomKeyboard_Construct(widget, &params);
    }
    {
-      VUISpriteButton* widget = &sMenuState->vui.widgets.button_ok;
-      const struct VUISpriteButton_InitParams params = {
-         .callbacks = {
-            .on_press = OnButtonOK,
-         },
-         .grid = {
-            .pos  = { 6, 0 },
-            .size = { 1, 1 },
-         },
+      const struct VUITileButton_TileIDs normal_tile_ids = {
+         .corner = COMMONTILE_BIGBUTTON_CORNER,
+         .edge_h = COMMONTILE_BIGBUTTON_EDGE_H,
+         .edge_v = COMMONTILE_BIGBUTTON_EDGE_V,
+         .fill   = COMMONTILE_BIGBUTTON_FILL,
       };
-      VUISpriteButton_Construct(widget, &params);
-   }
-   {
-      VUISpriteButton* widget = &sMenuState->vui.widgets.button_backspace;
-      const struct VUISpriteButton_InitParams params = {
-         .callbacks = {
-            .on_press = NULL,
-         },
-         .grid = {
-            .pos  = { 6, 1 },
-            .size = { 1, 1 },
-         },
+      const struct VUITileButton_TileIDs focused_tile_ids = {
+         .corner = COMMONTILE_BIGBUTTONSEL_CORNER,
+         .edge_h = COMMONTILE_BIGBUTTONSEL_EDGE_H,
+         .edge_v = COMMONTILE_BIGBUTTONSEL_EDGE_V,
+         .fill   = COMMONTILE_BIGBUTTON_FILL,
       };
-      VUISpriteButton_Construct(widget, &params);
+      {
+         auto widget = &sMenuState->vui.widgets.button_ok;
+         const struct VUITileButton_InitParams params = {
+            .grid = {
+               .pos  = { CTXGRID_BUTTON_OK_X, CTXGRID_BUTTON_OK_Y },
+               .size = { CTXGRID_BUTTON_OK_W, CTXGRID_BUTTON_OK_H },
+            },
+            .callbacks = {
+               .on_press = OnButtonOK,
+            },
+            .bg      = BGLAYER_CONTENT,
+            .palette = PALETTE_ID_CHROME,
+            .labels  = {
+               .text     = sButtonLabel_OK,
+               .button   = sButtonMapping_OK,
+               .colors   = { 8, 7, 3 },
+               .y_text   = 0,
+               .y_button = 8,
+            },
+            .tile_area = {
+               .pos  = { BIGBUTTON_TILE_X, BIGBUTTON_TILE_Y },
+               .size = { BIGBUTTON_TILE_W, BIGBUTTON_TILE_H },
+            },
+            .tile_ids = {
+               .normal  = normal_tile_ids,
+               .focused = focused_tile_ids,
+               .first_window_tile_id = V_TILE_ID(ok_button_tiles),
+            },
+         };
+         VUITileButton_Construct(widget, &params);
+      }
+      {
+         auto widget = &sMenuState->vui.widgets.button_backspace;
+         const struct VUITileButton_InitParams params = {
+            .grid = {
+               .pos  = { CTXGRID_BUTTON_BACK_X, CTXGRID_BUTTON_BACK_Y },
+               .size = { CTXGRID_BUTTON_BACK_W, CTXGRID_BUTTON_BACK_H },
+            },
+            .callbacks = {
+               .on_press = OnButtonBackspace,
+            },
+            .bg      = BGLAYER_CONTENT,
+            .palette = PALETTE_ID_CHROME,
+            .labels  = {
+               .text     = sButtonLabel_Backspace,
+               .button   = sButtonMapping_Backspace,
+               .colors   = { 8, 7, 3 },
+               .y_text   = 0,
+               .y_button = 8,
+            },
+            .tile_area = {
+               .pos  = { BIGBUTTON_TILE_X, BIGBUTTON_TILE_Y + BIGBUTTON_TILE_H + 1 },
+               .size = { BIGBUTTON_TILE_W, BIGBUTTON_TILE_H },
+            },
+            .tile_ids = {
+               .normal  = normal_tile_ids,
+               .focused = focused_tile_ids,
+               .first_window_tile_id = V_TILE_ID(backspace_button_tiles),
+            },
+         };
+         VUITileButton_Construct(widget, &params);
+      }
+   
    }
    SetUpCharsetLabels();
 }
@@ -736,6 +871,9 @@ static void OnButtonOK(void) {
    
    (callback)(local_value);
 }
+static void OnButtonBackspace(void) {
+   VUICustomKeyboard_Backspace(&sMenuState->vui.widgets.keyboard);
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -795,16 +933,11 @@ static void InitCB2(void) {
          PaintTitleBarTiles();
          PaintTitleText();
          {  // Charset button bar background
-            const u16 top = V_TILE_ID(common_tiles[0]);
-            const u16 mid = V_TILE_ID(common_tiles[4]);
-            const u16 bot = V_TILE_ID(common_tiles[8]);
-            
             const u8 y = DISPLAY_TILE_HEIGHT - 3;
             
-            FillBgTilemapBufferRect(BGLAYER_CONTENT, top, 0, y + 0, DISPLAY_TILE_WIDTH, 1, PALETTE_ID_CHROME);
-            FillBgTilemapBufferRect(BGLAYER_CONTENT, mid, 0, y + 1, DISPLAY_TILE_WIDTH, 1, PALETTE_ID_CHROME);
-            FillBgTilemapBufferRect(BGLAYER_CONTENT, bot, 0, y + 2, DISPLAY_TILE_WIDTH, 1, PALETTE_ID_CHROME);
-            
+            FillBgTilemapBufferRect(BGLAYER_CONTENT, COMMONTILE_CHARSETBAR_TOP, 0, y + 0, DISPLAY_TILE_WIDTH, 1, PALETTE_ID_CHROME);
+            FillBgTilemapBufferRect(BGLAYER_CONTENT, COMMONTILE_CHARSETBAR_MID, 0, y + 1, DISPLAY_TILE_WIDTH, 1, PALETTE_ID_CHROME);
+            FillBgTilemapBufferRect(BGLAYER_CONTENT, COMMONTILE_CHARSETBAR_BOT, 0, y + 2, DISPLAY_TILE_WIDTH, 1, PALETTE_ID_CHROME);
          }
          return;
    }
@@ -880,26 +1013,23 @@ static void AnimateBackdrop(void) {
 }
 
 static void PaintTitleBarTiles(void) {
-   const u16 fill_tile   = V_TILE_ID(common_tiles[2]);
-   const u16 edge_tile_a = V_TILE_ID(common_tiles[9]);
-   const u16 edge_tile_b = V_TILE_ID(common_tiles[11]);
    FillBgTilemapBufferRect(
       BGLAYER_CONTENT,
-      fill_tile,
+      COMMONTILE_TITLEBAR_BACK,
       0, 0,
       4, 4,
       PALETTE_ID_CHROME
    );
    FillBgTilemapBufferRect(
       BGLAYER_CONTENT,
-      fill_tile,
+      COMMONTILE_TITLEBAR_BACK,
       4, 0,
       1, 3,
       PALETTE_ID_CHROME
    );
    FillBgTilemapBufferRect(
       BGLAYER_CONTENT,
-      fill_tile,
+      COMMONTILE_TITLEBAR_BACK,
       5, 0,
       DISPLAY_TILE_WIDTH - 5, 2,
       PALETTE_ID_CHROME
@@ -907,23 +1037,23 @@ static void PaintTitleBarTiles(void) {
    
    FillBgTilemapBufferRect(
       BGLAYER_CONTENT,
-      edge_tile_a,
+      COMMONTILE_TITLEBAR_EDGE_BOTTOM_A,
       0, 4,
       4, 1,
       PALETTE_ID_CHROME
    );
    FillBgTilemapBufferRect(
       BGLAYER_CONTENT,
-      edge_tile_b,
+      COMMONTILE_TITLEBAR_EDGE_BOTTOM_B,
       5, 2,
       DISPLAY_TILE_WIDTH - 5, 1,
       PALETTE_ID_CHROME
    );
    
-   V_SET_TILE(BGLAYER_CONTENT, V_TILE_ID(common_tiles[10]), 4, 4, PALETTE_ID_CHROME);
-   V_SET_TILE(BGLAYER_CONTENT, V_TILE_ID(common_tiles[ 6]), 4, 3, PALETTE_ID_CHROME);
-   V_SET_TILE(BGLAYER_CONTENT, V_TILE_ID(common_tiles[ 7]), 5, 3, PALETTE_ID_CHROME);
-   V_SET_TILE(BGLAYER_CONTENT, V_TILE_ID(common_tiles[ 3]), 5, 2, PALETTE_ID_CHROME);
+   V_SET_TILE(BGLAYER_CONTENT, COMMONTILE_TITLEBAR_DIAGONAL_1, 4, 4, PALETTE_ID_CHROME);
+   V_SET_TILE(BGLAYER_CONTENT, COMMONTILE_TITLEBAR_DIAGONAL_2, 4, 3, PALETTE_ID_CHROME);
+   V_SET_TILE(BGLAYER_CONTENT, COMMONTILE_TITLEBAR_DIAGONAL_3, 5, 3, PALETTE_ID_CHROME);
+   V_SET_TILE(BGLAYER_CONTENT, COMMONTILE_TITLEBAR_DIAGONAL_4, 5, 2, PALETTE_ID_CHROME);
 }
 //
 static const u8 sDefaultTitle[] = _("Enter a name.");
@@ -1110,7 +1240,7 @@ static void SetUpCharsetLabels(void) {
          .on_press = NULL,
       },
       .grid = {
-         .pos  = { 0, 3 },
+         .pos  = { 0, CTXGRID_CHARSETBUTTON_Y },
          .size = { 1, 1 },
       },
    };
@@ -1133,7 +1263,7 @@ static void SetUpCharsetLabels(void) {
       auto widget = &sMenuState->vui.widgets.charset_buttons.upper;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_Upper);
       
-      widget_init_params.grid.pos.x = 0;
+      widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_UPPER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_Upper;
       VUISpriteButton_Construct(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, sprite_ids.upper);
@@ -1145,7 +1275,7 @@ static void SetUpCharsetLabels(void) {
       auto widget = &sMenuState->vui.widgets.charset_buttons.lower;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_Lower);
       
-      widget_init_params.grid.pos.x = 1;
+      widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_LOWER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_Lower;
       VUISpriteButton_Construct(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, sprite_ids.lower);
@@ -1157,7 +1287,7 @@ static void SetUpCharsetLabels(void) {
       auto widget = &sMenuState->vui.widgets.charset_buttons.symbol;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_Symbol);
       
-      widget_init_params.grid.pos.x = 2;
+      widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_SYMBOL_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_Symbol;
       VUISpriteButton_Construct(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, sprite_ids.symbol);
@@ -1169,7 +1299,7 @@ static void SetUpCharsetLabels(void) {
       auto widget = &sMenuState->vui.widgets.charset_buttons.accent_u;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_AccentUpper);
       
-      widget_init_params.grid.pos.x = 3;
+      widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_ACCENTUPPER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_AccentUpper;
       VUISpriteButton_Construct(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, sprite_ids.accent_u);
@@ -1181,7 +1311,7 @@ static void SetUpCharsetLabels(void) {
       auto widget = &sMenuState->vui.widgets.charset_buttons.accent_l;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_AccentLower);
       
-      widget_init_params.grid.pos.x = 4;
+      widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_ACCENTLOWER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_AccentLower;
       VUISpriteButton_Construct(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, sprite_ids.accent_l);

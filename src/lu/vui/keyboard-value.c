@@ -58,7 +58,7 @@ extern void VUIKeyboardValue_Construct(VUIKeyboardValue* this, const VUIKeyboard
    LoadSpriteSheets(sSpriteSheets);
    LoadSpritePalettes(sSpritePalettes);
    //
-   u8 x = (params->tile_x + 1) * TILE_WIDTH  + 2;
+   u8 x = (params->tile_x + 1) * TILE_WIDTH  + 3;
    u8 y = (params->tile_y + 1) * TILE_HEIGHT + 14;
    for(u8 i = 0; i < params->max_length; ++i) {
       u8 sprite_id = CreateSprite(&sSpriteTemplate_Underscore, x + (i * 8), y, 0);
