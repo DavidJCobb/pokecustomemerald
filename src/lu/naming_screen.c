@@ -29,6 +29,34 @@
 /*//
 
    TODO:
+      
+    - Implement the various cases for which the vanilla naming screen is used.
+    
+       - Nickname a Pokemon (freshly caught)
+       - Nickname a Pokemon (already owned)
+       - Change the name of the player-character
+       - Change the name of a PC Box
+       - Say a password to Walda
+       
+       = In general, we want to accept and store a union of...
+          - Pokemon data
+             - Species ID
+             - Personality
+             - Gender
+          - Overworld sprite ID (Walda or the player)
+          - Generic sprite params (PC box sprite)
+          
+          = Maybe we want to allow a gender symbol for non-Pokemon too, e.g. when 
+            the player is entering their name?
+       
+       = When a Pokemon is given, and no title is given, we should print the title 
+         as "<SPECIES>'s nickname?"
+   
+    - The button mappings shown on "OK" and "Backspace" render as black-on-red 
+      because `DrawKeypadIcon` blits directly from the keypad icon tile graphic 
+      onto the destination window, using the former's original palette. In order 
+      to make the colors of the keypad icons controllable, we'd have to write a 
+      blit function that remaps palette indices during the blit.
    
     - Investigate changing Game Freak's BG library, so that it maintains tilemap 
       buffers for all BG layers at all times.
@@ -199,33 +227,6 @@
                   match the parameters they use when setting up the BG layers? If 
                   so, then this oughta be simple. If not, we'll need to look into 
                   that.
-   
-    - Create either sprites or tile-basde graphics for the "OK" and "Backspace" 
-      buttons to the right of the keyboard. I'm thinking we should do tile-based 
-      graphics, with the label on the upper half of the button, and a TextPrinter 
-      used to print the mapped button (Start or B) below that label.
-      
-    - Implement the various cases for which the vanilla naming screen is used.
-    
-       - Nickname a Pokemon (freshly caught)
-       - Nickname a Pokemon (already owned)
-       - Change the name of the player-character
-       - Change the name of a PC Box
-       - Say a password to Walda
-       
-       = In general, we want to accept and store a union of...
-          - Pokemon data
-             - Species ID
-             - Personality
-             - Gender
-          - Overworld sprite ID (Walda or the player)
-          - Generic sprite params (PC box sprite)
-          
-          = Maybe we want to allow a gender symbol for non-Pokemon too, e.g. when 
-            the player is entering their name?
-       
-       = When a Pokemon is given, and no title is given, we should print the title 
-         as "<SPECIES>'s nickname?"
 
 //*/
 
@@ -314,11 +315,14 @@ static const u8  sBGTiles[]         = INCBIN_U8("graphics/lu/naming_screen/bg.4b
 static const u16 sBGPalette[]       = INCBIN_U16("graphics/lu/naming_screen/bg.gbapal");
 static const u8  sBackdropTiles[]   = INCBIN_U8("graphics/lu/naming_screen/backdrop.4bpp");
 static const u16 sBackdropPalette[] = INCBIN_U16("graphics/lu/naming_screen/backdrop.gbapal");
+static const u8  sButtonTiles[]     = INCBIN_U8("graphics/lu/naming_screen/tile-button.4bpp");
+static const u16 sButtonPalette[]   = INCBIN_U16("graphics/lu/naming_screen/tile-button.gbapal");
 enum {
    BGLAYER_BACKDROP = 0,
    BGLAYER_CONTENT  = 1,
    
    PALETTE_ID_CHROME   =  0,
+   PALETTE_ID_BUTTON   =  1,
    PALETTE_ID_BACKDROP = 14,
    PALETTE_ID_TEXT     = 15,
    
@@ -326,10 +330,10 @@ enum {
    SPRITE_PAL_TAG_CHARSET_LABEL = 0x9000,
    
    BIGBUTTON_TILE_X = 23,
-   BIGBUTTON_TILE_Y =  6,
+   BIGBUTTON_TILE_Y =  7,
    BIGBUTTON_TILE_W =  5,
-   BIGBUTTON_TILE_H =  5,
-   BIGBUTTON_WIN_TILE_COUNT = (BIGBUTTON_TILE_W - 2) * (BIGBUTTON_TILE_H - 2),
+   BIGBUTTON_TILE_H =  4,
+   BIGBUTTON_WIN_TILE_COUNT = BIGBUTTON_TILE_W * BIGBUTTON_TILE_H,
    
    TITLE_WINDOW_TILE_X      = 6,
    TITLE_WINDOW_TILE_WIDTH  = DISPLAY_TILE_WIDTH - TITLE_WINDOW_TILE_X - 1,
@@ -340,7 +344,8 @@ vram_bg_layout {
    vram_bg_tilemap tilemaps[4];
    
    vram_bg_tile blank_tile;
-   vram_bg_tile common_tiles[sizeof(sBGTiles) / TILE_SIZE_4BPP];
+   vram_bg_tile common_tiles[sizeof(sBGTiles)     / TILE_SIZE_4BPP];
+   vram_bg_tile button_tiles[sizeof(sButtonTiles) / TILE_SIZE_4BPP];
    vram_bg_tile keyboard_borders[8];
    vram_bg_tile keyboard_body[VUIKEYBOARD_WINDOW_TILE_COUNT];
    vram_bg_tile user_window_frame[9];
@@ -644,20 +649,14 @@ static void InitState(const struct LuNamingScreenParams* params) {
       VUICustomKeyboard_Construct(widget, &params);
    }
    {
-      const struct VUITileButton_TileIDs normal_tile_ids = {
-         .corner = COMMONTILE_BIGBUTTON_CORNER,
-         .edge_h = COMMONTILE_BIGBUTTON_EDGE_H,
-         .edge_v = COMMONTILE_BIGBUTTON_EDGE_V,
-         .fill   = COMMONTILE_BIGBUTTON_FILL,
+      const struct VUITileButton_GraphicsParams gfx = {
+         .bg      = BGLAYER_CONTENT,
+         .palette = PALETTE_ID_BUTTON,
+         .size    = { BIGBUTTON_TILE_W, BIGBUTTON_TILE_H },
+         .data    = sButtonTiles,
       };
-      const struct VUITileButton_TileIDs focused_tile_ids = {
-         .corner = COMMONTILE_BIGBUTTONSEL_CORNER,
-         .edge_h = COMMONTILE_BIGBUTTONSEL_EDGE_H,
-         .edge_v = COMMONTILE_BIGBUTTONSEL_EDGE_V,
-         .fill   = COMMONTILE_BIGBUTTON_FILL,
-      };
+      //
       {
-         auto widget = &sMenuState->vui.widgets.button_ok;
          const struct VUITileButton_InitParams params = {
             .grid = {
                .pos  = { CTXGRID_BUTTON_OK_X, CTXGRID_BUTTON_OK_Y },
@@ -666,29 +665,21 @@ static void InitState(const struct LuNamingScreenParams* params) {
             .callbacks = {
                .on_press = OnButtonOK,
             },
-            .bg      = BGLAYER_CONTENT,
-            .palette = PALETTE_ID_CHROME,
             .labels  = {
                .text     = sButtonLabel_OK,
                .button   = sButtonMapping_OK,
-               .colors   = { 8, 7, 3 },
-               .y_text   = 0,
-               .y_button = 8,
+               .colors   = { 4, 6, 7 },
+               .y_text   = 4,
+               .y_button = 14,
             },
-            .tile_area = {
-               .pos  = { BIGBUTTON_TILE_X, BIGBUTTON_TILE_Y },
-               .size = { BIGBUTTON_TILE_W, BIGBUTTON_TILE_H },
-            },
-            .tile_ids = {
-               .normal  = normal_tile_ids,
-               .focused = focused_tile_ids,
-               .first_window_tile_id = V_TILE_ID(ok_button_tiles),
-            },
+            .screen_pos = { BIGBUTTON_TILE_X, BIGBUTTON_TILE_Y },
+            .tiles      = gfx,
+            .first_window_tile_id = V_TILE_ID(ok_button_tiles),
          };
+         auto widget = &sMenuState->vui.widgets.button_ok;
          VUITileButton_Construct(widget, &params);
       }
       {
-         auto widget = &sMenuState->vui.widgets.button_backspace;
          const struct VUITileButton_InitParams params = {
             .grid = {
                .pos  = { CTXGRID_BUTTON_BACK_X, CTXGRID_BUTTON_BACK_Y },
@@ -697,28 +688,20 @@ static void InitState(const struct LuNamingScreenParams* params) {
             .callbacks = {
                .on_press = OnButtonBackspace,
             },
-            .bg      = BGLAYER_CONTENT,
-            .palette = PALETTE_ID_CHROME,
             .labels  = {
                .text     = sButtonLabel_Backspace,
                .button   = sButtonMapping_Backspace,
-               .colors   = { 8, 7, 3 },
-               .y_text   = 0,
-               .y_button = 8,
+               .colors   = { 4, 6, 7 },
+               .y_text   = 4,
+               .y_button = 14,
             },
-            .tile_area = {
-               .pos  = { BIGBUTTON_TILE_X, BIGBUTTON_TILE_Y + BIGBUTTON_TILE_H + 1 },
-               .size = { BIGBUTTON_TILE_W, BIGBUTTON_TILE_H },
-            },
-            .tile_ids = {
-               .normal  = normal_tile_ids,
-               .focused = focused_tile_ids,
-               .first_window_tile_id = V_TILE_ID(backspace_button_tiles),
-            },
+            .screen_pos = { BIGBUTTON_TILE_X, BIGBUTTON_TILE_Y + BIGBUTTON_TILE_H + 1 },
+            .tiles      = gfx,
+            .first_window_tile_id = V_TILE_ID(backspace_button_tiles),
          };
+         auto widget = &sMenuState->vui.widgets.button_backspace;
          VUITileButton_Construct(widget, &params);
       }
-   
    }
    SetUpCharsetLabels();
 }
@@ -899,6 +882,7 @@ static void InitCB2(void) {
          V_LOAD_TILES(BGLAYER_BACKDROP, backdrop,     sBackdropTiles);
          V_LOAD_TILES(BGLAYER_CONTENT,  blank_tile,   sBlankBGTile);
          V_LOAD_TILES(BGLAYER_CONTENT,  common_tiles, sBGTiles);
+         V_LOAD_TILES(BGLAYER_CONTENT,  button_tiles, sButtonTiles);
          
          gMain.state++;
          break;
@@ -915,9 +899,9 @@ static void InitCB2(void) {
          gMain.state++;
          break;
        case 5:
-         //LoadPalette(sOptionsListingPalette, BG_PLTT_ID(BACKGROUND_PALETTE_ID_TEXT), sizeof(sOptionsListingPalette));
          LoadPalette(sBackdropPalette,        BG_PLTT_ID(PALETTE_ID_BACKDROP), sizeof(sBackdropPalette));
          LoadPalette(sBGPalette,              BG_PLTT_ID(PALETTE_ID_CHROME),   sizeof(sBGPalette));
+         LoadPalette(sButtonPalette,          BG_PLTT_ID(PALETTE_ID_BUTTON),   sizeof(sButtonPalette));
          LoadPalette(GetTextWindowPalette(2), BG_PLTT_ID(PALETTE_ID_TEXT),     PLTT_SIZE_4BPP);
          gMain.state++;
          break;
@@ -939,6 +923,8 @@ static void InitCB2(void) {
             FillBgTilemapBufferRect(BGLAYER_CONTENT, COMMONTILE_CHARSETBAR_MID, 0, y + 1, DISPLAY_TILE_WIDTH, 1, PALETTE_ID_CHROME);
             FillBgTilemapBufferRect(BGLAYER_CONTENT, COMMONTILE_CHARSETBAR_BOT, 0, y + 2, DISPLAY_TILE_WIDTH, 1, PALETTE_ID_CHROME);
          }
+         VUITileButton_Repaint(&sMenuState->vui.widgets.button_ok,        FALSE);
+         VUITileButton_Repaint(&sMenuState->vui.widgets.button_backspace, FALSE);
          return;
    }
 }

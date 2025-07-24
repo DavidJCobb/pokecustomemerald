@@ -6,11 +6,11 @@
 struct VUITileButton_Callbacks {
    void(*on_press)(void);
 };
-struct VUITileButton_TileIDs {
-   u16 corner; // char-based tile ID
-   u16 edge_h; // char-based tile ID
-   u16 edge_v; // char-based tile ID
-   u16 fill;   // char-based tile ID
+struct VUITileButton_GraphicsParams {
+   u8          bg      : 2;
+   u8          palette : 4;
+   VUISize     size;
+   const u8*   data; // eight 4bpp tiles
 };
 struct VUITileButton_LabelParams {
    const u8* text;
@@ -24,34 +24,23 @@ struct VUITileButton_LabelParams {
 typedef struct VUITileButton_InitParams {
    VUIGridArea grid;
    
-   struct VUITileButton_Callbacks callbacks;
-   
-   u8 bg      : 2;
-   u8 palette : 4;
-   struct VUITileButton_LabelParams labels;
-   VUIGridArea tile_area;
-   struct {
-      struct VUITileButton_TileIDs normal;
-      struct VUITileButton_TileIDs focused;
-      u16 first_window_tile_id : 9; // char-based tile ID
-   } tile_ids;
+   struct VUITileButton_Callbacks      callbacks;
+   struct VUITileButton_LabelParams    labels;
+   struct VUITileButton_GraphicsParams tiles;
+   VUIPos screen_pos;
+   u16    first_window_tile_id : 10; // char-based tile ID
 } VUITileButton_InitParams;
 
 typedef struct VUITileButton {
    VUI_WIDGET_SUBCLASS_HEADER(VUIWidget);
-   struct VUITileButton_Callbacks callbacks;
-   
-   u8 bg;
-   u8 palette;
-   struct VUITileButton_LabelParams labels;
-   VUIGridArea tile_area;
-   struct {
-      struct VUITileButton_TileIDs normal;
-      struct VUITileButton_TileIDs focused;
-   } tile_ids;
-   u8 window_id;
+   struct VUITileButton_Callbacks      callbacks;
+   struct VUITileButton_LabelParams    labels;
+   struct VUITileButton_GraphicsParams tiles;
+   VUIPos screen_pos; // measured in tiles
+   u8     window_id;
 } VUITileButton;
 
 extern void VUITileButton_Construct(VUITileButton*, const VUITileButton_InitParams*);
+extern void VUITileButton_Repaint(VUITileButton*, bool8 is_focused);
 
 #endif
