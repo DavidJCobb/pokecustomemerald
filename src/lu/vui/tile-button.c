@@ -158,6 +158,17 @@ extern void VUITileButton_Repaint(VUITileButton* this, bool8 is_focused) {
       }
    }
    
+   if (w > 2 && h > 2) {
+      FillWindowPixelRect(
+         this->window_id,
+         PIXEL_FILL(this->labels.colors.back),
+         TILE_WIDTH,
+         TILE_HEIGHT,
+         (w - 2) * TILE_WIDTH,
+         (h - 2) * TILE_HEIGHT
+      );
+   }
+   
    u8 avail = w * TILE_WIDTH;
    if (this->labels.text != NULL) {
       u16 width = GetStringWidth(FONT_NORMAL, this->labels.text, 0);

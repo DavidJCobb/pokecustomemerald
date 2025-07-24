@@ -51,6 +51,27 @@
        
        = When a Pokemon is given, and no title is given, we should print the title 
          as "<SPECIES>'s nickname?"
+      
+    - DESIGN FLAW: VUI only tracks a single cursor position, aligned on a single 
+      grid. Try moving the cursor to the bottommost keyboard row, and then moving 
+      rightward to the backspace button... and then further rightward, wrapping 
+      around back to the keyboard. You'll find yourself in the row just above the 
+      bottommost keyboard row. This is because mapping from the keyboard's subgrid 
+      to the UI's full grid is a lossy operation; the cursor jumping up one row is 
+      in essence a rounding error.
+      
+      I'm not really sure how to handle this. We could track cursor positions as 
+      pixel-coordinate values, and just map them to the abstract grid (when looking 
+      for widgets to directionally navigate to) and to the subgrid as desired; that 
+      way, we always have a "maximum precision" position to work with. In essence, 
+      we'd store positions as if the context grid size was 240x160px, and we'd map 
+      to subgrid sizes or (for context-level wraparound) the context grid size on 
+      demand.
+      
+      In essence: if we navigate, say, to the right, we do so by converting a 
+      pixel-space position to an abstract-grid-space position. When we find the 
+      target widget, we then map the pixel-space cross-axis coordinate to a 
+      subgrid-space cross-axis coordinate.
    
     - The button mappings shown on "OK" and "Backspace" render as black-on-red 
       because `DrawKeypadIcon` blits directly from the keypad icon tile graphic 
@@ -385,22 +406,21 @@ enum {
 // The abstract-grid layout for our VUI context.
 enum {
    /*
-   
-      +--------------+----+
-      |              | OK |
-      |   KEYBOARD   +----+
-      |              | BK |
-      +--------------+----+
-      | Charsets...  |
-      +--------------+
+      +-------+-------------------------+--------+
+      |                                 |   OK   |
+      |                Keyboard         +--------+
+      |                                 |  Del.  |
+      +-------+-------+--------+--------+--------+
+      | Upper | Lower | Symbol | ACCENT | accent |
+      +-------+-------+--------+--------+--------+
    
    */
    CTXGRID_KEYBOARD_X = 0,
    CTXGRID_KEYBOARD_Y = 0,
-   CTXGRID_KEYBOARD_W = 5,
+   CTXGRID_KEYBOARD_W = 4,
    CTXGRID_KEYBOARD_H = 3,
    
-   CTXGRID_BUTTON_OK_X = CTXGRID_KEYBOARD_X + CTXGRID_KEYBOARD_W,
+   CTXGRID_BUTTON_OK_X = 4,
    CTXGRID_BUTTON_OK_Y = CTXGRID_KEYBOARD_Y,
    CTXGRID_BUTTON_OK_W = 1,
    CTXGRID_BUTTON_OK_H = CTXGRID_KEYBOARD_H / 2,
@@ -413,8 +433,8 @@ enum {
    CTXGRID_CHARSETBUTTON_UPPER_X       = 0,
    CTXGRID_CHARSETBUTTON_LOWER_X       = 1,
    CTXGRID_CHARSETBUTTON_SYMBOL_X      = 2,
-   CTXGRID_CHARSETBUTTON_ACCENTLOWER_X = 3,
-   CTXGRID_CHARSETBUTTON_ACCENTUPPER_X = 4,
+   CTXGRID_CHARSETBUTTON_ACCENTUPPER_X = 3,
+   CTXGRID_CHARSETBUTTON_ACCENTLOWER_X = 4,
    CTXGRID_CHARSETBUTTON_Y = CTXGRID_KEYBOARD_Y + CTXGRID_KEYBOARD_H,
    
    CTXGRID_W = CTXGRID_BUTTON_OK_X + CTXGRID_BUTTON_OK_W,
