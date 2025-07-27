@@ -15,11 +15,13 @@
 #include "palette.h"
 #include "sound.h" // PlaySE
 #include "string_util.h"
+#include "strings.h" // gText_FemaleSymbol, gText_MaleSymbol
 #include "task.h"
 #include "text.h"
 #include "text_window.h" // GetTextWindowPalette
 #include "window.h"
 #include "constants/characters.h"
+#include "constants/pokemon.h" // MON_MALE, MON_FEMALE, MON_GENDERLESS
 #include "constants/rgb.h"
 #include "constants/songs.h" // SE_SELECT and other sound effect constants
 #include "lu/c.h"
@@ -51,27 +53,6 @@
        
        = When a Pokemon is given, and no title is given, we should print the title 
          as "<SPECIES>'s nickname?"
-      
-    - DESIGN FLAW: VUI only tracks a single cursor position, aligned on a single 
-      grid. Try moving the cursor to the bottommost keyboard row, and then moving 
-      rightward to the backspace button... and then further rightward, wrapping 
-      around back to the keyboard. You'll find yourself in the row just above the 
-      bottommost keyboard row. This is because mapping from the keyboard's subgrid 
-      to the UI's full grid is a lossy operation; the cursor jumping up one row is 
-      in essence a rounding error.
-      
-      I'm not really sure how to handle this. We could track cursor positions as 
-      pixel-coordinate values, and just map them to the abstract grid (when looking 
-      for widgets to directionally navigate to) and to the subgrid as desired; that 
-      way, we always have a "maximum precision" position to work with. In essence, 
-      we'd store positions as if the context grid size was 240x160px, and we'd map 
-      to subgrid sizes or (for context-level wraparound) the context grid size on 
-      demand.
-      
-      In essence: if we navigate, say, to the right, we do so by converting a 
-      pixel-space position to an abstract-grid-space position. When we find the 
-      target widget, we then map the pixel-space cross-axis coordinate to a 
-      subgrid-space cross-axis coordinate.
    
     - The button mappings shown on "OK" and "Backspace" render as black-on-red 
       because `DrawKeypadIcon` blits directly from the keypad icon tile graphic 
@@ -349,6 +330,7 @@ enum {
    
    SPRITE_GFX_TAG_CHARSET_LABEL = 0x9000,
    SPRITE_PAL_TAG_CHARSET_LABEL = 0x9000,
+   SPRITE_PAL_TAG_CUSTOM_ICON   = 0x9001, // preset icons only
    
    BIGBUTTON_TILE_X = 23,
    BIGBUTTON_TILE_Y =  7,
@@ -360,6 +342,21 @@ enum {
    TITLE_WINDOW_TILE_WIDTH  = DISPLAY_TILE_WIDTH - TITLE_WINDOW_TILE_X - 1,
    TITLE_WINDOW_TILE_HEIGHT = 2,
    TITLE_WINDOW_TILE_COUNT  = TITLE_WINDOW_TILE_WIDTH * TITLE_WINDOW_TILE_HEIGHT,
+   
+   ICON_BASE_CX = 20, // centerpoint
+   ICON_BASE_CY = 16,
+   ICON_OFFSET_PKMN_X =  0,
+   ICON_OFFSET_PKMN_Y = 12,
+   ICON_OFFSET_OW_X   =  0,
+   ICON_OFFSET_OW_Y   = -5,
+   
+   GENDER_WINDOW_TEXT_X = 32,
+   GENDER_WINDOW_TEXT_Y =  4,
+   GENDER_WINDOW_TILE_X = (GENDER_WINDOW_TEXT_X / TILE_WIDTH),
+   GENDER_WINDOW_TILE_Y = (GENDER_WINDOW_TEXT_Y / TILE_HEIGHT),
+   GENDER_WINDOW_TILE_W = 1,
+   GENDER_WINDOW_TILE_H = 2,
+   GENDER_WINDOW_TILE_COUNT = GENDER_WINDOW_TILE_W * GENDER_WINDOW_TILE_H,
 };
 vram_bg_layout {
    vram_bg_tilemap tilemaps[4];
@@ -372,7 +369,10 @@ vram_bg_layout {
    vram_bg_tile user_window_frame[9];
    vram_bg_tile keyboard_value[VUIKEYBOARDVALUE_WINDOW_TILE_COUNT];
    vram_bg_tile backdrop[4*4];
-   vram_bg_tile title_text_window[TITLE_WINDOW_TILE_COUNT];
+   struct {
+      vram_bg_tile gender[GENDER_WINDOW_TILE_COUNT];
+      vram_bg_tile title[TITLE_WINDOW_TILE_COUNT];
+   } windows;
    vram_bg_tile ok_button_tiles[BIGBUTTON_WIN_TILE_COUNT];
    vram_bg_tile backspace_button_tiles[BIGBUTTON_WIN_TILE_COUNT];
 };
@@ -466,8 +466,10 @@ struct MenuState {
    u8 task_id;
    void(*callback)(const u8*);
    u8 buffer[VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE + 1];
+   
+   u8 gender;
+   struct LuNamingScreenIcon icon;
    const u8* title; // optional
-   u8 title_window_id;
    struct {
       VUIContext context;
       struct {
@@ -488,15 +490,25 @@ struct MenuState {
       } widgets;
       VUIWidget* widget_list[9];
    } vui;
-   u8 charset_label_separator_sprite_ids[4];
-   u8 charset_label_button_l_sprite_id;
-   u8 charset_label_button_r_sprite_id;
+   
+   union {
+      u8 all[6];
+      struct {
+         u8 charset_label_separators[4];
+         u8 charset_labels_button_l;
+         u8 charset_labels_button_r;
+      };
+   } sprite_ids;
+   union {
+      u8 all[2];
+      struct {
+         u8 gender;
+         u8 title;
+      };
+   } window_ids;
    
    u8 tilemap_buffers[4][BG_SCREEN_SIZE];
    u8 timer;
-   
-   u8 ok_button_window_id;
-   u8 backspace_button_window_id;
 };
 static EWRAM_DATA struct MenuState* sMenuState = NULL;
 
@@ -519,11 +531,15 @@ static void InitCB2(void);
 static void MainCB2(void);
 static void VBlankCB(void);
 
+static void SetUpGenderIcon(void);
+
 static void SetUpBackdrop(void);
 static void AnimateBackdrop(void);
 static void PaintTitleBarTiles(void);
 static void PaintTitleText(void);
 static void SetUpCharsetLabels(void);
+
+static void SetUpIcon(void);
 
 // -----------------------------------------------------------------------
 
@@ -552,11 +568,16 @@ static void InitState(const struct LuNamingScreenParams* params) {
    AGB_ASSERT(!sMenuState);
    sMenuState = AllocZeroed(sizeof(struct MenuState));
    
-   sMenuState->title = params->title;
-   sMenuState->title_window_id = WINDOW_NONE;
+   for(u8 i = 0; i < ARRAY_COUNT(sMenuState->sprite_ids.all); ++i)
+      sMenuState->sprite_ids.all[i] = SPRITE_NONE;
+   for(u8 i = 0; i < ARRAY_COUNT(sMenuState->window_ids.all); ++i)
+      sMenuState->window_ids.all[i] = WINDOW_NONE;
    
-   sMenuState->ok_button_window_id = WINDOW_NONE;
-   sMenuState->backspace_button_window_id = WINDOW_NONE;
+   sMenuState->gender = MON_GENDERLESS;
+   if (params->has_gender)
+      sMenuState->gender = params->gender;
+   sMenuState->icon  = params->icon;
+   sMenuState->title = params->title;
    
    // Why the actual heck do we even need to do this? The BG library should 
    // maintain its own buffers! Every single function meant to interact 
@@ -808,28 +829,22 @@ static void Teardown(void) {
             VUIWidget_Destroy(widget);
       }
       
-      DebugPrintf("[LuNamingScreen][Teardown] Destroying separator sprites...");
-      for(u8 i = 0; i < ARRAY_COUNT(sMenuState->charset_label_separator_sprite_ids); ++i) {
-         u8 id = sMenuState->charset_label_separator_sprite_ids[i];
+      DebugPrintf("[LuNamingScreen][Teardown] Destroying owned sprites...");
+      for(u8 i = 0; i < ARRAY_COUNT(sMenuState->sprite_ids.all); ++i) {
+         u8 id = sMenuState->sprite_ids.all[i];
          if (id != SPRITE_NONE) {
             DestroySprite(&gSprites[id]);
-            sMenuState->charset_label_separator_sprite_ids[i] = SPRITE_NONE;
+            sMenuState->sprite_ids.all[i] = SPRITE_NONE;
          }
       }
-      DebugPrintf("[LuNamingScreen][Teardown] Destroying L-button and R-button sprites...");
-      if (sMenuState->charset_label_button_l_sprite_id != SPRITE_NONE) {
-         DestroySprite(&gSprites[sMenuState->charset_label_button_l_sprite_id]);
-         sMenuState->charset_label_button_l_sprite_id = SPRITE_NONE;
-      }
-      if (sMenuState->charset_label_button_r_sprite_id != SPRITE_NONE) {
-         DestroySprite(&gSprites[sMenuState->charset_label_button_r_sprite_id]);
-         sMenuState->charset_label_button_r_sprite_id = SPRITE_NONE;
-      }
       
-      DebugPrintf("[LuNamingScreen][Teardown] Destroying title text window...");
-      if (sMenuState->title_window_id != WINDOW_NONE) {
-         RemoveWindow(sMenuState->title_window_id);
-         sMenuState->title_window_id = WINDOW_NONE;
+      DebugPrintf("[LuNamingScreen][Teardown] Destroying owned windows...");
+      for(u8 i = 0; i < ARRAY_COUNT(sMenuState->window_ids.all); ++i) {
+         u8 id = sMenuState->window_ids.all[i];
+         if (id != WINDOW_NONE) {
+            RemoveWindow(id);
+            sMenuState->window_ids.all[i] = WINDOW_NONE;
+         }
       }
       
       DebugPrintf("[LuNamingScreen][Teardown] Freeing menu state...");
@@ -936,6 +951,8 @@ static void InitCB2(void) {
          SetUpBackdrop();
          PaintTitleBarTiles();
          PaintTitleText();
+         SetUpGenderIcon();
+         SetUpIcon();
          {  // Charset button bar background
             const u8 y = DISPLAY_TILE_HEIGHT - 3;
             
@@ -961,6 +978,59 @@ static void VBlankCB(void) {
 }
 
 // -----------------------------------------------------------------------
+
+static const u8 sGenderColors[2][3] = {
+   { TEXT_COLOR_TRANSPARENT, TEXT_COLOR_LIGHT_BLUE, TEXT_COLOR_BLUE },
+   { TEXT_COLOR_TRANSPARENT, TEXT_COLOR_LIGHT_RED,  TEXT_COLOR_RED  }
+};
+static void SetUpGenderIcon() {
+   if (sMenuState->gender == MON_GENDERLESS)
+      return;
+   if (sMenuState->icon.type != LU_NAMINGSCREEN_ICONTYPE_POKEMON)
+      //
+      // The gender value may be present for OWs; the main use case there is 
+      // when starting a new game. When the player picks a gender, we pop a 
+      // naming screen, and we need it to show the gender the player just 
+      // chose, not whatever gender is leftover in SaveBlock2.
+      //
+      return;
+   
+   u8 window_id = sMenuState->window_ids.gender;
+   if (window_id == WINDOW_NONE) {
+      const struct WindowTemplate tmpl = {
+         .bg          = BGLAYER_CONTENT,
+         .tilemapLeft = GENDER_WINDOW_TILE_X,
+         .tilemapTop  = GENDER_WINDOW_TILE_Y,
+         .width       = GENDER_WINDOW_TILE_W,
+         .height      = GENDER_WINDOW_TILE_H,
+         .paletteNum  = PALETTE_ID_TEXT,
+         .baseBlock   = V_TILE_ID(windows.title)
+      };
+      
+      window_id = sMenuState->window_ids.gender = AddWindow(&tmpl);
+      if (window_id == WINDOW_NONE)
+         return;
+      PutWindowTilemap(window_id);
+   }
+   
+   const u8* text = gText_MaleSymbol;
+   u8 color_idx = 0;
+   if (sMenuState->gender == MON_FEMALE) {
+      color_idx = 1;
+      text      = gText_FemaleSymbol;
+   }
+   
+   AddTextPrinterParameterized3(
+      window_id,
+      FONT_BOLD,
+      GENDER_WINDOW_TEXT_X % TILE_WIDTH,
+      GENDER_WINDOW_TEXT_Y % TILE_HEIGHT,
+      sGenderColors[color_idx],
+      TEXT_SKIP_DRAW,
+      text
+   );
+   CopyWindowToVram(window_id, COPYWIN_FULL);
+}
 
 static void SetUpBackdrop(void) {
    enum {
@@ -1065,19 +1135,19 @@ static void PaintTitleBarTiles(void) {
 static const u8 sDefaultTitle[] = _("Enter a name.");
 //
 static void PaintTitleText(void) {
-   u8 window_id = sMenuState->title_window_id;
+   u8 window_id = sMenuState->window_ids.title;
    if (window_id == WINDOW_NONE) {
       const struct WindowTemplate tmpl = {
          .bg          = BGLAYER_CONTENT,
-         .tilemapLeft = 6,
+         .tilemapLeft = TITLE_WINDOW_TILE_X,
          .tilemapTop  = 0,
          .width       = TITLE_WINDOW_TILE_WIDTH,
          .height      = TITLE_WINDOW_TILE_HEIGHT,
          .paletteNum  = PALETTE_ID_TEXT,
-         .baseBlock   = V_TILE_ID(title_text_window)
+         .baseBlock   = V_TILE_ID(windows.title)
       };
       
-      window_id = sMenuState->title_window_id = AddWindow(&tmpl);
+      window_id = sMenuState->window_ids.title = AddWindow(&tmpl);
       if (window_id == WINDOW_NONE)
          return;
       PutWindowTilemap(window_id);
@@ -1251,100 +1321,255 @@ static void SetUpCharsetLabels(void) {
       },
    };
    
-   union {
-      u8 list[5];
-      struct {
-         u8 upper;
-         u8 lower;
-         u8 symbol;
-         u8 accent_u;
-         u8 accent_l;
-      };
-   } sprite_ids;
    auto widgets = &sMenuState->vui.widgets;
    
-   sprite_ids.upper = CreateSprite(&sSpriteTemplate_CharsetLabel, 14, 140, 0);
-   {
-      auto sprite = &gSprites[sprite_ids.upper];
+   {  // Charset button: Upper
+      auto id     = CreateSprite(&sSpriteTemplate_CharsetLabel, 14, 140, 0);
+      auto sprite = &gSprites[id];
       auto widget = &sMenuState->vui.widgets.charset_buttons.upper;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_Upper);
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_UPPER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_Upper;
       VUISpriteButton_Construct(widget, &widget_init_params);
-      VUISpriteButton_TakeSprite(widget, sprite_ids.upper);
+      VUISpriteButton_TakeSprite(widget, id);
    }
-   
-   sprite_ids.lower = CreateSprite(&sSpriteTemplate_CharsetLabel, 54, 140, 0);
-   {
-      auto sprite = &gSprites[sprite_ids.lower];
+   {  // Charset button: Lower
+      auto id     = CreateSprite(&sSpriteTemplate_CharsetLabel, 54, 140, 0);
+      auto sprite = &gSprites[id];
       auto widget = &sMenuState->vui.widgets.charset_buttons.lower;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_Lower);
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_LOWER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_Lower;
       VUISpriteButton_Construct(widget, &widget_init_params);
-      VUISpriteButton_TakeSprite(widget, sprite_ids.lower);
+      VUISpriteButton_TakeSprite(widget, id);
    }
-   
-   sprite_ids.symbol = CreateSprite(&sSpriteTemplate_CharsetLabel, 93, 140, 0);
-   {
-      auto sprite = &gSprites[sprite_ids.symbol];
+   {  // Charset button: Symbol
+      auto id     = CreateSprite(&sSpriteTemplate_CharsetLabel, 93, 140, 0);
+      auto sprite = &gSprites[id];
       auto widget = &sMenuState->vui.widgets.charset_buttons.symbol;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_Symbol);
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_SYMBOL_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_Symbol;
       VUISpriteButton_Construct(widget, &widget_init_params);
-      VUISpriteButton_TakeSprite(widget, sprite_ids.symbol);
+      VUISpriteButton_TakeSprite(widget, id);
    }
-   
-   sprite_ids.accent_u = CreateSprite(&sSpriteTemplate_CharsetLabel, 140, 140, 0);
-   {
-      auto sprite = &gSprites[sprite_ids.accent_u];
+   {  // Charset button: Accented Upper
+      auto id     = CreateSprite(&sSpriteTemplate_CharsetLabel, 140, 140, 0);
+      auto sprite = &gSprites[id];
       auto widget = &sMenuState->vui.widgets.charset_buttons.accent_u;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_AccentUpper);
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_ACCENTUPPER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_AccentUpper;
       VUISpriteButton_Construct(widget, &widget_init_params);
-      VUISpriteButton_TakeSprite(widget, sprite_ids.accent_u);
+      VUISpriteButton_TakeSprite(widget, id);
    }
-   
-   sprite_ids.accent_l = CreateSprite(&sSpriteTemplate_CharsetLabel, 185, 140, 0);
-   {
-      auto sprite = &gSprites[sprite_ids.accent_l];
+   {  // Charset button: Accented Lower
+      auto id     = CreateSprite(&sSpriteTemplate_CharsetLabel, 185, 140, 0);
+      auto sprite = &gSprites[id];
       auto widget = &sMenuState->vui.widgets.charset_buttons.accent_l;
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_AccentLower);
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_ACCENTLOWER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_AccentLower;
       VUISpriteButton_Construct(widget, &widget_init_params);
-      VUISpriteButton_TakeSprite(widget, sprite_ids.accent_l);
+      VUISpriteButton_TakeSprite(widget, id);
    }
    
-   {
+   {  // Separators
       u8 x_positions[4] = { 51, 90, 136, 182 };
       for(u8 i = 0; i < 4; ++i) {
          u8   id     = CreateSprite(&sSpriteTemplate_CharsetLabel, x_positions[i], 146, 0);
          auto sprite = &gSprites[id];
          SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_Separator);
-         sMenuState->charset_label_separator_sprite_ids[i] = id;
+         sMenuState->sprite_ids.charset_label_separators[i] = id;
       }
    }
-   {
+   {  // L-button icon
       u8   id     = CreateSprite(&sSpriteTemplate_CharsetLabel, 5, 144, 0);
       auto sprite = &gSprites[id];
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_ButtonL);
-      sMenuState->charset_label_button_l_sprite_id = id;
+      sMenuState->sprite_ids.charset_labels_button_l = id;
    }
-   {
+   {  // R-button icon
       u8   id     = CreateSprite(&sSpriteTemplate_CharsetLabel, 227, 144, 0);
       auto sprite = &gSprites[id];
       SetSubspriteTables(sprite, sSubspriteTable_CharsetLabel_ButtonR);
-      sMenuState->charset_label_button_r_sprite_id = id;
+      sMenuState->sprite_ids.charset_labels_button_r = id;
    }
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static const struct SpritePalette  sSpritePalette_PCIcon;
+static const struct SpriteTemplate sSpriteTemplate_PCIcon;
+static const struct SubspriteTable sSubspriteTable_PCIcon[];
+
+#include "constants/event_object_movement.h" // ANIM_STD_GO_SOUTH
+#include "global.fieldmap.h" // PLAYER_AVATAR_STATE_NORMAL
+#include "event_object_movement.h" // CreateObjectGraphicsSprite
+#include "field_player_avatar.h" // GetRivalAvatarGraphicsIdByStateIdAndGender
+#include "pokemon_icon.h" // CreateMonIcon
+
+static void SetUpIcon(void) {
+   enum {
+      PRIORITY = 0,
+   };
+   
+   auto icon = &sMenuState->icon;
+   if (icon->type == LU_NAMINGSCREEN_ICONTYPE_NONE)
+      return;
+   
+   switch (icon->type) { // Handle presets.
+      case LU_NAMINGSCREEN_ICONTYPE_PC:
+         icon->type = LU_NAMINGSCREEN_ICONTYPE_CUSTOM;
+         icon->custom.palette     = &sSpritePalette_PCIcon;
+         icon->custom.template   = &sSpriteTemplate_PCIcon;
+         icon->custom.subsprites = sSubspriteTable_PCIcon;
+         icon->custom.offset_x   = 0;
+         icon->custom.offset_y   = 1;
+         break;
+      case LU_NAMINGSCREEN_ICONTYPE_PLAYER:
+         icon->type = LU_NAMINGSCREEN_ICONTYPE_OVERWORLD;
+         {
+            u8 gender = sMenuState->gender;
+            if (gender == MON_GENDERLESS) {
+               gender = gSaveBlock2Ptr->playerGender;
+            }
+            icon->overworld.id = GetRivalAvatarGraphicsIdByStateIdAndGender(
+               PLAYER_AVATAR_STATE_NORMAL,
+               gender
+            );
+         }
+         break;
+   }
+   
+   const u8 type = icon->type;
+   
+   if (type == LU_NAMINGSCREEN_ICONTYPE_CUSTOM) {
+      auto params = &icon->custom;
+      AGB_ASSERT(params->palette  != NULL);
+      AGB_ASSERT(params->template != NULL);
+      if (params->palette && params->template) {
+         AGB_WARNING(params->palette->tag == params->template->paletteTag);
+         AGB_WARNING(params->palette->tag != TAG_NONE && params->template->paletteTag != TAG_NONE);
+      }
+      
+      LoadSpritePalette(params->palette);
+      u8 sprite_id = CreateSprite(
+         params->template,
+         ICON_BASE_CX + params->offset_x,
+         ICON_BASE_CY + params->offset_y,
+         0
+      );
+      if (sprite_id != SPRITE_NONE) {
+         auto sprite = &gSprites[sprite_id];
+         if (params->subsprites)
+            SetSubspriteTables(sprite, params->subsprites);
+         sprite->oam.priority = PRIORITY;
+      }
+      return;
+   }
+   
+   if (type == LU_NAMINGSCREEN_ICONTYPE_POKEMON) {
+      LoadMonIconPalettes();
+      u8 sprite_id = CreateMonIcon(
+         sMenuState->icon.pokemon.species,
+         SpriteCallbackDummy,
+         ICON_BASE_CX + ICON_OFFSET_PKMN_X,
+         ICON_BASE_CY + ICON_OFFSET_PKMN_Y,
+         0,
+         sMenuState->icon.pokemon.personality,
+         1
+      );
+      if (sprite_id != SPRITE_NONE) {
+         auto sprite = &gSprites[sprite_id];
+         sprite->oam.priority = PRIORITY;
+      }
+      return;
+   }
+   
+   if (type == LU_NAMINGSCREEN_ICONTYPE_OVERWORLD) {
+      u8 sprite_id = CreateObjectGraphicsSprite(
+         sMenuState->icon.overworld.id,
+         SpriteCallbackDummy,
+         ICON_BASE_CX + ICON_OFFSET_OW_X,
+         ICON_BASE_CY + ICON_OFFSET_OW_Y,
+         0
+      );
+      if (sprite_id != SPRITE_NONE) {
+         auto sprite = &gSprites[sprite_id];
+         sprite->oam.priority = PRIORITY;
+         StartSpriteAnim(sprite, ANIM_STD_GO_SOUTH);
+      }
+      return;
+   }
+   
+   AGB_WARNING(0 && "Unhandled LuNamingScreenIcon type!");
+}
+
+static const u8 sPCIconOff_Gfx[] = INCBIN_U8("graphics/naming_screen/pc_icon_off.4bpp");
+static const u8 sPCIconOn_Gfx[]  = INCBIN_U8("graphics/naming_screen/pc_icon_on.4bpp");
+//
+static const union AnimCmd sAnim_PCIcon[] = {
+   ANIMCMD_FRAME(0, 2),
+   ANIMCMD_FRAME(1, 2),
+   ANIMCMD_JUMP(0)
+};
+static const union AnimCmd* const sAnims_PCIcon[] = {
+   sAnim_PCIcon
+};
+static const struct SpriteFrameImage sImageTable_PCIcon[] = {
+   { sPCIconOff_Gfx, sizeof(sPCIconOff_Gfx) },
+   { sPCIconOn_Gfx,  sizeof(sPCIconOn_Gfx)  },
+};
+static const struct SpriteTemplate sSpriteTemplate_PCIcon = {
+   .tileTag     = TAG_NONE,
+   .paletteTag  = SPRITE_PAL_TAG_CUSTOM_ICON,
+   .oam         = &sOam_8x8,
+   .anims       = sAnims_PCIcon,
+   .images      = sImageTable_PCIcon,
+   .affineAnims = gDummySpriteAffineAnimTable,
+   .callback    = SpriteCallbackDummy
+};
+
+/*
+[0_]    16x24
+[1+] <--Origin
+[2_]
+*/
+static const struct Subsprite sSubsprites_PCIcon[] = {
+   {
+      .x          = -8,
+      .y          = -12,
+      .shape      = SPRITE_SHAPE(16x8),
+      .size       = SPRITE_SIZE(16x8),
+      .tileOffset = 0,
+      .priority   = 3
+   },
+   {
+      .x          = -8,
+      .y          = -4,
+      .shape      = SPRITE_SHAPE(16x8),
+      .size       = SPRITE_SIZE(16x8),
+      .tileOffset = 2,
+      .priority   = 3
+   },
+   {
+      .x          = -8,
+      .y          =  4,
+      .shape      = SPRITE_SHAPE(16x8),
+      .size       = SPRITE_SIZE(16x8),
+      .tileOffset = 4,
+      .priority   = 3
+   }
+};
+static const struct SubspriteTable sSubspriteTable_PCIcon[] = {
+   { ARRAY_COUNT(sSubsprites_PCIcon), sSubsprites_PCIcon }
+};
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

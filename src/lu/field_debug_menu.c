@@ -615,7 +615,10 @@ static void FieldDebugMenuActionHandler_TestVUINamingScreen(u8 taskId) {
       .initial_value = gSaveBlock2Ptr->playerName,
       .max_length    = PLAYER_NAME_LENGTH,
       //
-      .title         = sRenamePlayerNamingScreenTitle,
+      .icon  = {
+         .type = LU_NAMINGSCREEN_ICONTYPE_PLAYER,
+      },
+      .title = sRenamePlayerNamingScreenTitle,
    };
    LuNamingScreen(&params);
 }
