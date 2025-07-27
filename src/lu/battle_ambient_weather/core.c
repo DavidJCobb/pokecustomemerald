@@ -28,7 +28,8 @@ extern void StartBattleAmbientWeatherAnim(void) {
       StartBattleAmbientWeatherAnim_Sunny();
    }
    if (gAmbientWeatherTaskId != TASK_NONE) {
-      gTasks[gAmbientWeatherTaskId].tWeatherType = gBattleWeather;
+      gTasks[gAmbientWeatherTaskId].tWeatherType     = gBattleWeather;
+      gTasks[gAmbientWeatherTaskId].tLoopSEChildTask = TASK_NONE;
    }
 }
 extern void StopBattleAmbientWeatherAnim(bool8 instant) {
