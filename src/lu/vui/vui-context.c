@@ -57,7 +57,7 @@ static void _VUIContext_FocusAnyWidget(VUIContext* this) {
    }
 }
 
-static bool8 _VUIContext_TryNavigate(
+static VUIWidget* _VUIContext_GetNavigationTarget(
    VUIContext*        this,
    VUIWidget*         from_widget,
    const enum VUIAxis along_axis,
@@ -100,36 +100,130 @@ static bool8 _VUIContext_TryNavigate(
       dst_widget   = widget;
       dst_distance = diff;
    }
+   
+   return dst_widget;
+}
+
+static bool8 _VUIContext_TryNavigate(
+   VUIContext*        this,
+   VUIWidget*         from_widget,
+   const enum VUIAxis along_axis,
+   u8                 dst_coord,
+   const u8           from_cross_pos
+) {
+   VUIWidget* dst_widget = _VUIContext_GetNavigationTarget(this, from_widget, along_axis, dst_coord, from_cross_pos);
    if (!dst_widget)
       return FALSE;
    
-   if (dst_widget->has_subgrid) {
-      VUI_MapBoxToExtents(
-         &dst_widget->pos,
-         &dst_widget->size,
-         (along_axis == VUI_AXIS_X) ? &dm_extent : &dc_extent,
-         (along_axis == VUI_AXIS_Y) ? &dm_extent : &dc_extent
-      );
-      VUIPos cursor = {
-         (along_axis == VUI_AXIS_X) ? dst_coord : from_cross_pos,
-         (along_axis == VUI_AXIS_Y) ? dst_coord : from_cross_pos
-      };
-      VUI_MapPosAcrossSizes(&cursor, &dst_widget->size, &dst_widget->subgrid_size);
-      //
-      // Force destination subgrid-focus position to the subgrid edge that 
-      // we're navigating onto:
-      //
-      if (dst_coord > dm_extent.start) { // coming in from the right/below
-         cursor.coords[along_axis] = dst_widget->subgrid_size.bounds[along_axis];
-         if (!cursor.coords[along_axis])
-            cursor.coords[along_axis] = dst_widget->size.bounds[along_axis];
-         --cursor.coords[along_axis];
-      } else { // coming in from the left/above
-         cursor.coords[along_axis] = 0;
-      }
-      
-      dst_widget->subgrid_focus = cursor;
+   if (!dst_widget->has_subgrid) {
+      VUIContext_FocusWidget(this, dst_widget);
+      return TRUE;
    }
+   
+   //
+   // Destination widget has a subgrid. Manage the subgrid focus 
+   // appropriately.
+   //
+   enum {
+      PRECISION = 10,
+   };
+   //
+   // Update destination widget's main-axis subgrid focus position.
+   //
+   if (dst_coord > dst_widget->pos.coords[along_axis]) {
+      //
+      // Coming in from the right or below.
+      //
+      u8 pos = dst_widget->subgrid_size.bounds[along_axis];
+      if (pos == 0)
+         pos = dst_widget->size.bounds[along_axis];
+      if (pos > 0)
+         --pos;
+      dst_widget->subgrid_focus.coords[along_axis] = pos;
+   } else {
+      //
+      // Coming in from the left or above.
+      //
+      dst_widget->subgrid_focus.coords[along_axis] = 0;
+   }
+   //
+   // If this isn't wraparound navigation from a widget to itself, then 
+   // update the cross-axis subgrid focus position as well.
+   //
+   if (from_widget != dst_widget) {
+      u8 cross_axis = !along_axis;
+      
+      u8 src_size;
+      u8 src_pos;
+      u8 dst_size;
+      {
+         dst_size = dst_widget->subgrid_size.bounds[cross_axis];
+         if (dst_size == 0)
+            dst_size = dst_widget->size.bounds[cross_axis];
+         if (dst_size < 1)
+            dst_size = 1;
+      }
+      if (from_widget->has_subgrid) {
+         //
+         // Subgrid-to-subgrid cursor mapping. The `from_cross_pos` 
+         // argument is in context-grid space, but what we really want 
+         // here is the source-subgrid-space cross-axis coordinate.
+         //
+         src_pos  = from_widget->subgrid_focus.coords[cross_axis];
+         src_size = from_widget->subgrid_size.bounds[cross_axis];
+         if (src_size == 0)
+            src_size = from_widget->size.bounds[cross_axis];
+      } else {
+         //
+         // Context-grid-to-subgrid cursor mapping. The `from_cross_pos` 
+         // argument is in context-grid space, so we just have to map it 
+         // to destination-subgrid space.
+         //
+         src_pos  = from_cross_pos;
+         src_size = dst_widget->size.bounds[cross_axis];
+      }
+      if (src_size < 1)
+         src_size = 1;
+      
+      if (src_size != dst_size) {
+         u8 prior_pos = dst_widget->subgrid_focus.coords[cross_axis];
+         u8 after_pos = ((u16)src_pos * PRECISION * dst_size) / src_size / PRECISION;
+         //
+         // There's an edge-case that'll happen if we just write `after_pos` 
+         // into the subgrid-focus position straightaway. Consider this 
+         // arrangement of three widgets, the leftmost of which has a subgrid:
+         //
+         //    +--+--+--+      +--+
+         //    |  |  |  |      |  |
+         //    +--+--+--+      +--+
+         //    |  |  |  |
+         //    +--+--+--+      +--+
+         //    |  |  |  |      |  |
+         //    +--+--+--+      +--+
+         //
+         // If the player moves the cursor rightward from the top or middle 
+         // rows of the subgrid, then they'll end up in the top-right widget. 
+         // Here's the edge-case: if they move rightward from the middle row 
+         // to the top-right widget, and then move back leftward, then they'd 
+         // be snapped to the top row instead of being returned to the middle 
+         // row.
+         //
+         // The way to avoid this is simple: perform the mapping in reverse. 
+         // At the time that we navigate from the top-right widget back to 
+         // the subgridded widget, the latter still has its subgrid focus 
+         // position in its middle row. So, we see if the middle row would 
+         // map to our source widget, and if so, we opt *not* to move the 
+         // subgrid focus cross-axis position.
+         //
+         u8 reversed  = ((u16)prior_pos * PRECISION * src_size) / dst_size / PRECISION;
+         if (reversed != src_pos) {
+            dst_widget->subgrid_focus.coords[cross_axis] = after_pos;
+         }
+      }
+   }
+   //
+   // Finally, set focus.
+   //
    VUIContext_FocusWidget(this, dst_widget);
    return TRUE;
 }
