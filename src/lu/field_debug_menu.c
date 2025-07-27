@@ -3,6 +3,7 @@
 
 #include "global.h" // *sigh*
 #include "gba/isagbprint.h"
+#include "lu/c.h"
 
 // UI
 #include "constants/songs.h"
@@ -223,6 +224,7 @@ static void FieldDebugMenuActionHandler_FieldEffect_Dive(u8 taskId);
 static u8 FieldDebugMenuActionStateGetter_FieldEffect_Dive(void);
 static void FieldDebugMenuActionHandler_FieldEffect_Flash(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_RockSmash(u8 taskId);
+static void FieldDebugMenuActionHandler_FieldEffect_SecretPower(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_Strength(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_Surf(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_SweetScent(u8 taskId);
@@ -250,6 +252,11 @@ static const struct FieldDebugMenuAction sFieldEffectActions[] = {
    {
       .label   = gMoveNames[MOVE_ROCK_SMASH],
       .handler = FieldDebugMenuActionHandler_FieldEffect_RockSmash,
+   },
+   {
+      .label   = gMoveNames[MOVE_SECRET_POWER],
+      .handler = FieldDebugMenuActionHandler_FieldEffect_SecretPower,
+      .state   = FieldDebugMenuActionStateGetter_FieldEffect_SecretPower,
    },
    {
       .label   = gMoveNames[MOVE_STRENGTH],
@@ -695,14 +702,57 @@ static void FieldDebugMenuActionHandler_FieldEffect_Flash(u8 taskId) {
    
    SetUpFieldMove_Flash();
    gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
-   (gPostMenuFieldCallback)();
+   auto callback = gPostMenuFieldCallback;
+   gPostMenuFieldCallback = NULL;
+   (callback)();
 }
 static void FieldDebugMenuActionHandler_FieldEffect_RockSmash(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
    
    SetUpFieldMove_RockSmash();
    gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
-   (gPostMenuFieldCallback)();
+   auto callback = gPostMenuFieldCallback;
+   gPostMenuFieldCallback = NULL;
+   (callback)();
+}
+static void FieldDebugMenuActionHandler_FieldEffect_SecretPower(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   
+   auto prior_result = gSpecialVar_Result;
+   
+   SetUpFieldMove_SecretPower();
+   gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
+   auto callback = gPostMenuFieldCallback;
+   gPostMenuFieldCallback = NULL;
+   (callback)();
+   
+   gSpecialVar_Result     = prior_result;
+}
+static u8 FieldDebugMenuActionStateGetter_FieldEffect_SecretPower(void) {
+   if (GetPlayerFacingDirection() != DIR_NORTH)
+      return MENU_ACTION_STATE_DISABLED;
+   
+   bool8 has_secret_base;
+   {
+      auto prior_result = gSpecialVar_Result;
+      CheckPlayerHasSecretBase();
+      has_secret_base    = gSpecialVar_Result;
+      gSpecialVar_Result = prior_result;
+   }
+   if (has_secret_base)
+      return MENU_ACTION_STATE_DISABLED;
+   
+   GetXYCoordsOneStepInFrontOfPlayer(&gPlayerFacingPosition.x, &gPlayerFacingPosition.y);
+   u8 mb = MapGridGetMetatileBehaviorAt(gPlayerFacingPosition.x, gPlayerFacingPosition.y);
+   
+   if (MetatileBehavior_IsSecretBaseCave(mb) == TRUE)
+      return MENU_ACTION_STATE_NORMAL;
+   if (MetatileBehavior_IsSecretBaseTree(mb) == TRUE)
+      return MENU_ACTION_STATE_NORMAL;
+   if (MetatileBehavior_IsSecretBaseShrub(mb) == TRUE)
+      return MENU_ACTION_STATE_NORMAL;
+   
+   return MENU_ACTION_STATE_DISABLED;
 }
 static void FieldDebugMenuActionHandler_FieldEffect_Strength(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
