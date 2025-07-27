@@ -35,6 +35,9 @@
     - StartMonSummaryAnimation
 */
 
+#define LU__BOUNCE_ROTATE_TO_SIDES__FEWER_BOUNCES 1 // Carvanha, Loudred, Ludicolo, etc.
+#define LU__TUMBLING_FRONT_FLIP__NEVER_TWICE      1 // Magnemite
+
 #define sDontFlip data[1]  // TRUE if a normal animation, FALSE if Summary Screen animation
 
 struct PokemonAnimData
@@ -1919,9 +1922,15 @@ static const s8 sBounceRotateToSidesData[][8][3] =
         { 8, -8, 12},
         {-8,  8, 12},
         { 8, -8, 12},
-        {-8,  8, 12},
-        { 8, -8, 12},
-        {-8,  0, 12},
+        #if LU__BOUNCE_ROTATE_TO_SIDES__FEWER_BOUNCES
+            { 0,  0,  0},
+            { 0,  0,  0},
+            { 0,  0,  0},
+        #else
+            {-8,  8, 12},
+            { 8, -8, 12},
+            {-8,  0, 12},
+        #endif
         { 0,  0,  0}
     },
     {
@@ -1929,9 +1938,15 @@ static const s8 sBounceRotateToSidesData[][8][3] =
         { 8, -8, 24},
         {-8,  8, 24},
         { 8, -8, 24},
-        {-8,  8, 24},
-        { 8, -8, 24},
-        {-8,  0, 24},
+        #if LU__BOUNCE_ROTATE_TO_SIDES__FEWER_BOUNCES
+            { 0,  0,  0},
+            { 0,  0,  0},
+            { 0,  0,  0},
+        #else
+            {-8,  8, 24},
+            { 8, -8, 24},
+            {-8,  0, 24},
+        #endif
         { 0,  0,  0}
     },
 };
@@ -3787,7 +3802,11 @@ static void Anim_TumblingFrontFlip_Twice(struct Sprite *sprite)
     u8 id = sprite->data[0] = AddNewAnim();
 
     sAnims[id].speed = 1;
-    sAnims[id].runs = 2;
+    #if LU__TUMBLING_FRONT_FLIP__NEVER_TWICE
+        sAnims[id].runs = 1;
+    #else
+        sAnims[id].runs = 2;
+    #endif
     TumblingFrontFlip(sprite);
     sprite->callback = TumblingFrontFlip;
 }
