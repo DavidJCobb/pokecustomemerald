@@ -17,6 +17,6 @@ There are a few basic approaches to changing stats in move scripts, assuming the
 
 In this hack, we've removed `playstatchangeanimation`, `statbuffchange`, and `setgraphicalstatchangevalues`, and we've added two new commands: `trystatchange` and `showstatchange`.
 
-The `trystatchange` command attempts to apply the stat change and, unless told not to, will send a battle controller message to display both the stat-change result text and the stat-change animation. You may want to suppress the visuals when a move script's control flow depends on whether the stat change is successful (i.e. if you only want to play the `attackanimation` if the stat change succeeds).
+The `trystatchange` command attempts to apply the stat change and, unless told not to, will send a battle controller message to display both the stat-change result text and the stat-change animation. You may want to suppress the visuals when a move script's control flow depends on whether the stat change is successful (i.e. if you only want to play the `attackanimation` if the stat change succeeds). This would be the use case for telling `trystatchange` to hold off on contacting the affected battler's controller.
 
 The `showstatchange` command sends the aforementioned battle controller message for the last stat change applied via `trystatchange` (or via a move effect; we've changed the native code for those).

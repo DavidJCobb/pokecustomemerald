@@ -18,7 +18,7 @@
 // Field UI
 #include "event_object_lock.h" // ScriptUnfreezeObjectEvents
 #include "event_object_movement.h" // FreezeObjectEvents
-#include "field_player_avatar.h" // PlayerFreeze, StopPlayerAvatar // StartFishing
+#include "field_player_avatar.h" // PlayerFreeze, StopPlayerAvatar // GetXYCoordsOneStepInFrontOfPlayer, StartFishing
 #include "script.h" // LockPlayerFieldControls, ScriptContext_SetupScript
 
 // Data
@@ -33,17 +33,21 @@
 #include "constants/weather.h" // WEATHER_...
 #include "battle_transition.h"
 #include "bike.h" // GetOnOffBike
-#include "event_data.h" // EnableNationalPokedex, FlagSet
+#include "event_data.h" // EnableNationalPokedex, FlagSet, gSpecialVar_Result
 #include "event_scripts.h" // EventScript_...
 #include "field_control_avatar.h" // TrySetDiveWarp
 #include "field_effect.h" // FieldEffectStart
 #include "field_weather.h" // SetNextWeather
+#include "fieldmap.h" // MapGridGetMetatileBehaviorAt
 #include "fldeff.h" // SetUpFieldMove_RockSmash and friends
+#include "fldeff_misc.h" // SetUpFieldMove_SecretPower
 #include "global.fieldmap.h" // gPlayerAvatar, PLAYER_AVATAR_FLAG_...
+#include "metatile_behavior.h" // MetatileBehavior_IsSecretBaseCave
 #include "money.h" // GetMoney, SetMoney
 #include "overworld.h" // CB2_ReturnToField, IsOverworldLinkActive
 #include "pokedex.h"
 #include "region_map.h" // CB2_OpenFlyMap
+#include "secret_base.h" // CheckPlayerHasSecretBase
 #include "string_util.h"
 #include "wallclock.h" // CB2_StartWallClock
 #include "lu/naming_screen.h"
@@ -225,6 +229,7 @@ static u8 FieldDebugMenuActionStateGetter_FieldEffect_Dive(void);
 static void FieldDebugMenuActionHandler_FieldEffect_Flash(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_RockSmash(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_SecretPower(u8 taskId);
+static u8 FieldDebugMenuActionStateGetter_FieldEffect_SecretPower(void);
 static void FieldDebugMenuActionHandler_FieldEffect_Strength(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_Surf(u8 taskId);
 static void FieldDebugMenuActionHandler_FieldEffect_SweetScent(u8 taskId);
@@ -377,6 +382,12 @@ static void TaskHandler(u8 taskId) {
       if (action->handler == NULL) {
          PlaySE(SE_FAILURE);
          return;
+      }
+      if (action->state != NULL) {
+         if ((action->state)() == MENU_ACTION_STATE_DISABLED) {
+            PlaySE(SE_FAILURE);
+            return;
+         }
       }
       
       PlaySE(SE_SELECT);
@@ -704,6 +715,7 @@ static void FieldDebugMenuActionHandler_FieldEffect_Flash(u8 taskId) {
    gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
    auto callback = gPostMenuFieldCallback;
    gPostMenuFieldCallback = NULL;
+   gFieldCallback2        = NULL;
    (callback)();
 }
 static void FieldDebugMenuActionHandler_FieldEffect_RockSmash(u8 taskId) {
@@ -713,6 +725,7 @@ static void FieldDebugMenuActionHandler_FieldEffect_RockSmash(u8 taskId) {
    gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
    auto callback = gPostMenuFieldCallback;
    gPostMenuFieldCallback = NULL;
+   gFieldCallback2        = NULL;
    (callback)();
 }
 static void FieldDebugMenuActionHandler_FieldEffect_SecretPower(u8 taskId) {
@@ -724,9 +737,8 @@ static void FieldDebugMenuActionHandler_FieldEffect_SecretPower(u8 taskId) {
    gFieldEffectArguments[0] = SPECIES_MISDREAVUS;
    auto callback = gPostMenuFieldCallback;
    gPostMenuFieldCallback = NULL;
+   gFieldCallback2        = NULL;
    (callback)();
-   
-   gSpecialVar_Result     = prior_result;
 }
 static u8 FieldDebugMenuActionStateGetter_FieldEffect_SecretPower(void) {
    if (GetPlayerFacingDirection() != DIR_NORTH)
