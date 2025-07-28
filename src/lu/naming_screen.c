@@ -48,6 +48,11 @@ extern const u8 gSpeciesNames[][POKEMON_NAME_LENGTH + 1]; // from `data.h`
        - Change the name of the player-character
        - Change the name of a PC Box
        - Say a password to Walda
+       
+       - Implementing the freshly-caught case requires us to modify the menu's 
+         callbacks: outside code needs to be able to print a message box over 
+         the menu (to tell the player that the caught Pokemon has been sent to 
+         the PC) and wait for that message box to be dismissed before proceeding.
    
     - The button mappings shown on "OK" and "Backspace" render as black-on-red 
       because `DrawKeypadIcon` blits directly from the keypad icon tile graphic 

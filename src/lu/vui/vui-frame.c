@@ -49,7 +49,7 @@ extern void VUIFrame_Draw(const VUIFrame* this, const u8 x, const u8 y, const u8
       for(u8 i = 0; i < 2; ++i) {
          bool8 mirror_a = this->edges.list[i * 2 + 0].mirror;
          bool8 mirror_b = this->edges.list[i * 2 + 1].mirror;
-         AGB_WARNING(mirror_a != mirror_b && "Two opposing edges can't both mirror each other!");
+         AGB_WARNING(!(mirror_a && mirror_b) && "Two opposing edges can't both mirror each other!");
       }
    #endif
    
