@@ -28,6 +28,7 @@ typedef struct VUIKeyboardValue {
       u8  palette  : 4;
       u8  window_id;
    } rendering;
+   u8 max_length;
    u8 underscore_sprite_ids[VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE];
 } VUIKeyboardValue;
 

@@ -50,7 +50,8 @@ typedef struct {
       LoadBgTiles((bg_layer), (src), sizeof(src), V_TILE_ID(tiles_member)); \
    } while (0)
 
-#define V_LOAD_COMPRESSED(tiles_member, src) \
+// Usable for both tilesets and tilemaps.
+#define V_LOAD_COMPRESSED(member, src) \
    do { LZ77UnCompVram(src, (void*) (BG_VRAM + offsetof(vram_bg_layout, member)) ); } while (0)
 
 #define V_SET_TILE(bg, tile_id, x, y, palette) \

@@ -137,7 +137,7 @@ extern void VUICustomKeyboard_Construct(
       LoadSpriteSheets(sSpriteSheets);
       LoadSpritePalettes(sSpritePalettes);
       //
-      u8 px_x = (params->tile_x + 1) * TILE_WIDTH  + 2;
+      u8 px_x = (params->tile_x + 1) * TILE_WIDTH  + 3;
       u8 px_y = (params->tile_y + 1) * TILE_HEIGHT + 9;
       //
       u8 sprite_id = CreateSprite(&sSpriteTemplate_Cursor, px_x, px_y, 1);
@@ -285,23 +285,27 @@ static u8 GetCharacter(VUICustomKeyboard* this, u8 x, u8 y) {
    return characters[y * cols + x];
 }
 static u8 GetKeyColPx(VUICustomKeyboard* this, u8 n) {
-   const u16 WIDGET_PX   = VUIKEYBOARD_PX_INNER_W;
-   const u16 COLUMN_PX   = VUIKEYBOARD_PX_COL_W;
-   const u8  GAP_SIZE_PX = VUIKEYBOARD_PX_EXTRA_SPACING_FLAT / 2;
+   const u16 PRECISION   = 10;
+   
+   const u16 WIDGET_PX = VUIKEYBOARD_INNER_W_TILES * TILE_WIDTH;
+   const u16 EXTRA_PX  = VUIKEYBOARD_PX_EXTRA_SPACING_FLAT + (WIDGET_PX - VUIKEYBOARD_PX_INNER_W);
    
    const struct VUICustomKeyboardCharset* charset = &this->charsets[this->charset];
-   u8 real_cols = charset->cols;
-   u8 draw_cols = real_cols;
-   u8 cursor_x  = n;
+   u8 cols      = charset->cols;
    u8 gaps_in   = charset->col_gaps.count;
    u8 gaps_past = 0;
    for(u8 i = 0; i < gaps_in; ++i) {
       u8 gap = charset->col_gaps.positions[i];
-      if (cursor_x > gap)
+      if (n > gap)
          ++gaps_past;
    }
    
-   u8 wpx = (WIDGET_PX - (gaps_in * GAP_SIZE_PX)) * 10 / draw_cols * cursor_x / 10 + (gaps_past * GAP_SIZE_PX);
+   // spx = scaled px, for division
+   const u8  px_per_gap    = gaps_in ? EXTRA_PX / gaps_in : 0;
+   const u16 spx_available = (WIDGET_PX - (gaps_in ? EXTRA_PX : 0)) * PRECISION;
+   const u16 spx_per_col   = spx_available / cols;
+   
+   u8 wpx = spx_per_col * n / PRECISION + (gaps_past * px_per_gap);
    
    return wpx;
 }
@@ -331,7 +335,7 @@ static void RepaintKeys(VUICustomKeyboard* this) {
          buffer[0] = characters[y * cols + x];
          
          u8 width  = GetStringWidth(FONT_NORMAL, buffer, 0);
-         u8 offset = (VUIKEYBOARD_PX_COL_W - width) / 2;
+         s8 offset = (VUIKEYBOARD_PX_COL_W - width) / 2;
          
          AddTextPrinterParameterized3(
             this->window_id,

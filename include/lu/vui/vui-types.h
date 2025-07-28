@@ -9,6 +9,22 @@ enum VUIAxis {
    VUI_AXIS_Y = 1,
 };
 
+enum VUIDirection {
+   VUI_DIRECTION_NONE  = -1,
+   VUI_DIRECTION_LEFT  =  0,
+   VUI_DIRECTION_RIGHT =  1,
+   VUI_DIRECTION_UP    =  2,
+   VUI_DIRECTION_DOWN  =  3,
+};
+#define VUI_DirectionToAxis(d) (enum VUIAxis)((u8)(d) / 2)
+inline enum VUIDirection VUI_DeltaToDirection(s8 dx, s8 dy) {
+   if (dx)
+      return (dx < 0) ? VUI_DIRECTION_LEFT : VUI_DIRECTION_RIGHT;
+   if (dy)
+      return (dy < 0) ? VUI_DIRECTION_UP : VUI_DIRECTION_DOWN;
+   return VUI_DIRECTION_NONE;
+}
+
 typedef struct VUIExtent {
    u8 start;
    u8 end;

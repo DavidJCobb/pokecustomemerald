@@ -33,7 +33,8 @@ extern void VUIKeyboardValue_Construct(VUIKeyboardValue* this, const VUIKeyboard
       this->underscore_sprite_ids[i] = SPRITE_NONE;
    }
    
-   this->colors = params->colors;
+   this->colors     = params->colors;
+   this->max_length = params->max_length;
    
    //
    // TODO: Draw border
@@ -100,10 +101,14 @@ extern void VUIKeyboardValue_ShowValue(VUIKeyboardValue* this, const u8* string)
             break;
          ++length;
          buffer[0] = c;
+         
+         u8 width  = GetStringWidth(FONT_NORMAL, buffer, 0);
+         s8 offset = (TILE_WIDTH - width) / 2;
+         
          AddTextPrinterParameterized3(
             this->rendering.window_id,
             FONT_NORMAL,
-            x,
+            x + offset,
             y + 1,
             this->colors.list,
             TEXT_SKIP_DRAW,

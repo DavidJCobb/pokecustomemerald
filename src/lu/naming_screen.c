@@ -25,12 +25,20 @@
 #include "constants/rgb.h"
 #include "constants/songs.h" // SE_SELECT and other sound effect constants
 #include "lu/c.h"
+#include "lu/gfxutils.h"
 #include "lu/ui_helpers.h"
 #include "lu/vram_layout_helpers_new.h"
+//
+extern const u8 gSpeciesNames[][POKEMON_NAME_LENGTH + 1]; // from `data.h`
 
 /*//
 
    TODO:
+      
+    - VUI: Make it possible to override the directional navigation target of a 
+      given widget in a given direction. (Make it a virtual function, perhaps.) 
+      Then, use this so that: the keyboard can't navigate down to Upper; but 
+      trying to navigate up from Upper still navigates to the keyboard.
       
     - Implement the various cases for which the vanilla naming screen is used.
     
@@ -39,20 +47,6 @@
        - Change the name of the player-character
        - Change the name of a PC Box
        - Say a password to Walda
-       
-       = In general, we want to accept and store a union of...
-          - Pokemon data
-             - Species ID
-             - Personality
-             - Gender
-          - Overworld sprite ID (Walda or the player)
-          - Generic sprite params (PC box sprite)
-          
-          = Maybe we want to allow a gender symbol for non-Pokemon too, e.g. when 
-            the player is entering their name?
-       
-       = When a Pokemon is given, and no title is given, we should print the title 
-         as "<SPECIES>'s nickname?"
    
     - The button mappings shown on "OK" and "Backspace" render as black-on-red 
       because `DrawKeypadIcon` blits directly from the keypad icon tile graphic 
@@ -315,11 +309,13 @@ static const struct SpritePalette sSpritePalettes[];
 static const u8  sBlankBGTile[]     = INCBIN_U8("graphics/lu/cgo_menu/bg-tile-blank.4bpp"); // color 1
 static const u8  sBGTiles[]         = INCBIN_U8("graphics/lu/naming_screen/bg.4bpp");
 static const u16 sBGPalette[]       = INCBIN_U16("graphics/lu/naming_screen/bg.gbapal");
-static const u8  sBackdropTiles[]   = INCBIN_U8("graphics/lu/naming_screen/backdrop.4bpp");
-static const u16 sBackdropPalette[] = INCBIN_U16("graphics/lu/naming_screen/backdrop.gbapal");
+static const u16 sBackdropPalette[] = INCBIN_U16("graphics/lu/naming_screen/backdrop-jewel-tiles.gbapal");
 static const u8  sButtonTiles[]     = INCBIN_U8("graphics/lu/naming_screen/tile-button.4bpp");
 static const u16 sButtonPalette[]   = INCBIN_U16("graphics/lu/naming_screen/tile-button.gbapal");
+static const struct BGTilemapInfo sBackdropTilemapInfo;
 enum {
+   MAX_STRING_LENGTH = VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE,
+   
    BGLAYER_BACKDROP = 0,
    BGLAYER_CONTENT  = 1,
    
@@ -338,6 +334,14 @@ enum {
    BIGBUTTON_TILE_H =  4,
    BIGBUTTON_WIN_TILE_COUNT = BIGBUTTON_TILE_W * BIGBUTTON_TILE_H,
    
+   VALUE_TILE_X = 8,
+   VALUE_TILE_Y = 3,
+   
+   KEYBOARD_TILE_X       = 7,
+   KEYBOARD_TILE_Y       = 7,
+   KEYBOARD_TILE_INNER_W = VUIKEYBOARD_INNER_W_TILES,
+   KEYBOARD_TILE_INNER_H = VUIKEYBOARD_INNER_H_TILES,
+   
    TITLE_WINDOW_TILE_X      = 6,
    TITLE_WINDOW_TILE_WIDTH  = DISPLAY_TILE_WIDTH - TITLE_WINDOW_TILE_X - 1,
    TITLE_WINDOW_TILE_HEIGHT = 2,
@@ -346,12 +350,12 @@ enum {
    ICON_BASE_CX = 20, // centerpoint
    ICON_BASE_CY = 16,
    ICON_OFFSET_PKMN_X =  0,
-   ICON_OFFSET_PKMN_Y = 12,
+   ICON_OFFSET_PKMN_Y = -4,
    ICON_OFFSET_OW_X   =  0,
    ICON_OFFSET_OW_Y   = -5,
    
    GENDER_WINDOW_TEXT_X = 32,
-   GENDER_WINDOW_TEXT_Y =  4,
+   GENDER_WINDOW_TEXT_Y =  2,
    GENDER_WINDOW_TILE_X = (GENDER_WINDOW_TEXT_X / TILE_WIDTH),
    GENDER_WINDOW_TILE_Y = (GENDER_WINDOW_TEXT_Y / TILE_HEIGHT),
    GENDER_WINDOW_TILE_W = 1,
@@ -368,39 +372,41 @@ vram_bg_layout {
    vram_bg_tile keyboard_body[VUIKEYBOARD_WINDOW_TILE_COUNT];
    vram_bg_tile user_window_frame[9];
    vram_bg_tile keyboard_value[VUIKEYBOARDVALUE_WINDOW_TILE_COUNT];
-   vram_bg_tile backdrop[4*4];
+   vram_bg_tile backdrop[12];
    struct {
+      vram_bg_tile button_backspace[BIGBUTTON_WIN_TILE_COUNT];
+      vram_bg_tile button_ok[BIGBUTTON_WIN_TILE_COUNT];
       vram_bg_tile gender[GENDER_WINDOW_TILE_COUNT];
       vram_bg_tile title[TITLE_WINDOW_TILE_COUNT];
    } windows;
-   vram_bg_tile ok_button_tiles[BIGBUTTON_WIN_TILE_COUNT];
-   vram_bg_tile backspace_button_tiles[BIGBUTTON_WIN_TILE_COUNT];
 };
 __verify_vram_bg_layout;
 
 enum {
    COMMONTILE_CHARSETBAR_TOP = V_TILE_ID(common_tiles) + 0,
-   COMMONTILE_BIGBUTTON_CORNER,
+   COMMONTILE_CHROME_EDGE_L,
    COMMONTILE_TITLEBAR_BACK,
    COMMONTILE_TITLEBAR_DIAGONAL_4,
    
    COMMONTILE_CHARSETBAR_MID,
-   COMMONTILE_BIGBUTTON_EDGE_H,
+   COMMONTILE_CHROME_EDGE_TOP,
    COMMONTILE_TITLEBAR_DIAGONAL_2,
    COMMONTILE_TITLEBAR_DIAGONAL_3,
    
    COMMONTILE_CHARSETBAR_BOT,
-   COMMONTILE_TITLEBAR_EDGE_BOTTOM_A,
+   COMMONTILE_TITLEBAR_EDGE_BOTTOM_A,     COMMONTILE_CHROME_EDGE_BOT = COMMONTILE_TITLEBAR_EDGE_BOTTOM_A,
    COMMONTILE_TITLEBAR_DIAGONAL_1,
    COMMONTILE_TITLEBAR_EDGE_BOTTOM_B,
    
    COMMONTILE_TRANSPARENT,
-   COMMONTILE_BIGBUTTONSEL_CORNER,
-   COMMONTILE_BIGBUTTONSEL_EDGE_V,
-   COMMONTILE_BIGBUTTONSEL_EDGE_H,
+   COMMONTILE_CHROME_CORNER_UPPER_A,
+   COMMONTILE_CHROME_CORNER_LOWER_A,
+   COMMONTILE_UNUSED_15,
    
-   COMMONTILE_BIGBUTTON_EDGE_V,
-   COMMONTILE_BIGBUTTON_FILL,
+   COMMONTILE_UNUSED_16,
+   COMMONTILE_CHROME_CORNER_UPPER_B,
+   COMMONTILE_CHROME_CORNER_LOWER_B,
+   COMMONTILE_UNUSED_19,
 };
 
 // The abstract-grid layout for our VUI context.
@@ -515,7 +521,11 @@ static EWRAM_DATA struct MenuState* sMenuState = NULL;
 static void InitState(const struct LuNamingScreenParams*);
 static void Task_WaitFadeIn(u8);
 static void Task_OnFrame(u8);
+static void Task_BeginExit(u8);
+static void Task_WaitFadeOut(u8);
 static void Teardown(void);
+
+static bool8 IsNicknamingPokemon(void);
 
 static void OnTextEntryChanged(const u8*);
 static void OnTextEntryFull(void);
@@ -533,13 +543,16 @@ static void VBlankCB(void);
 
 static void SetUpGenderIcon(void);
 
-static void SetUpBackdrop(void);
-static void AnimateBackdrop(void);
 static void PaintTitleBarTiles(void);
 static void PaintTitleText(void);
 static void SetUpCharsetLabels(void);
 
 static void SetUpIcon(void);
+
+static void DrawBackdrop(void);
+static void AnimateBackdrop(void);
+
+static void DrawChromeBorderAround(u8 tile_x, u8 tile_y, u8 tile_w, u8 tile_h);
 
 // -----------------------------------------------------------------------
 
@@ -656,8 +669,8 @@ static void InitState(const struct LuNamingScreenParams* params) {
          .bg_layer = BGLAYER_CONTENT,
          .palette  = PALETTE_ID_TEXT,
          .colors   = text_colors,
-         .tile_x = 8,
-         .tile_y = 3,
+         .tile_x = VALUE_TILE_X,
+         .tile_y = VALUE_TILE_Y,
          .first_tile_id = V_TILE_ID(keyboard_value),
          .max_length    = max_length
       };
@@ -683,8 +696,8 @@ static void InitState(const struct LuNamingScreenParams* params) {
          .bg_layer      = BGLAYER_CONTENT,
          .palette       = PALETTE_ID_TEXT,
          .colors        = text_colors,
-         .tile_x        = 7,
-         .tile_y        = 7,
+         .tile_x        = KEYBOARD_TILE_X,
+         .tile_y        = KEYBOARD_TILE_Y,
          .first_tile_id = V_TILE_ID(keyboard_body),
       };
       VUICustomKeyboard_Construct(widget, &params);
@@ -715,7 +728,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
             },
             .screen_pos = { BIGBUTTON_TILE_X, BIGBUTTON_TILE_Y },
             .tiles      = gfx,
-            .first_window_tile_id = V_TILE_ID(ok_button_tiles),
+            .first_window_tile_id = V_TILE_ID(windows.button_ok),
          };
          auto widget = &sMenuState->vui.widgets.button_ok;
          VUITileButton_Construct(widget, &params);
@@ -738,7 +751,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
             },
             .screen_pos = { BIGBUTTON_TILE_X, BIGBUTTON_TILE_Y + BIGBUTTON_TILE_H + 1 },
             .tiles      = gfx,
-            .first_window_tile_id = V_TILE_ID(backspace_button_tiles),
+            .first_window_tile_id = V_TILE_ID(windows.button_backspace),
          };
          auto widget = &sMenuState->vui.widgets.button_backspace;
          VUITileButton_Construct(widget, &params);
@@ -778,7 +791,12 @@ static void Task_OnFrame(u8 task_id) {
       VUICustomKeyboard_NextCharset(keyboard);
    } else {
       VUIContext_HandleInput(&sMenuState->vui.context);
-      
+      if (!sMenuState || sMenuState->task_id == TASK_NONE) {
+         //
+         // User triggered menu exit.
+         //
+         return;
+      }
       //
       // Each harset button has a background and outline color done 
       // up in its own color within the palette. We set all such 
@@ -810,6 +828,30 @@ static void Task_OnFrame(u8 task_id) {
          }
       }
    }
+}
+static void Task_BeginExit(u8 task_id) {
+   //
+   // TODO: If we've been asked to show a dialog box on exit, then 
+   // here wait for it to be dismissed.
+   //
+   BeginNormalPaletteFade(PALETTES_ALL, 1, 0, 16, RGB_BLACK);
+   gTasks[sMenuState->task_id].func = Task_WaitFadeOut;
+}
+static void Task_WaitFadeOut(u8 task_id) {
+   AnimateBackdrop();
+   
+   if (gPaletteFade.active) {
+      return;
+   }
+   
+   void(*callback)(const u8*) = sMenuState->callback;
+   //
+   u8 local_value[VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE + 1];
+   memset(local_value, EOS, sizeof(local_value));
+   StringCopy(local_value, sMenuState->buffer);
+   Teardown();
+   //
+   (callback)(local_value);
 }
 static void Teardown(void) {
    DebugPrintf("[LuNamingScreen][Teardown] Tearing down...");
@@ -856,6 +898,11 @@ static void Teardown(void) {
    DebugPrintf("[LuNamingScreen][Teardown] Done.");
 }
 
+
+static bool8 IsNicknamingPokemon(void) {
+   return sMenuState->icon.type == LU_NAMINGSCREEN_ICONTYPE_POKEMON;
+}
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void OnTextEntryChanged(const u8* value) {
@@ -880,14 +927,11 @@ static void OnButtonCharset_AccentLower(void) {
    VUICustomKeyboard_SetCharset(&sMenuState->vui.widgets.keyboard, 4);
 }
 static void OnButtonOK(void) {
-   void(*callback)(const u8*) = sMenuState->callback;
-   
-   u8 local_value[VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE + 1];
-   memset(local_value, EOS, sizeof(local_value));
-   StringCopy(local_value, sMenuState->buffer);
-   Teardown();
-   
-   (callback)(local_value);
+   //
+   // TODO: If we've been asked to show a dialog box on exit, then 
+   // here display it.
+   //
+   gTasks[sMenuState->task_id].func = Task_BeginExit;
 }
 static void OnButtonBackspace(void) {
    VUICustomKeyboard_Backspace(&sMenuState->vui.widgets.keyboard);
@@ -914,10 +958,10 @@ static void InitCB2(void) {
        case 2:
          //ResetTasks(); // we're called from a task-based menu
          
-         V_LOAD_TILES(BGLAYER_BACKDROP, backdrop,     sBackdropTiles);
          V_LOAD_TILES(BGLAYER_CONTENT,  blank_tile,   sBlankBGTile);
          V_LOAD_TILES(BGLAYER_CONTENT,  common_tiles, sBGTiles);
          V_LOAD_TILES(BGLAYER_CONTENT,  button_tiles, sButtonTiles);
+         DrawBackdrop();
          
          gMain.state++;
          break;
@@ -948,11 +992,22 @@ static void InitCB2(void) {
          BeginNormalPaletteFade(PALETTES_ALL, -1, 16, 0, RGB_BLACK);
          SetVBlankCallback(VBlankCB);
          SetMainCallback2(MainCB2);
-         SetUpBackdrop();
          PaintTitleBarTiles();
          PaintTitleText();
          SetUpGenderIcon();
          SetUpIcon();
+         DrawChromeBorderAround(
+            KEYBOARD_TILE_X,
+            KEYBOARD_TILE_Y,
+            KEYBOARD_TILE_INNER_W + 2,
+            KEYBOARD_TILE_INNER_H + 2
+         );
+         DrawChromeBorderAround(
+            VALUE_TILE_X,
+            VALUE_TILE_Y,
+            sMenuState->vui.widgets.value.max_length + 2,
+            2 + 2
+         );
          {  // Charset button bar background
             const u8 y = DISPLAY_TILE_HEIGHT - 3;
             
@@ -980,8 +1035,8 @@ static void VBlankCB(void) {
 // -----------------------------------------------------------------------
 
 static const u8 sGenderColors[2][3] = {
-   { TEXT_COLOR_TRANSPARENT, TEXT_COLOR_LIGHT_BLUE, TEXT_COLOR_BLUE },
-   { TEXT_COLOR_TRANSPARENT, TEXT_COLOR_LIGHT_RED,  TEXT_COLOR_RED  }
+   { 1, TEXT_COLOR_LIGHT_BLUE, TEXT_COLOR_BLUE },
+   { 1, TEXT_COLOR_LIGHT_RED,  TEXT_COLOR_RED  }
 };
 static void SetUpGenderIcon() {
    if (sMenuState->gender == MON_GENDERLESS)
@@ -1004,7 +1059,7 @@ static void SetUpGenderIcon() {
          .width       = GENDER_WINDOW_TILE_W,
          .height      = GENDER_WINDOW_TILE_H,
          .paletteNum  = PALETTE_ID_TEXT,
-         .baseBlock   = V_TILE_ID(windows.title)
+         .baseBlock   = V_TILE_ID(windows.gender)
       };
       
       window_id = sMenuState->window_ids.gender = AddWindow(&tmpl);
@@ -1020,9 +1075,10 @@ static void SetUpGenderIcon() {
       text      = gText_FemaleSymbol;
    }
    
+   FillWindowPixelBuffer(window_id, PIXEL_FILL(sGenderColors[color_idx][0]));
    AddTextPrinterParameterized3(
       window_id,
-      FONT_BOLD,
+      FONT_NORMAL,
       GENDER_WINDOW_TEXT_X % TILE_WIDTH,
       GENDER_WINDOW_TEXT_Y % TILE_HEIGHT,
       sGenderColors[color_idx],
@@ -1030,62 +1086,6 @@ static void SetUpGenderIcon() {
       text
    );
    CopyWindowToVram(window_id, COPYWIN_FULL);
-}
-
-static void SetUpBackdrop(void) {
-   enum {
-      BGLAYER_TILE_WIDTH   = (256 / TILE_WIDTH),
-      BGLAYER_TILE_HEIGHT  = (256 / TILE_HEIGHT),
-      BACKDROP_TILE_WIDTH  = 4,
-      BACKDROP_TILE_HEIGHT = 4,
-   };
-   for(u8 sx = 0; sx + (BACKDROP_TILE_WIDTH - 1) < BGLAYER_TILE_WIDTH; sx += BACKDROP_TILE_WIDTH) {
-      for(u8 sy = 0; sy < BGLAYER_TILE_HEIGHT; ++sy) {
-         u8  ty = sy % BACKDROP_TILE_HEIGHT;
-         u16 ti = ty * BACKDROP_TILE_WIDTH;
-         WriteSequenceToBgTilemapBuffer(
-            BGLAYER_BACKDROP,
-            V_TILE_ID(backdrop[0]) + ti,
-            sx,
-            sy,
-            BACKDROP_TILE_WIDTH,
-            1,
-            PALETTE_ID_BACKDROP,
-            1
-         );
-      }
-   }
-   if (BGLAYER_TILE_WIDTH % BACKDROP_TILE_WIDTH) {
-      for(
-         u8 sx = (BGLAYER_TILE_WIDTH - (BGLAYER_TILE_WIDTH % BACKDROP_TILE_WIDTH));
-         sx < BGLAYER_TILE_WIDTH;
-         ++sx
-      ) {
-         u8 tx = sx % BACKDROP_TILE_WIDTH;
-         for(u8 sy = 0; sy < BGLAYER_TILE_HEIGHT; ++sy) {
-            u8  ty = sy % BACKDROP_TILE_HEIGHT;
-            u16 ti = ty * BACKDROP_TILE_WIDTH + tx;
-            V_SET_TILE(
-               BGLAYER_BACKDROP,
-               V_TILE_ID(backdrop[0]) + ti,
-               sx,
-               sy,
-               PALETTE_ID_BACKDROP
-            );
-         }
-      }
-   }
-   CopyBgTilemapBufferToVram(BGLAYER_BACKDROP);
-}
-static void AnimateBackdrop(void) {
-   //ChangeBgX(BGLAYER_BACKDROP, -2, BG_COORD_ADD);
-   //
-   // The above function doesn't seem to actually update the BG layer position; 
-   // we get, like, one update per second at max. Is there ANYTHING in the GF 
-   // BG library that actually works?!
-   //
-   sMenuState->timer++;
-   SetGpuReg(REG_OFFSET_BG0HOFS, ((sMenuState->timer / 4) % 32));
 }
 
 static void PaintTitleBarTiles(void) {
@@ -1132,7 +1132,7 @@ static void PaintTitleBarTiles(void) {
    V_SET_TILE(BGLAYER_CONTENT, COMMONTILE_TITLEBAR_DIAGONAL_4, 5, 2, PALETTE_ID_CHROME);
 }
 //
-static const u8 sDefaultTitle[] = _("Enter a name.");
+static const u8 sDefaultTitle[] = _("Enter a name.");static const u8 sNicknameTitle[] = _("{STR_VAR_1}'s nickname?");
 //
 static void PaintTitleText(void) {
    u8 window_id = sMenuState->window_ids.title;
@@ -1155,13 +1155,16 @@ static void PaintTitleText(void) {
    
    FillWindowPixelBuffer(window_id, PIXEL_FILL(1));
    
+   u8 buffer[32];
    const u8* text = sMenuState->title;
    if (text == NULL) {
       text = sDefaultTitle;
-      //
-      // TODO: If nicknaming a Pokemon, generate text of the form 
-      //       "<species>'s nickname?"
-      //
+      if (IsNicknamingPokemon()) {
+         buffer[0] = EOS;
+         StringCopy(buffer, gSpeciesNames[sMenuState->icon.pokemon.species]);
+         StringAppend(buffer, gText_PkmnsNickname);
+         text = buffer;
+      }
    }
    
    u8 colors[3] = { 1, 2, 3 };
@@ -1585,3 +1588,67 @@ static const struct OamData sOam_8x8 = {
    .priority   = 0,
    .paletteNum = 0,
 };
+
+// -----------------------------------------------------------------------
+
+static const u32 sBackdropTileset[] = INCBIN_U32("graphics/lu/naming_screen/backdrop-jewel-tiles.4bpp.lz");
+static const u32 sBackdropTilemap[] = INCBIN_U32("graphics/lu/naming_screen/backdrop-jewel-tiles.bin.lz");
+static const struct BGTilemapInfo sBackdropTilemapInfo = {
+   .data = {
+      .content = sBackdropTilemap,
+      .is_compressed    = TRUE,
+      .first_palette_id = 0,
+      .first_tile_id    = 0,
+   },
+   .size = {
+      .w = 8,
+      .h = 6
+   },
+};
+static void DrawBackdrop(void) {
+   V_LOAD_COMPRESSED(backdrop, sBackdropTileset);
+   DrawTiledBackground(
+      &sBackdropTilemapInfo,
+      BGLAYER_BACKDROP,
+      PALETTE_ID_BACKDROP,
+      V_TILE_ID(backdrop),
+      0,
+      0
+   );
+}
+static void AnimateBackdrop(void) {
+   const u8 BACKDROP_PX_W = sBackdropTilemapInfo.size.w * TILE_WIDTH;
+   
+   sMenuState->timer++;
+   SetGpuReg(REG_OFFSET_BG0HOFS, ((sMenuState->timer / 4) % BACKDROP_PX_W));
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void DrawChromeBorderAround(u8 tile_x, u8 tile_y, u8 tile_w, u8 tile_h) {
+   #define PAINT(_tile, _x, _y, _w, _h, _fliph, _flipv) \
+      FillBgTilemapBufferRect(BGLAYER_CONTENT, (_tile) | ((_fliph) << 10) | ((_flipv) << 11), (_x), (_y), (_w), (_h), PALETTE_ID_CHROME);
+   
+   // Upper corners
+   PAINT(COMMONTILE_CHROME_CORNER_UPPER_A, tile_x,              tile_y,     1, 1, FALSE, FALSE);
+   PAINT(COMMONTILE_CHROME_CORNER_UPPER_B, tile_x,              tile_y + 1, 1, 1, FALSE, FALSE);
+   PAINT(COMMONTILE_CHROME_CORNER_UPPER_A, tile_x + tile_w - 1, tile_y,     1, 1, TRUE,  FALSE);
+   PAINT(COMMONTILE_CHROME_CORNER_UPPER_B, tile_x + tile_w - 1, tile_y + 1, 1, 1, TRUE,  FALSE);
+   
+   // Lower corners
+   PAINT(COMMONTILE_CHROME_CORNER_LOWER_A, tile_x,              tile_y + tile_h - 2, 1, 1, FALSE, FALSE);
+   PAINT(COMMONTILE_CHROME_CORNER_LOWER_B, tile_x,              tile_y + tile_h - 1, 1, 1, FALSE, FALSE);
+   PAINT(COMMONTILE_CHROME_CORNER_LOWER_A, tile_x + tile_w - 1, tile_y + tile_h - 2, 1, 1, TRUE,  FALSE);
+   PAINT(COMMONTILE_CHROME_CORNER_LOWER_B, tile_x + tile_w - 1, tile_y + tile_h - 1, 1, 1, TRUE,  FALSE);
+   
+   if (tile_w > 2) {
+      PAINT(COMMONTILE_CHROME_EDGE_TOP, tile_x + 1, tile_y,              tile_w - 2, 1, FALSE, FALSE);
+      PAINT(COMMONTILE_CHROME_EDGE_BOT, tile_x + 1, tile_y + tile_h - 1, tile_w - 2, 1, FALSE, FALSE);
+   }
+   if (tile_h > 4) {
+      PAINT(COMMONTILE_CHROME_EDGE_L, tile_x,              tile_y + 2, 1, tile_h - 4, FALSE, FALSE);
+      PAINT(COMMONTILE_CHROME_EDGE_L, tile_x + tile_w - 1, tile_y + 2, 1, tile_h - 4, TRUE,  FALSE);
+   }
+   
+   #undef PAINT
+}
