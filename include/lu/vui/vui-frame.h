@@ -34,6 +34,8 @@ typedef struct VUIFrameEdge {
 } VUIFrameEdge;
 
 typedef struct VUIFrame {
+   u8 bg_layer : 2;
+   u8 palette  : 4;
    struct {
       union {
          VUISize list[4];
@@ -66,6 +68,6 @@ typedef struct VUIFrame {
 } VUIFrame;
 
 // Args measured in tiles.
-extern void VUIFrame_Draw(const VUIFrame*, const u8 x, const u8 y, const u8 w, const u8 h, u8 bg, u8 palette);
+extern void VUIFrame_Draw(const VUIFrame*, const u8 x, const u8 y, const u8 w, const u8 h);
 
 #endif

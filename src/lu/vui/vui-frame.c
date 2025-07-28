@@ -9,7 +9,9 @@ inline static bool8 CornerIsMirrored(const VUIFrameCornerTileInfo* corner) {
    return (corner->mirror >> 24) == 0xFF;
 }
 
-extern void VUIFrame_Draw(const VUIFrame* this, const u8 x, const u8 y, const u8 w, const u8 h, u8 bg, u8 palette) {
+extern void VUIFrame_Draw(const VUIFrame* this, const u8 x, const u8 y, const u8 w, const u8 h) {
+   u8 bg      = this->bg_layer;
+   u8 palette = this->palette;
    #ifndef NDEBUG
       //
       // Verify that the VUIFrame is well-formed.

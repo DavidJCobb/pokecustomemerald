@@ -168,15 +168,13 @@ extern void VUICustomKeyboard_Construct(
       
       PutWindowTilemap(window_id);
    }
-   if (params->frame.data) {
+   if (params->frame) {
       VUIFrame_Draw(
-         params->frame.data,
+         params->frame,
          params->tile_x,
          params->tile_y,
          VUIKEYBOARD_INNER_W_TILES + 2,
-         VUIKEYBOARD_INNER_H_TILES + 2,
-         params->bg_layer,
-         params->frame.palette
+         VUIKEYBOARD_INNER_H_TILES + 2
       );
    }
    

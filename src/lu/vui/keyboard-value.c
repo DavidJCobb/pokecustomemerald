@@ -53,15 +53,13 @@ extern void VUIKeyboardValue_Construct(VUIKeyboardValue* this, const VUIKeyboard
       
       PutWindowTilemap(window_id);
    }
-   if (params->frame.data) {
+   if (params->frame) {
       VUIFrame_Draw(
-         params->frame.data,
+         params->frame,
          params->tile_x,
          params->tile_y,
          params->max_length + 2,
-         2 + 2,
-         params->bg_layer,
-         params->frame.palette
+         2 + 2
       );
    }
    

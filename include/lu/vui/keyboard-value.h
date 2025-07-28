@@ -15,10 +15,7 @@ typedef struct VUIKeyboardValue_InitParams {
    u8  bg_layer : 2;
    u8  palette  : 4;
    VUITextColors colors;
-   struct {
-      const struct VUIFrame* data;
-      u8 palette : 4;
-   } frame;
+   const struct VUIFrame* frame;
    u8  tile_x;
    u8  tile_y;
    u16 first_tile_id; // char-based tile ID
