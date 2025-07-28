@@ -1,4 +1,5 @@
 #include "lu/vui/custom-keyboard.h"
+#include "lu/vui/vui-frame.h"
 #include "gba/isagbprint.h"
 #include "global.h" // __()
 #include "field_effect.h" // MultiplyInvertedPaletteRGBComponents
@@ -166,6 +167,17 @@ extern void VUICustomKeyboard_Construct(
       this->window_id = window_id;
       
       PutWindowTilemap(window_id);
+   }
+   if (params->frame.data) {
+      VUIFrame_Draw(
+         params->frame.data,
+         params->tile_x,
+         params->tile_y,
+         VUIKEYBOARD_INNER_W_TILES + 2,
+         VUIKEYBOARD_INNER_H_TILES + 2,
+         params->bg_layer,
+         params->frame.palette
+      );
    }
    
    VUICustomKeyboard_SetCharset(this, 0);

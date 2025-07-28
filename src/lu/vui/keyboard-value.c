@@ -1,4 +1,5 @@
 #include "lu/vui/keyboard-value.h"
+#include "lu/vui/vui-frame.h"
 #include "gba/isagbprint.h"
 #include "bg.h"
 #include "global.h" // ARRAY_COUNT
@@ -36,9 +37,6 @@ extern void VUIKeyboardValue_Construct(VUIKeyboardValue* this, const VUIKeyboard
    this->colors     = params->colors;
    this->max_length = params->max_length;
    
-   //
-   // TODO: Draw border
-   //
    {
       const struct WindowTemplate tmpl = {
          .bg          = params->bg_layer,
@@ -54,6 +52,17 @@ extern void VUIKeyboardValue_Construct(VUIKeyboardValue* this, const VUIKeyboard
       this->rendering.window_id = window_id;
       
       PutWindowTilemap(window_id);
+   }
+   if (params->frame.data) {
+      VUIFrame_Draw(
+         params->frame.data,
+         params->tile_x,
+         params->tile_y,
+         params->max_length + 2,
+         2 + 2,
+         params->bg_layer,
+         params->frame.palette
+      );
    }
    
    LoadSpriteSheets(sSpriteSheets);

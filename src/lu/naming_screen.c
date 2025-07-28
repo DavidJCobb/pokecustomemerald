@@ -1,5 +1,6 @@
 #include "lu/naming_screen.h"
 #include "lu/vui/vui-context.h"
+#include "lu/vui/vui-frame.h"
 #include "lu/vui/custom-keyboard.h"
 #include "lu/vui/keyboard.h"
 #include "lu/vui/keyboard-value.h"
@@ -313,6 +314,7 @@ static const u16 sBackdropPalette[] = INCBIN_U16("graphics/lu/naming_screen/back
 static const u8  sButtonTiles[]     = INCBIN_U8("graphics/lu/naming_screen/tile-button.4bpp");
 static const u16 sButtonPalette[]   = INCBIN_U16("graphics/lu/naming_screen/tile-button.gbapal");
 static const struct BGTilemapInfo sBackdropTilemapInfo;
+static const VUIFrame sChromeFrame;
 enum {
    MAX_STRING_LENGTH = VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE,
    
@@ -552,8 +554,6 @@ static void SetUpIcon(void);
 static void DrawBackdrop(void);
 static void AnimateBackdrop(void);
 
-static void DrawChromeBorderAround(u8 tile_x, u8 tile_y, u8 tile_w, u8 tile_h);
-
 // -----------------------------------------------------------------------
 
 extern void LuNamingScreen(const struct LuNamingScreenParams* params) {
@@ -669,6 +669,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
          .bg_layer = BGLAYER_CONTENT,
          .palette  = PALETTE_ID_TEXT,
          .colors   = text_colors,
+         .frame    = &sChromeFrame,
          .tile_x = VALUE_TILE_X,
          .tile_y = VALUE_TILE_Y,
          .first_tile_id = V_TILE_ID(keyboard_value),
@@ -689,6 +690,7 @@ static void InitState(const struct LuNamingScreenParams* params) {
          },
          .charsets       = sCharsets,
          .charsets_count = ARRAY_COUNT(sCharsets),
+         .frame          = &sChromeFrame,
          .grid = {
             .pos  = { CTXGRID_KEYBOARD_X, CTXGRID_KEYBOARD_Y },
             .size = { CTXGRID_KEYBOARD_W, CTXGRID_KEYBOARD_H },
@@ -996,18 +998,6 @@ static void InitCB2(void) {
          PaintTitleText();
          SetUpGenderIcon();
          SetUpIcon();
-         DrawChromeBorderAround(
-            KEYBOARD_TILE_X,
-            KEYBOARD_TILE_Y,
-            KEYBOARD_TILE_INNER_W + 2,
-            KEYBOARD_TILE_INNER_H + 2
-         );
-         DrawChromeBorderAround(
-            VALUE_TILE_X,
-            VALUE_TILE_Y,
-            sMenuState->vui.widgets.value.max_length + 2,
-            2 + 2
-         );
          {  // Charset button bar background
             const u8 y = DISPLAY_TILE_HEIGHT - 3;
             
@@ -1625,30 +1615,39 @@ static void AnimateBackdrop(void) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void DrawChromeBorderAround(u8 tile_x, u8 tile_y, u8 tile_w, u8 tile_h) {
-   #define PAINT(_tile, _x, _y, _w, _h, _fliph, _flipv) \
-      FillBgTilemapBufferRect(BGLAYER_CONTENT, (_tile) | ((_fliph) << 10) | ((_flipv) << 11), (_x), (_y), (_w), (_h), PALETTE_ID_CHROME);
-   
-   // Upper corners
-   PAINT(COMMONTILE_CHROME_CORNER_UPPER_A, tile_x,              tile_y,     1, 1, FALSE, FALSE);
-   PAINT(COMMONTILE_CHROME_CORNER_UPPER_B, tile_x,              tile_y + 1, 1, 1, FALSE, FALSE);
-   PAINT(COMMONTILE_CHROME_CORNER_UPPER_A, tile_x + tile_w - 1, tile_y,     1, 1, TRUE,  FALSE);
-   PAINT(COMMONTILE_CHROME_CORNER_UPPER_B, tile_x + tile_w - 1, tile_y + 1, 1, 1, TRUE,  FALSE);
-   
-   // Lower corners
-   PAINT(COMMONTILE_CHROME_CORNER_LOWER_A, tile_x,              tile_y + tile_h - 2, 1, 1, FALSE, FALSE);
-   PAINT(COMMONTILE_CHROME_CORNER_LOWER_B, tile_x,              tile_y + tile_h - 1, 1, 1, FALSE, FALSE);
-   PAINT(COMMONTILE_CHROME_CORNER_LOWER_A, tile_x + tile_w - 1, tile_y + tile_h - 2, 1, 1, TRUE,  FALSE);
-   PAINT(COMMONTILE_CHROME_CORNER_LOWER_B, tile_x + tile_w - 1, tile_y + tile_h - 1, 1, 1, TRUE,  FALSE);
-   
-   if (tile_w > 2) {
-      PAINT(COMMONTILE_CHROME_EDGE_TOP, tile_x + 1, tile_y,              tile_w - 2, 1, FALSE, FALSE);
-      PAINT(COMMONTILE_CHROME_EDGE_BOT, tile_x + 1, tile_y + tile_h - 1, tile_w - 2, 1, FALSE, FALSE);
-   }
-   if (tile_h > 4) {
-      PAINT(COMMONTILE_CHROME_EDGE_L, tile_x,              tile_y + 2, 1, tile_h - 4, FALSE, FALSE);
-      PAINT(COMMONTILE_CHROME_EDGE_L, tile_x + tile_w - 1, tile_y + 2, 1, tile_h - 4, TRUE,  FALSE);
-   }
-   
-   #undef PAINT
-}
+static const u16 sChromeFrameCornerTileIDs_Upper[] = {
+   COMMONTILE_CHROME_CORNER_UPPER_A,
+   COMMONTILE_CHROME_CORNER_UPPER_B
+};
+static const u16 sChromeFrameCornerTileIDs_Lower[] = {
+   COMMONTILE_CHROME_CORNER_LOWER_A,
+   COMMONTILE_CHROME_CORNER_LOWER_B
+};
+static const VUIFrame sChromeFrame = {
+   .corners = {
+      .sizes = {
+         .tl = { 1, 2 },
+         .bl = { 1, 2 },
+      },
+      .tiles = {
+         .tl = { .ids    = sChromeFrameCornerTileIDs_Upper },
+         .tr = { .mirror = VUIFRAME_CORNER_MIRROR_X },
+         .bl = { .ids    = sChromeFrameCornerTileIDs_Lower },
+         .br = { .mirror = VUIFRAME_CORNER_MIRROR_X },
+      },
+   },
+   .edges = {
+      .left = {
+         .tile_id = COMMONTILE_CHROME_EDGE_L,
+      },
+      .right = {
+         .mirror = TRUE,
+      },
+      .top = {
+         .tile_id = COMMONTILE_CHROME_EDGE_TOP,
+      },
+      .bottom = {
+         .tile_id = COMMONTILE_CHROME_EDGE_BOT,
+      },
+   },
+};

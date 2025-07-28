@@ -2,6 +2,7 @@
 #define GUARD_LU_VUI_KEYBOARDVALUE_H
 
 #include "lu/vui/vui-widget.h"
+struct VUIFrame;
 
 enum {
    VUIKEYBOARDVALUE_SPRITE_GRAPHIC_TAG = 0x5000,
@@ -14,6 +15,10 @@ typedef struct VUIKeyboardValue_InitParams {
    u8  bg_layer : 2;
    u8  palette  : 4;
    VUITextColors colors;
+   struct {
+      const struct VUIFrame* data;
+      u8 palette : 4;
+   } frame;
    u8  tile_x;
    u8  tile_y;
    u16 first_tile_id; // char-based tile ID
@@ -24,8 +29,8 @@ typedef struct VUIKeyboardValue {
    VUI_WIDGET_SUBCLASS_HEADER(VUIWidget);
    VUITextColors colors;
    struct {
-      u8  bg_layer : 2;
-      u8  palette  : 4;
+      u8  bg_layer  : 2;
+      u8  palette   : 4;
       u8  window_id;
    } rendering;
    u8 max_length;

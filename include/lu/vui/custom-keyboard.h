@@ -4,6 +4,7 @@
 #include "gba/defines.h"
 #include "lu/vui/vui-widget.h"
 #include "lu/vui/keyboard.h"
+struct VUIFrame;
 
 struct VUICustomKeyboardCharset {
    const u8* characters;
@@ -21,6 +22,10 @@ typedef struct VUICustomKeyboard_InitParams {
    struct VUIKeyboard_Callbacks callbacks;
    const struct VUICustomKeyboardCharset* charsets;
    u8 charsets_count;
+   struct {
+      const struct VUIFrame* data;
+      u8 palette : 4;
+   } frame;
    VUIGridArea grid;
    u8  bg_layer : 2;
    u8  palette  : 4;
