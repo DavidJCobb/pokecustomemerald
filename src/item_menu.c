@@ -211,10 +211,15 @@ static void CancelToss(u8);
 static void ConfirmSell(u8);
 static void CancelSell(u8);
 
+enum {
+   BGLAYER_CONTENT = 0,
+   BGLAYER_MODALS  = 1,
+   BGLAYER_CHROME  = 2, // borders, boxes, etc., for the content
+};
 static const struct BgTemplate sBgTemplates_ItemMenu[] =
 {
     {
-        .bg = 0,
+        .bg = BGLAYER_CONTENT,
         .charBaseIndex = 0,
         .mapBaseIndex = 31,
         .screenSize = 0,
@@ -223,7 +228,7 @@ static const struct BgTemplate sBgTemplates_ItemMenu[] =
         .baseTile = 0,
     },
     {
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .charBaseIndex = 0,
         .mapBaseIndex = 30,
         .screenSize = 0,
@@ -232,7 +237,7 @@ static const struct BgTemplate sBgTemplates_ItemMenu[] =
         .baseTile = 0,
     },
     {
-        .bg = 2,
+        .bg = BGLAYER_CHROME,
         .charBaseIndex = 3,
         .mapBaseIndex = 29,
         .screenSize = 0,
@@ -394,7 +399,7 @@ static const u8 sFontColorTable[][3] = {
 static const struct WindowTemplate sDefaultBagWindows[] =
 {
     [WIN_ITEM_LIST] = {
-        .bg = 0,
+        .bg = BGLAYER_CONTENT,
         .tilemapLeft = 14,
         .tilemapTop = 2,
         .width = 15,
@@ -403,7 +408,7 @@ static const struct WindowTemplate sDefaultBagWindows[] =
         .baseBlock = 0x27,
     },
     [WIN_DESCRIPTION] = {
-        .bg = 0,
+        .bg = BGLAYER_CONTENT,
         .tilemapLeft = 0,
         .tilemapTop = 13,
         .width = 14,
@@ -412,7 +417,7 @@ static const struct WindowTemplate sDefaultBagWindows[] =
         .baseBlock = 0x117,
     },
     [WIN_POCKET_NAME] = {
-        .bg = 0,
+        .bg = BGLAYER_CONTENT,
         .tilemapLeft = 4,
         .tilemapTop = 1,
         .width = 8,
@@ -421,7 +426,7 @@ static const struct WindowTemplate sDefaultBagWindows[] =
         .baseBlock = 0x1A1,
     },
     [WIN_TMHM_INFO_ICONS] = {
-        .bg = 0,
+        .bg = BGLAYER_CONTENT,
         .tilemapLeft = 1,
         .tilemapTop = 13,
         .width = 5,
@@ -430,7 +435,7 @@ static const struct WindowTemplate sDefaultBagWindows[] =
         .baseBlock = 0x16B,
     },
     [WIN_TMHM_INFO] = {
-        .bg = 0,
+        .bg = BGLAYER_CONTENT,
         .tilemapLeft = 7,
         .tilemapTop = 13,
         .width = 4,
@@ -439,7 +444,7 @@ static const struct WindowTemplate sDefaultBagWindows[] =
         .baseBlock = 0x189,
     },
     [WIN_MESSAGE] = {
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 2,
         .tilemapTop = 15,
         .width = 27,
@@ -453,7 +458,7 @@ static const struct WindowTemplate sDefaultBagWindows[] =
 static const struct WindowTemplate sContextMenuWindowTemplates[] =
 {
     [ITEMWIN_1x1] = {
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 22,
         .tilemapTop = 17,
         .width = 7,
@@ -462,7 +467,7 @@ static const struct WindowTemplate sContextMenuWindowTemplates[] =
         .baseBlock = 0x21D,
     },
     [ITEMWIN_1x2] = {
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 22,
         .tilemapTop = 15,
         .width = 7,
@@ -471,7 +476,7 @@ static const struct WindowTemplate sContextMenuWindowTemplates[] =
         .baseBlock = 0x21D,
     },
     [ITEMWIN_2x2] = {
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 15,
         .tilemapTop = 15,
         .width = 14,
@@ -480,7 +485,7 @@ static const struct WindowTemplate sContextMenuWindowTemplates[] =
         .baseBlock = 0x21D,
     },
     [ITEMWIN_2x3] = {
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 15,
         .tilemapTop = 13,
         .width = 14,
@@ -489,7 +494,7 @@ static const struct WindowTemplate sContextMenuWindowTemplates[] =
         .baseBlock = 0x21D,
     },
     [ITEMWIN_MESSAGE] = {
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 2,
         .tilemapTop = 15,
         .width = 27,
@@ -498,7 +503,7 @@ static const struct WindowTemplate sContextMenuWindowTemplates[] =
         .baseBlock = 0x1B1,
     },
     [ITEMWIN_YESNO_LOW] = { // Yes/No tucked in corner, for toss confirm
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 24,
         .tilemapTop = 15,
         .width = 5,
@@ -507,7 +512,7 @@ static const struct WindowTemplate sContextMenuWindowTemplates[] =
         .baseBlock = 0x21D,
     },
     [ITEMWIN_YESNO_HIGH] = { // Yes/No higher up, positioned above a lower message box
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 21,
         .tilemapTop = 9,
         .width = 5,
@@ -516,7 +521,7 @@ static const struct WindowTemplate sContextMenuWindowTemplates[] =
         .baseBlock = 0x21D,
     },
     [ITEMWIN_QUANTITY] = { // Used for quantity of items to Toss/Deposit
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 24,
         .tilemapTop = 17,
         .width = 5,
@@ -525,7 +530,7 @@ static const struct WindowTemplate sContextMenuWindowTemplates[] =
         .baseBlock = 0x21D,
     },
     [ITEMWIN_QUANTITY_WIDE] = { // Used for quantity and price of items to Sell
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 18,
         .tilemapTop = 11,
         .width = 10,
@@ -534,7 +539,7 @@ static const struct WindowTemplate sContextMenuWindowTemplates[] =
         .baseBlock = 0x245,
     },
     [ITEMWIN_MONEY] = {
-        .bg = 1,
+        .bg = BGLAYER_MODALS,
         .tilemapLeft = 1,
         .tilemapTop = 1,
         .width = 10,
@@ -1167,7 +1172,7 @@ void DisplayItemMessage(u8 taskId, u8 fontId, const u8 *str, void (*callback)(u8
     tMsgWindowId = AddItemMessageWindow(ITEMWIN_MESSAGE);
     FillWindowPixelBuffer(tMsgWindowId, PIXEL_FILL(1));
     DisplayMessageAndContinueTask(taskId, tMsgWindowId, 10, 13, fontId, GetPlayerTextSpeedDelay(), str, callback);
-    ScheduleBgCopyTilemapToVram(1);
+    ScheduleBgCopyTilemapToVram(BGLAYER_MODALS);
 }
 
 void CloseItemMessage(u8 taskId)
@@ -1181,7 +1186,7 @@ void CloseItemMessage(u8 taskId)
     UpdatePocketListPosition(gBagPosition.pocket);
     LoadBagItemListBuffers(gBagPosition.pocket);
     tListTaskId = ListMenuInit(&gMultiuseListMenuTemplate, *scrollPos, *cursorPos);
-    ScheduleBgCopyTilemapToVram(0);
+    ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
     ReturnToItemList(taskId);
 }
 
@@ -1278,7 +1283,7 @@ static void ReturnToItemList(u8 taskId)
     ClearWindowTilemap(WIN_TMHM_INFO_ICONS);
     ClearWindowTilemap(WIN_TMHM_INFO);
     PutWindowTilemap(WIN_DESCRIPTION);
-    ScheduleBgCopyTilemapToVram(0);
+    ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
     gTasks[taskId].func = Task_BagMenu_HandleInput;
 }
 
@@ -1324,7 +1329,7 @@ static void SwitchBagPocket(u8 taskId, s16 deltaBagPocketId, bool16 skipEraseLis
         ClearWindowTilemap(WIN_ITEM_LIST);
         ClearWindowTilemap(WIN_DESCRIPTION);
         DestroyListMenuTask(tListTaskId, &gBagPosition.scrollPosition[gBagPosition.pocket], &gBagPosition.cursorPosition[gBagPosition.pocket]);
-        ScheduleBgCopyTilemapToVram(0);
+        ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
         gSprites[gBagMenu->spriteIds[ITEMMENUSPRITE_ITEM + (gBagMenu->itemIconSlot ^ 1)]].invisible = TRUE;
         BagDestroyPocketScrollArrowPair();
     }
@@ -1342,8 +1347,8 @@ static void SwitchBagPocket(u8 taskId, s16 deltaBagPocketId, bool16 skipEraseLis
     }
     DrawPocketIndicatorSquare(gBagPosition.pocket, FALSE);
     DrawPocketIndicatorSquare(newPocket, TRUE);
-    FillBgTilemapBufferRect_Palette0(2, 11, 14, 2, 15, 16);
-    ScheduleBgCopyTilemapToVram(2);
+    FillBgTilemapBufferRect_Palette0(BGLAYER_CHROME, 11, 14, 2, 15, 16);
+    ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
     SetBagVisualPocketId(newPocket, TRUE);
     RemoveBagSprite(ITEMMENUSPRITE_BALL);
     AddSwitchPocketRotatingBallSprite(deltaBagPocketId);
@@ -1390,7 +1395,7 @@ static void Task_SwitchBagPocket(u8 taskId)
         tListTaskId = ListMenuInit(&gMultiuseListMenuTemplate, gBagPosition.scrollPosition[gBagPosition.pocket], gBagPosition.cursorPosition[gBagPosition.pocket]);
         PutWindowTilemap(WIN_DESCRIPTION);
         PutWindowTilemap(WIN_POCKET_NAME);
-        ScheduleBgCopyTilemapToVram(0);
+        ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
         CreatePocketScrollArrowPair();
         CreatePocketSwitchArrowPair();
         SwitchTaskToFollowupFunc(taskId);
@@ -1401,17 +1406,17 @@ static void Task_SwitchBagPocket(u8 taskId)
 // When the pocket is switched this lighter background is redrawn row by row
 static void DrawItemListBgRow(u8 y)
 {
-    FillBgTilemapBufferRect_Palette0(2, 17, 14, y + 2, 15, 1);
-    ScheduleBgCopyTilemapToVram(2);
+    FillBgTilemapBufferRect_Palette0(BGLAYER_CHROME, 17, 14, y + 2, 15, 1);
+    ScheduleBgCopyTilemapToVram(BGLAYER_CHROME);
 }
 
 static void DrawPocketIndicatorSquare(u8 x, bool8 isCurrentPocket)
 {
     if (!isCurrentPocket)
-        FillBgTilemapBufferRect_Palette0(2, 0x1017, x + 5, 3, 1, 1);
+        FillBgTilemapBufferRect_Palette0(BGLAYER_CHROME, 0x1017, x + 5, 3, 1, 1);
     else
-        FillBgTilemapBufferRect_Palette0(2, 0x102B, x + 5, 3, 1, 1);
-    ScheduleBgCopyTilemapToVram(2);
+        FillBgTilemapBufferRect_Palette0(BGLAYER_CHROME, 0x102B, x + 5, 3, 1, 1);
+    ScheduleBgCopyTilemapToVram(BGLAYER_CHROME);
 }
 
 static bool8 CanSwapItems(void)
@@ -1646,7 +1651,7 @@ static void OpenContextMenu(u8 taskId)
         PrintTMHMMoveData(gSpecialVar_ItemId);
         PutWindowTilemap(WIN_TMHM_INFO_ICONS);
         PutWindowTilemap(WIN_TMHM_INFO);
-        ScheduleBgCopyTilemapToVram(0);
+        ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
     }
     else
     {
@@ -1795,7 +1800,7 @@ static void ItemMenu_UseOutOfBattle(u8 taskId)
         else
         {
             FillWindowPixelBuffer(WIN_DESCRIPTION, PIXEL_FILL(0));
-            ScheduleBgCopyTilemapToVram(0);
+            ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
             if (gBagPosition.pocket != BERRIES_POCKET)
                 GetItemFieldFunc(gSpecialVar_ItemId)(taskId);
             else
@@ -1897,7 +1902,7 @@ static void Task_RemoveItemFromBag(u8 taskId)
         UpdatePocketListPosition(gBagPosition.pocket);
         LoadBagItemListBuffers(gBagPosition.pocket);
         tListTaskId = ListMenuInit(&gMultiuseListMenuTemplate, *scrollPos, *cursorPos);
-        ScheduleBgCopyTilemapToVram(0);
+        ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
         ReturnToItemList(taskId);
     }
 }
@@ -1915,7 +1920,7 @@ static void ItemMenu_Register(u8 taskId)
     DestroyListMenuTask(tListTaskId, scrollPos, cursorPos);
     LoadBagItemListBuffers(gBagPosition.pocket);
     tListTaskId = ListMenuInit(&gMultiuseListMenuTemplate, *scrollPos, *cursorPos);
-    ScheduleBgCopyTilemapToVram(0);
+    ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
     ItemMenu_Cancel(taskId);
 }
 
@@ -1977,8 +1982,8 @@ static void ItemMenu_Cancel(u8 taskId)
 
     RemoveContextWindow();
     PrintItemDescription(tListPosition);
-    ScheduleBgCopyTilemapToVram(0);
-    ScheduleBgCopyTilemapToVram(1);
+    ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
+    ScheduleBgCopyTilemapToVram(BGLAYER_MODALS);
     BagMenu_PrintCursor(tListTaskId, COLORID_NORMAL);
     ReturnToItemList(taskId);
 }
@@ -2039,7 +2044,7 @@ bool8 UseRegisteredKeyItemOnField(void)
     if (InUnionRoom() == TRUE || CurrentBattlePyramidLocation() != PYRAMID_LOCATION_NONE || InBattlePike() || InMultiPartnerRoom() == TRUE)
         return FALSE;
     HideMapNamePopUpWindow();
-    ChangeBgY_ScreenOff(0, 0, BG_COORD_SET);
+    ChangeBgY_ScreenOff(BGLAYER_CONTENT, 0, BG_COORD_SET);
     if (gSaveBlock1Ptr->registeredItem != ITEM_NONE)
     {
         if (CheckBagHasItem(gSaveBlock1Ptr->registeredItem, 1) == TRUE)
@@ -2457,8 +2462,8 @@ static void LoadBagMenuTextWindows(void)
         FillWindowPixelBuffer(i, PIXEL_FILL(0));
         PutWindowTilemap(i);
     }
-    ScheduleBgCopyTilemapToVram(0);
-    ScheduleBgCopyTilemapToVram(1);
+    ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
+    ScheduleBgCopyTilemapToVram(BGLAYER_MODALS);
 }
 
 static void BagMenu_Print(u8 windowId, u8 fontId, const u8 *str, u8 left, u8 top, u8 letterSpacing, u8 lineSpacing, u8 speed, u8 colorIndex)
@@ -2478,7 +2483,7 @@ static u8 BagMenu_AddWindow(u8 windowType)
     {
         *windowId = AddWindow(&sContextMenuWindowTemplates[windowType]);
         DrawStdFrameWithCustomTileAndPalette(*windowId, FALSE, 1, 14);
-        ScheduleBgCopyTilemapToVram(1);
+        ScheduleBgCopyTilemapToVram(BGLAYER_MODALS);
     }
     return *windowId;
 }
@@ -2491,7 +2496,7 @@ static void BagMenu_RemoveWindow(u8 windowType)
         ClearStdWindowAndFrameToTransparent(*windowId, FALSE);
         ClearWindowTilemap(*windowId);
         RemoveWindow(*windowId);
-        ScheduleBgCopyTilemapToVram(1);
+        ScheduleBgCopyTilemapToVram(BGLAYER_MODALS);
         *windowId = WINDOW_NONE;
     }
 }
@@ -2513,7 +2518,7 @@ static void RemoveItemMessageWindow(u8 windowType)
         // This ClearWindowTilemap call is redundant, since ClearDialogWindowAndFrameToTransparent already calls it.
         ClearWindowTilemap(*windowId);
         RemoveWindow(*windowId);
-        ScheduleBgCopyTilemapToVram(1);
+        ScheduleBgCopyTilemapToVram(BGLAYER_MODALS);
         *windowId = WINDOW_NONE;
     }
 }
