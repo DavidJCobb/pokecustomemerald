@@ -46,6 +46,13 @@ extern void LuGfxTestScreen(void(*callback)(void)) {
    FreeAllWindowBuffers();
    DeactivateAllTextPrinters();
    
+   DebugPrintf("GFX Test Screen: Initializing...");
+   {
+      AGB_ASSERT(sMenuState == NULL);
+      sMenuState = (struct MenuState*) AllocZeroed(sizeof(struct MenuState));
+      sMenuState->callback = callback;
+   }
+   
    SetMainCallback2(CB2_Init);
    gMain.state = 0;
 }
@@ -68,6 +75,7 @@ static void Task_FrameHandler(u8 task_id) {
             Free(tilemap);
          }
       }
+      DebugPrintf("GFX Test Screen: Exited.");
       (callback)();
    }
 }
@@ -119,11 +127,6 @@ static const u16 sTestPalette[] = {
 static void CB2_Init(void) {
    switch (gMain.state) {
       case 0:
-         DebugPrintf("GFX Test Screen: Initializing...");
-         {
-            AGB_ASSERT(sMenuState == NULL);
-            sMenuState = (struct MenuState*) AllocZeroed(sizeof(struct MenuState));
-         }
          SetGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_OBJ_ON | DISPCNT_OBJ_1D_MAP);
          gMain.state++;
          break;
