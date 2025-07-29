@@ -32,4 +32,26 @@ extern void DrawTiledBackground(
    s16 dst_tile_y
 );
 
+// Blit a 4bpp bitmap onto another 4bpp bitmap. The `color_mapping` parameter 
+// should be a pointer to an array of 16 palette color indices, such that the 
+// color N in the source image is blitted into the destination as the color 
+// `color_mapping[N]`.
+extern void BlitBitmapRect4BitRemapped(
+   const struct Bitmap* src,
+   struct Bitmap*       dst,
+   u16 src_x,
+   u16 src_y,
+   u16 dst_x,
+   u16 dst_y,
+   u16 width,
+   u16 height,
+   const u8* color_mapping
+);
+
+extern void BlitTile4BitRemapped(
+   const u8* src,
+   u8*       dst,
+   const u8* color_mapping
+);
+
 #endif

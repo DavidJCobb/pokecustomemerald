@@ -52,6 +52,7 @@
 #include "wallclock.h" // CB2_StartWallClock
 #include "lu/naming_screen.h"
 #include "lu/pick_species_menu.h"
+#include "lu/gfx_test_screen.h"
 #include "lu/widgets/num_edit_modal.h"
 
 EWRAM_DATA struct FieldDebugMenuState gFieldDebugMenuState = {0};
@@ -85,6 +86,7 @@ enum {
    MENU_ACTION_SET_TIME,
    MENU_ACTION_SET_WEATHER,
    MENU_ACTION_TEST_BATTLE_TRANSITION,
+   MENU_ACTION_TEST_GFX_SCREEN,
    MENU_ACTION_TEST_VUI_NAMING_SCREEN,
    MENU_ACTION_USE_ANY_BIKE,
    MENU_ACTION_USE_ANY_FIELD_MOVE,
@@ -114,6 +116,7 @@ static void FieldDebugMenuActionHandler_SetMoney(u8 taskId);
 static void FieldDebugMenuActionHandler_SetTime(u8 taskId);
 static void FieldDebugMenuActionHandler_SetWeather(u8 taskId);
 static void FieldDebugMenuActionHandler_BattleTransition(u8 taskId);
+static void FieldDebugMenuActionHandler_TestGFXScreen(u8 taskId);
 static void FieldDebugMenuActionHandler_TestVUINamingScreen(u8 taskId);
 static void FieldDebugMenuActionHandler_UseAnyBike(u8 taskId);
 static void FieldDebugMenuActionHandler_UseAnyFishingRod(u8 taskId);
@@ -177,6 +180,10 @@ static const struct FieldDebugMenuAction sFieldDebugMenuActions[] = {
    [MENU_ACTION_TEST_BATTLE_TRANSITION] = {
       .label   = gText_lu_FieldDebugMenu_TestBattleTransition,
       .handler = FieldDebugMenuActionHandler_BattleTransition,
+   },
+   [MENU_ACTION_TEST_GFX_SCREEN] = {
+      .label   = gText_lu_FieldDebugMenu_TestGfxScreen,
+      .handler = FieldDebugMenuActionHandler_TestGFXScreen,
    },
    [MENU_ACTION_TEST_VUI_NAMING_SCREEN] = {
       .label   = gText_lu_FieldDebugMenu_TestVUINamingScreen,
@@ -597,6 +604,14 @@ static void FieldDebugMenuActionHandler_SetTime(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
    SetMainCallback2(CB2_StartWallClock);
     gMain.savedCallback = CB2_ReturnToField;
+}
+
+static void FieldDebugMenuActionHandler_TestGFXScreen_Callback(void) {
+   SetMainCallback2(CB2_ReturnToField);
+}
+static void FieldDebugMenuActionHandler_TestGFXScreen(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   LuGfxTestScreen(FieldDebugMenuActionHandler_TestGFXScreen_Callback);
 }
 
 static const u8 sRenamePlayerNamingScreenTitle[] = _("Change your name to…?");

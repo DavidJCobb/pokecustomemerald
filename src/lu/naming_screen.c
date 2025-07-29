@@ -572,6 +572,7 @@ extern void LuNamingScreen(const struct LuNamingScreenParams* params) {
    
    InitState(params);
    SetMainCallback2(InitCB2);
+   gMain.state = 0;
 }
 
 // -----------------------------------------------------------------------
@@ -948,7 +949,6 @@ static void OnButtonBackspace(void) {
 
 static void InitCB2(void) {
    switch (gMain.state) {
-      default:
       case 0:
          gMain.state++;
          break;

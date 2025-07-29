@@ -12,6 +12,7 @@ const u8 gText_lu_FieldDebugMenu_SetMoney[] = _("Set money");
 const u8 gText_lu_FieldDebugMenu_SetTime[] = _("Set time of day");
 const u8 gText_lu_FieldDebugMenu_SetWeather[] = _("Set weather");
 const u8 gText_lu_FieldDebugMenu_TestBattleTransition[] = _("Test battle transition");
+const u8 gText_lu_FieldDebugMenu_TestGfxScreen[] = _("Test GFX screen");
 const u8 gText_lu_FieldDebugMenu_TestVUINamingScreen[] = _("Test VUI name screen");
 const u8 gText_lu_FieldDebugMenu_WalkThroughWalls[] = _("Walk through walls");
 
