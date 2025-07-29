@@ -41,6 +41,19 @@ Background modes *affect* layers but cannot be set *per* layer. Rather, there is
 | `DISPCNT_MODE_4` | Disabled | Disabled | Bitmap | Disabled | 240x160px bitmap; 256-color palette. |
 | `DISPCNT_MODE_5` | Disabled | Disabled | Bitmap | Disabled | Two 160x128px bitmaps; 15-bit colors. `DISPCNT` flag 0x10 (1 << 4) indicates whether to display the second bitmap. |
 
+### Background tilemap
+
+This library offers several functions related to the tilemap. However, those functions only work if the library is given a backing buffer to store the tilemap; it will not create that buffer on its own. You must:
+
+* Initialize the BG layer.
+* Show the BG layer.
+* Allocate memory for the tilemap.
+* Use `SetBgTilemapBuffer` to tell the BG layer about that memory.
+  * This function refuses to accept the buffer you give it unless the target BG layer is already initialized and visible.
+* Free the memory when you're done with it.
+
+The window library does this for you under the hood when adding windows. However, if you have a BG layer that has no windows, then you'll have to do this stuff yourself.
+
 ## Structs
 
 ### `BgTemplate`

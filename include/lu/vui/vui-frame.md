@@ -24,6 +24,8 @@ static const u16 sChromeFrameCornerTileIDs_Lower[] = {
    COMMONTILE_CHROME_CORNER_LOWER_B
 };
 static const VUIFrame sChromeFrame = {
+   .bg_layer = 0,
+   .palette  = 5,
    .corners = {
       .sizes = {
          .tl = { 1, 2 },
