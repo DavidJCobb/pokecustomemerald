@@ -256,6 +256,10 @@ extern void BlitBitmapRect4BitRemapped(
    //     + (X % TILE_WIDTH)  / 2
    //    )
    //
+   // So if we use a nested loop -- Y outer, X inner -- then we can find 
+   // the start of each row in the outer loop, and then find the target 
+   // pixels' containing bytes in the inner loop.
+   //
    
    #define PIXEL_L(duo)      ((duo) & 15)
    #define PIXEL_R(duo)      ((duo) >> 4)
@@ -293,143 +297,144 @@ extern void BlitBitmapRect4BitRemapped(
    #define SRC_PIXEL     *(PIXEL_BYTE(src_px_row, src_x + dx))
    #define DST_PIXEL_PTR PIXEL_BYTE(dst_px_row, dst_x + dx)
    
+   //
+   // So. The blitting macros.
+   //
+   // First, we have "TRANSFORM" macros. These are just used to handle the 
+   // color remapping when reading the source pixel.
+   //
+   // Next, the "BLIT" macros themselves.
+   //
+   // When the source and destination rects have the same two-pixel alignment, 
+   // we can, in general, blit pixels two at a time (i.e. blit one byte at a 
+   // time). If both rects are misaligned, then we'll have to blit the leading 
+   // pixel on its own (i.e. half a byte); and no matter how they're aligned, 
+   // we may have to blit a trailing pixel (e.g. if both rects are aligned but 
+   // the blit width is odd; or if both rects are misaligned and the blit width 
+   // is even).
+   //
+   // The "aligned" case looks like this:
+   //
+   //    Dst Target:         |       |
+   //    Src Pixels: |L|R|L|R|L|R|L|R|L|R|L|R|
+   //    Dst Pixels: |L|R|L|R|L|R|L|R|L|R|L|R|
+   //    Src Buffer: |R L|R L|R L|R L|R L|R L|
+   //    Dst buffer: |. .|. .|R L|R L|. .|. .|
+   //
+   // The "misaligned" case looks like this:
+   //
+   //    Dst Target:       |       |  
+   //    Src Pixels: |L|R|L|R|L|R|L|R|L|R|L|R|
+   //    Dst Pixels: |L|R|L|R|L|R|L|R|L|R|L|R|
+   //    Src Buffer: |R L|R L|R L|R L|R L|R L|
+   //    Dst buffer: |. .|R .|R L|. L|. .|. .|
+   //
+   // When the source and destination rects don't have the same two-pixel 
+   // alignment -- when one is aligned and the other is not -- things get a 
+   // bit trickier. We can still blit most of each pixel row in pairs, but 
+   // the order of each pair's nybbles must be swapped. This situation will 
+   // generally look like this:
+   //
+   //    Dst Target:       |       |  
+   //    Src Pixels: |L|R|L|R|L|R|L|R|L|R|L|R|
+   //    Dst Pixels: |L|R|L|R|L|R|L|R|L|R|L|R|
+   //    Src Buffer: |R L|R L|R L|R L|R L|R L|
+   //    Dst buffer: |. .|. R|L R|L .|. .|. .|
+   //
+   // We call these "mismatched pairs," as opposed to the "matched pairs" 
+   // (that don't need nybble swapping) that we blit when the source and 
+   // destination rects have the same (mis)alignment.
+   //
+   // If the source is misaligned, then we blit the source's rightmost pixel 
+   // in isolation, overwriting the lefthand pixel in a destination pair. 
+   // Either way, we then blit mismatched pairs from the source to the 
+   // destination; and then if there remains a trailing pixel, we blit that 
+   // with a similar swap (i.e. source-pair-left to destination-pair-right).
+   //
+   
+   #define TRANSFORM_src(v) color_mapping[(v)]
+   #define TRANSFORM_dst(v) (v)
+   #define SINGLE_PIXEL_BLIT(left_subject, left_side, right_subject, right_side) \
+      do { \
+         auto dst_ptr = DST_PIXEL_PTR; \
+         auto src_duo = SRC_PIXEL; \
+         auto dst_duo = *dst_ptr; \
+         u8 color_l = TRANSFORM_##left_subject(PIXEL_##left_side(left_subject##_duo)); \
+         u8 color_r = TRANSFORM_##right_subject(PIXEL_##right_side(right_subject##_duo)); \
+         *dst_ptr = MERGE_PIXEL(color_l, color_r); \
+         ++dx; \
+      } while (0)
+   
+   #define BLIT_SRC_L_TO_DST_L SINGLE_PIXEL_BLIT(src, L, dst, R)
+   #define BLIT_SRC_L_TO_DST_R SINGLE_PIXEL_BLIT(dst, L, src, L)
+   #define BLIT_SRC_R_TO_DST_R SINGLE_PIXEL_BLIT(dst, L, src, R)
+   #define BLIT_SRC_R_TO_DST_L SINGLE_PIXEL_BLIT(src, R, dst, R)
+   
+   #define PIXEL_PAIR_BLIT(left_side, right_side) \
+      do { \
+         auto src_duo = SRC_PIXEL; \
+         u8 color_l = TRANSFORM_src(PIXEL_##left_side(src_duo)); \
+         u8 color_r = TRANSFORM_src(PIXEL_##right_side(src_duo)); \
+         *DST_PIXEL_PTR = MERGE_PIXEL(color_l, color_r); \
+      } while (0)
+   
+   #define BLIT_MATCHED_PAIR    PIXEL_PAIR_BLIT(L, R)
+   #define BLIT_MISMATCHED_PAIR PIXEL_PAIR_BLIT(R, L)
+   
    const bool8 dst_misaligned = (dst_x & 1);
    const bool8 src_misaligned = (src_x & 1);
    if (dst_misaligned == src_misaligned) {
       //
-      // The source and destination X-coordinates both have the same align-
-      // ment with respect to two-pixel (one-byte) boundaries.
+      // Source and destination have the same (mis)alignment. BLitting can 
+      // preserve nybble order from source to destination.
       //
-      inline void _blit_src_l_to_dst_l(void) {
-         auto dst_ptr = DST_PIXEL_PTR;
-         auto src_duo = SRC_PIXEL;
-         auto dst_duo = *dst_ptr;
-         u8 color_l = color_mapping[PIXEL_L(src_duo)];
-         u8 color_r = PIXEL_R(dst_duo);
-         *dst_ptr = MERGE_PIXEL(color_l, color_r);
-         ++dx;
-      }
-      inline void _blit_src_r_to_dst_r(void) {
-         auto dst_ptr = DST_PIXEL_PTR;
-         auto src_duo = SRC_PIXEL;
-         auto dst_duo = *dst_ptr;
-         u8 color_l = PIXEL_L(dst_duo);
-         u8 color_r = color_mapping[PIXEL_R(src_duo)];
-         *dst_ptr = MERGE_PIXEL(color_l, color_r);
-         ++dx;
-      }
-      inline void _looped_blit_matched_pair(void) {
-         auto dst_ptr = DST_PIXEL_PTR;
-         auto src_duo = SRC_PIXEL;
-         u8 color_l = color_mapping[PIXEL_L(src_duo)];
-         u8 color_r = color_mapping[PIXEL_R(src_duo)];
-         *dst_ptr = MERGE_PIXEL(color_l, color_r);
-      }
-      
       if (dst_misaligned) {
-         //
-         // The source and destination X-corodinates are both misaligned 
-         // from a two-pixel boundary. For each row, we can blit the first 
-         // pixel on its own; then blit two pixels at a time; and then if 
-         // the width is an even number, we can blit the last pixel of the 
-         // row on its own too.
-         //
          for each_row {
             dx = 0;
             _find_pixel_row_pointers();
-            _blit_src_r_to_dst_r();
+            BLIT_SRC_R_TO_DST_R;
             for each_pair {
-               _looped_blit_matched_pair();
+               BLIT_MATCHED_PAIR;
             }
             if (dx < width)
-               _blit_src_l_to_dst_l();
+               BLIT_SRC_L_TO_DST_L;
          }
       } else {
-         //
-         // The source and destination X-coordinates are both aligned to 
-         // a two-pixel boundary. For each row, we can blit two pixels 
-         // at a time; and if the width is an odd number, then we can 
-         // blit the last pixel of the row on its own.
-         //
          for each_row {
             dx = 0;
             _find_pixel_row_pointers();
             for each_pair {
-               _looped_blit_matched_pair();
+               BLIT_MATCHED_PAIR;
             }
             if (dx < width)
-               _blit_src_l_to_dst_l();
+               BLIT_SRC_L_TO_DST_L;
          }
       }
    } else {
       //
-      // The source and destination X-coordinates are aligned differently 
-      // from one another, with respect to two-pixel boundaries. Broadly 
-      // speaking, the blitting will fall into this pattern:
+      // Source and destination are aligned differently. Blitting will 
+      // need to swap the source nybble order en route to the destination.
       //
-      //    Dst Target:       |       |
-      //    Src Pixels: |L|R|L|R|L|R|L|R|L|R|L|R|
-      //    Dst Pixels: |L|R|L|R|L|R|L|R|L|R|L|R|
-      //    Src Buffer: |R L|R L|R L|R L|R L|R L|
-      //    Dst Buffer: |. .|. R|L R|L .|. .|. .| (blitted src pixels only)
-      //
-      inline void _blit_src_l_to_dst_r(void) {
-         auto dst_ptr = DST_PIXEL_PTR;
-         auto src_duo = SRC_PIXEL;
-         auto dst_duo = *dst_ptr;
-         u8 color_l = PIXEL_L(dst_duo);
-         u8 color_r = color_mapping[PIXEL_L(src_duo)];
-         *dst_ptr = MERGE_PIXEL(color_l, color_r);
-         ++dx;
-      }
-      inline void _blit_src_r_to_dst_l(void) {
-         auto dst_ptr = DST_PIXEL_PTR;
-         auto src_duo = SRC_PIXEL;
-         auto dst_duo = *dst_ptr;
-         u8 color_l = color_mapping[PIXEL_R(src_duo)];
-         u8 color_r = PIXEL_R(dst_duo);
-         *dst_ptr = MERGE_PIXEL(color_l, color_r);
-         ++dx;
-      }
-      inline void _looped_blit_mismatched_pair(void) {
-         auto dst_ptr = DST_PIXEL_PTR;
-         auto src_duo = SRC_PIXEL;
-         u8 color_l = color_mapping[PIXEL_L(src_duo)];
-         u8 color_r = color_mapping[PIXEL_R(src_duo)];
-         *dst_ptr = MERGE_PIXEL(color_r, color_l);
-      }
-      
       if (dst_misaligned) {
-         //
-         // The source rect is aligned to a two-pixel boundary, but the 
-         // destination rect is not. We bit mismatched pairs, and then 
-         // potentially blit src-L to dst-R.
-         //
          for each_row {
             dx = 0;
             _find_pixel_row_pointers();
             for each_pair {
-               _looped_blit_mismatched_pair();
+               BLIT_MISMATCHED_PAIR;
             }
             if (dx < width)
-               _blit_src_l_to_dst_r();
+               BLIT_SRC_L_TO_DST_R;
          }
       } else {
-         //
-         // The destination rect is aligned to a two-pixel boundary, but 
-         // the source rect is not. We begin by blitting src-R to dst-L, 
-         // and then blit mismatched pairs. If there's a trailing pixel 
-         // left after the pairs, it will be src-L, to be blit to dst-R.
-         //
          for each_row {
             dx = 0;
             _find_pixel_row_pointers();
-            _blit_src_r_to_dst_l();
+            BLIT_SRC_R_TO_DST_L;
             for each_pair {
-               _looped_blit_mismatched_pair();
+               BLIT_MISMATCHED_PAIR;
             }
             if (dx < width)
-               _blit_src_l_to_dst_r();
+               BLIT_SRC_L_TO_DST_R;
          }
       }
    }
@@ -441,6 +446,17 @@ extern void BlitBitmapRect4BitRemapped(
    #undef each_pair
    #undef PIXEL_ROW_BYTE
    #undef PIXEL_BYTE
+   
+   #undef TRANSFORM_src
+   #undef TRANSFORM_dst
+   #undef SINGLE_PIXEL_BLIT
+   #undef BLIT_SRC_L_TO_DST_L
+   #undef BLIT_SRC_L_TO_DST_R
+   #undef BLIT_SRC_R_TO_DST_R
+   #undef BLIT_SRC_R_TO_DST_L
+   #undef PIXEL_PAIR_BLIT
+   #undef BLIT_MATCHED_PAIR
+   #undef BLIT_MISMATCHED_PAIR
 }
 
 extern void BlitTile4BitRemapped(
