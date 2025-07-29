@@ -1,6 +1,7 @@
 #include "lu/gfxutils.h"
 #include "gba/gba.h"
 #include <string.h> // compiler may need us to remove this if we ever #include "global.h"
+#include "lu/c.h"
 #include "bg.h"
 #include "decompress.h"
 #include "window.h"
@@ -262,70 +263,67 @@ extern void BlitBitmapRect4BitRemapped(
    #define each_row          (; loop_src_y < src_y_end; ++loop_src_y, ++loop_dst_y)
    #define each_pair         (; dx + 1 < width; dx += 2)
    
+   enum {
+      PIXELS_PER_BYTE    = 2,
+      BYTES_PER_TILE_ROW = TILE_WIDTH / PIXELS_PER_BYTE,
+   };
+   #define PIXEL_ROW_BYTE(buffer, y_px, w_px) \
+      (&(buffer)[ \
+         ((y_px) / TILE_HEIGHT) * ((w_px) / TILE_WIDTH) * TILE_SIZE_4BPP \
+       + ((y_px) % TILE_HEIGHT) * BYTES_PER_TILE_ROW \
+      ])
+   #define PIXEL_BYTE(pixel_row_buffer, x_px)    \
+      (&(pixel_row_buffer)[                      \
+         ((x_px) / TILE_WIDTH) * TILE_SIZE_4BPP  \
+       + ((x_px) % TILE_WIDTH) / PIXELS_PER_BYTE \
+      ])
+   
    s32 loop_src_y = src_y;
    s32 loop_dst_y = dst_y;
    u16 dx;
-   const u8* src_px;
-   u8*       dst_px;
+   
+   const u8* src_px_row;
+   u8*       dst_px_row;
+   
+   inline void _find_pixel_row_pointers(void) {
+      src_px_row = PIXEL_ROW_BYTE(src->pixels, loop_src_y, src->width);
+      dst_px_row = PIXEL_ROW_BYTE(dst->pixels, loop_dst_y, dst->width);
+   }
+   
+   #define SRC_PIXEL     *(PIXEL_BYTE(src_px_row, src_x + dx))
+   #define DST_PIXEL_PTR PIXEL_BYTE(dst_px_row, dst_x + dx)
    
    const bool8 dst_misaligned = (dst_x & 1);
    const bool8 src_misaligned = (src_x & 1);
-   
-   const u8  PIXELS_PER_BYTE         = 2;
-   const u8  BYTES_PER_TILE_ROW      = TILE_WIDTH / PIXELS_PER_BYTE;
-   
-   const u8* _find_tile_byte(const u8* buffer, u16 x_px, u16 y_px, u16 w_px) {
-      return &buffer[
-         (y_px / TILE_HEIGHT) * (w_px / TILE_WIDTH) * TILE_SIZE_4BPP
-       + (y_px % TILE_HEIGHT) * BYTES_PER_TILE_ROW
-       + (x_px / TILE_WIDTH) * TILE_SIZE_4BPP
-       + (x_px % TILE_WIDTH) / PIXELS_PER_BYTE
-      ];
-   }
-   inline void _update_pixel_pair_pointers(void) {
-      src_px = _find_tile_byte(
-         src->pixels,
-         src_x + dx,
-         loop_src_y,
-         src->width
-      );
-      dst_px = (u8*) _find_tile_byte(
-         dst->pixels,
-         dst_x + dx,
-         loop_dst_y,
-         dst->width
-      );
-   }
-   
    if (dst_misaligned == src_misaligned) {
       //
       // The source and destination X-coordinates both have the same align-
       // ment with respect to two-pixel (one-byte) boundaries.
       //
       inline void _blit_src_l_to_dst_l(void) {
-         _update_pixel_pair_pointers();
-         const u8 src_duo = *src_px;
-         const u8 dst_duo = *dst_px;
+         auto dst_ptr = DST_PIXEL_PTR;
+         auto src_duo = SRC_PIXEL;
+         auto dst_duo = *dst_ptr;
          u8 color_l = color_mapping[PIXEL_L(src_duo)];
          u8 color_r = PIXEL_R(dst_duo);
-         *dst_px = MERGE_PIXEL(color_l, color_r);
+         *dst_ptr = MERGE_PIXEL(color_l, color_r);
          ++dx;
       }
       inline void _blit_src_r_to_dst_r(void) {
-         _update_pixel_pair_pointers();
-         const u8 src_duo = *src_px;
-         const u8 dst_duo = *dst_px;
+         auto dst_ptr = DST_PIXEL_PTR;
+         auto src_duo = SRC_PIXEL;
+         auto dst_duo = *dst_ptr;
          u8 color_l = PIXEL_L(dst_duo);
          u8 color_r = color_mapping[PIXEL_R(src_duo)];
-         *dst_px = MERGE_PIXEL(color_l, color_r);
+         *dst_ptr = MERGE_PIXEL(color_l, color_r);
          ++dx;
       }
       inline void _looped_blit_matched_pair(void) {
-         _update_pixel_pair_pointers();
-         const u8 src_duo = *src_px;
+         auto dst_ptr = DST_PIXEL_PTR;
+         auto src_duo = SRC_PIXEL;
          u8 color_l = color_mapping[PIXEL_L(src_duo)];
          u8 color_r = color_mapping[PIXEL_R(src_duo)];
-         *dst_px = MERGE_PIXEL(color_l, color_r);
+         *dst_ptr = MERGE_PIXEL(color_l, color_r);
       }
       
       if (dst_misaligned) {
@@ -338,6 +336,7 @@ extern void BlitBitmapRect4BitRemapped(
          //
          for each_row {
             dx = 0;
+            _find_pixel_row_pointers();
             _blit_src_r_to_dst_r();
             for each_pair {
                _looped_blit_matched_pair();
@@ -354,6 +353,7 @@ extern void BlitBitmapRect4BitRemapped(
          //
          for each_row {
             dx = 0;
+            _find_pixel_row_pointers();
             for each_pair {
                _looped_blit_matched_pair();
             }
@@ -374,29 +374,29 @@ extern void BlitBitmapRect4BitRemapped(
       //    Dst Buffer: |. .|. R|L R|L .|. .|. .| (blitted src pixels only)
       //
       inline void _blit_src_l_to_dst_r(void) {
-         _update_pixel_pair_pointers();
-         const u8 src_duo = *src_px;
-         const u8 dst_duo = *dst_px;
+         auto dst_ptr = DST_PIXEL_PTR;
+         auto src_duo = SRC_PIXEL;
+         auto dst_duo = *dst_ptr;
          u8 color_l = PIXEL_L(dst_duo);
          u8 color_r = color_mapping[PIXEL_L(src_duo)];
-         *dst_px = MERGE_PIXEL(color_l, color_r);
+         *dst_ptr = MERGE_PIXEL(color_l, color_r);
          ++dx;
       }
       inline void _blit_src_r_to_dst_l(void) {
-         _update_pixel_pair_pointers();
-         const u8 src_duo = *src_px;
-         const u8 dst_duo = *dst_px;
+         auto dst_ptr = DST_PIXEL_PTR;
+         auto src_duo = SRC_PIXEL;
+         auto dst_duo = *dst_ptr;
          u8 color_l = color_mapping[PIXEL_R(src_duo)];
          u8 color_r = PIXEL_R(dst_duo);
-         *dst_px = MERGE_PIXEL(color_l, color_r);
+         *dst_ptr = MERGE_PIXEL(color_l, color_r);
          ++dx;
       }
       inline void _looped_blit_mismatched_pair(void) {
-         _update_pixel_pair_pointers();
-         const u8 src_duo = *src_px;
+         auto dst_ptr = DST_PIXEL_PTR;
+         auto src_duo = SRC_PIXEL;
          u8 color_l = color_mapping[PIXEL_L(src_duo)];
          u8 color_r = color_mapping[PIXEL_R(src_duo)];
-         *dst_px = MERGE_PIXEL(color_r, color_l);
+         *dst_ptr = MERGE_PIXEL(color_r, color_l);
       }
       
       if (dst_misaligned) {
@@ -407,6 +407,7 @@ extern void BlitBitmapRect4BitRemapped(
          //
          for each_row {
             dx = 0;
+            _find_pixel_row_pointers();
             for each_pair {
                _looped_blit_mismatched_pair();
             }
@@ -422,6 +423,7 @@ extern void BlitBitmapRect4BitRemapped(
          //
          for each_row {
             dx = 0;
+            _find_pixel_row_pointers();
             _blit_src_r_to_dst_l();
             for each_pair {
                _looped_blit_mismatched_pair();
@@ -437,6 +439,8 @@ extern void BlitBitmapRect4BitRemapped(
    #undef MERGE_PIXEL
    #undef each_row
    #undef each_pair
+   #undef PIXEL_ROW_BYTE
+   #undef PIXEL_BYTE
 }
 
 extern void BlitTile4BitRemapped(
