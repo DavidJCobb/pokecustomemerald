@@ -4,10 +4,12 @@
 #include "gba/types.h"
 #include "blit.h"
 
-extern void FlipTile4bpp(u8* tile_data, bool8 flip_h, bool8 flip_v);
+#include "lu/c-attr.define.h"
+
+NON_NULL_PARAMS(1) extern void FlipTile4bpp(u8* tile_data, bool8 flip_h, bool8 flip_v);
 
 extern void FlipWindowTile(u8 window_id, u8 tile_x, u8 tile_y, bool8 flip_h, bool8 flip_v);
-extern u8* GetWindowTilePtr(u8 window_id, u8 tile_x, u8 tile_y);
+NODISCARD extern u8* GetWindowTilePtr(u8 window_id, u8 tile_x, u8 tile_y);
 
 struct BGTilemapInfo {
    struct {
@@ -23,7 +25,7 @@ struct BGTilemapInfo {
 };
 
 // Tile a single tilemap across an entire BG layer.
-extern void DrawTiledBackground(
+NON_NULL_PARAMS(1) extern void DrawTiledBackground(
    const struct BGTilemapInfo*,
    u8  dst_bg,
    u8  dst_first_palette_id,
@@ -36,7 +38,7 @@ extern void DrawTiledBackground(
 // should be a pointer to an array of 16 palette color indices, such that the 
 // color N in the source image is blitted into the destination as the color 
 // `color_mapping[N]`.
-extern void BlitBitmapRect4BitRemapped(
+NON_NULL_PARAMS(1,2) extern void BlitBitmapRect4BitRemapped(
    const struct Bitmap* src,
    struct Bitmap*       dst,
    u16 src_x,
@@ -45,13 +47,19 @@ extern void BlitBitmapRect4BitRemapped(
    u16 dst_y,
    u16 width,
    u16 height,
-   const u8* color_mapping
+   const u8 color_mapping[]
 );
 
-extern void BlitTile4BitRemapped(
+// Blit a 4bpp tile onto another 4bpp tile. The `color_mapping` parameter 
+// should be a pointer to an array of 16 palette color indices, such that the 
+// color N in the source tile is blitted into the destination as the color 
+// `color_mapping[N]`.
+NON_NULL_PARAMS(1,2,3) extern void BlitTile4BitRemapped(
    const u8* src,
    u8*       dst,
-   const u8* color_mapping
+   const u8 color_mapping[]
 );
+
+#include "lu/c-attr.undef.h"
 
 #endif

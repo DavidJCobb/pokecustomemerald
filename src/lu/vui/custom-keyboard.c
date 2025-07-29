@@ -12,6 +12,7 @@
 #include "text.h"
 #include "window.h"
 #include "constants/characters.h"
+#include "lu/c-attr.define.h"
 
 static const u8 sCharsetCharactersUpper[] = __(
    "ABCDEF ."
@@ -86,12 +87,12 @@ static const struct VTable_VUIWidget sVTable = {
    VFunc_OnSubgridFocusMoved,
 };
 
-static void AppendGlyph(VUICustomKeyboard*);
-static u8 GetCharacter(VUICustomKeyboard*, u8 x, u8 y);
-static u8 GetKeyColPx(VUICustomKeyboard*, u8 n);
-static u8 GetKeyRowPx(VUICustomKeyboard*, u8 n);
-static void RepaintKeys(VUICustomKeyboard*);
-static void UpdateCursorSprite(VUICustomKeyboard*);
+NON_NULL_PARAMS(1) static void AppendGlyph(VUICustomKeyboard*);
+NON_NULL_PARAMS(1) static u8 GetCharacter(VUICustomKeyboard*, u8 x, u8 y);
+NON_NULL_PARAMS(1) static u8 GetKeyColPx(VUICustomKeyboard*, u8 n);
+NON_NULL_PARAMS(1) static u8 GetKeyRowPx(VUICustomKeyboard*, u8 n);
+NON_NULL_PARAMS(1) static void RepaintKeys(VUICustomKeyboard*);
+NON_NULL_PARAMS(1) static void UpdateCursorSprite(VUICustomKeyboard*);
 
 static const struct SpritePalette sSpritePalettes[];
 static const struct SpriteSheet sSpriteSheets[];

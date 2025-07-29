@@ -1,6 +1,7 @@
 #ifndef GUARD_LU_V_WIDGETS_TYPES_H
 #define GUARD_LU_V_WIDGETS_TYPES_H
 
+#include "lu/c-attr.define.h"
 #include "gba/defines.h" // TRUE, FALSE; stdddef.h: NULL and friends
 #include "gba/types.h"
 
@@ -30,10 +31,10 @@ typedef struct VUIExtent {
    u8 end;
 } VUIExtent;
 
-extern u8 VUI_ExtentDistance(const VUIExtent*, u8);
-extern bool8 VUI_ExtentsOverlap(const VUIExtent*, const VUIExtent*);
-extern bool8 VUI_ExtentOverlaps(const VUIExtent*, u8);
-extern s16 VUI_PointBeyondExtent(const VUIExtent*, s8);
+NON_NULL_PARAMS(1)   extern u8 VUI_ExtentDistance(const VUIExtent*, u8);
+NON_NULL_PARAMS(1,2) extern bool8 VUI_ExtentsOverlap(const VUIExtent*, const VUIExtent*);
+NON_NULL_PARAMS(1)   extern bool8 VUI_ExtentOverlaps(const VUIExtent*, u8);
+NON_NULL_PARAMS(1)   extern s16 VUI_PointBeyondExtent(const VUIExtent*, s8);
 
 typedef union VUIPos {
    u8 coords[2];
@@ -51,9 +52,9 @@ typedef union VUISize {
    };
 } VUISize;
 
-extern void VUI_ConstrainPos(VUIPos*, const VUISize*);
-extern void VUI_MapBoxToExtents(const VUIPos*, const VUISize*, VUIExtent* x, VUIExtent* y);
-extern void VUI_MapPosAcrossSizes(VUIPos*, const VUISize* src, const VUISize* dst);
+NON_NULL_PARAMS(1,2)     extern void VUI_ConstrainPos(VUIPos*, const VUISize*);
+NON_NULL_PARAMS(1,2,3,4) extern void VUI_MapBoxToExtents(const VUIPos*, const VUISize*, VUIExtent* x, VUIExtent* y);
+NON_NULL_PARAMS(1,2,3)   extern void VUI_MapPosAcrossSizes(VUIPos*, const VUISize* src, const VUISize* dst);
 
 typedef struct VUIGridArea {
    VUIPos  pos;
@@ -90,7 +91,8 @@ typedef struct VUIStringRef {
    (this)->data = (buffer);                  \
    (this)->size = sizeof(buffer) - 1;
 
-extern void  VUIStringRef_Clear(VUIStringRef*);
-extern bool8 VUIStringRef_IsNull(const VUIStringRef*);
+NON_NULL_PARAMS(1) extern void  VUIStringRef_Clear(VUIStringRef*);
+NON_NULL_PARAMS(1) extern bool8 VUIStringRef_IsNull(const VUIStringRef*);
 
+#include "lu/c-attr.undef.h"
 #endif

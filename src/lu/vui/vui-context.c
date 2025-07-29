@@ -3,9 +3,10 @@
 #include "lu/vui/vui-types.h"
 #include "global.h"
 #include "main.h"
+#include "lu/c-attr.define.h"
 
-static void _VUIContext_FocusAnyWidget(VUIContext* this);
-static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy);
+NON_NULL_PARAMS(1) static void _VUIContext_FocusAnyWidget(VUIContext* this);
+NON_NULL_PARAMS(1) static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy);
 
 extern void VUIContext_HandleInput(VUIContext* this) {
    VUIWidget* widget = this->focused;
@@ -48,7 +49,7 @@ extern void VUIContext_FocusWidget(VUIContext* this, VUIWidget* widget) {
       v_invoke(widget, on_focus_change)(TRUE, prior);
 }
 
-static void _VUIContext_FocusAnyWidget(VUIContext* this) {
+NON_NULL_PARAMS(1) static void _VUIContext_FocusAnyWidget(VUIContext* this) {
    vui_context_foreach(this, widget) {
       if (widget && VUIWidget_IsFocusable(widget)) {
          VUIContext_FocusWidget(this, widget);
@@ -57,7 +58,7 @@ static void _VUIContext_FocusAnyWidget(VUIContext* this) {
    }
 }
 
-static VUIWidget* _VUIContext_GetNavigationTarget(
+NON_NULL_PARAMS(1,2) static VUIWidget* _VUIContext_GetNavigationTarget(
    VUIContext*        this,
    VUIWidget*         from_widget,
    const enum VUIAxis along_axis,
@@ -104,7 +105,7 @@ static VUIWidget* _VUIContext_GetNavigationTarget(
    return dst_widget;
 }
 
-static bool8 _VUIContext_TryNavigate(
+NON_NULL_PARAMS(1,2) static bool8 _VUIContext_TryNavigate(
    VUIContext*        this,
    VUIWidget*         from_widget,
    const enum VUIAxis along_axis,
@@ -228,7 +229,7 @@ static bool8 _VUIContext_TryNavigate(
    return TRUE;
 }
 //
-static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy) {
+NON_NULL_PARAMS(1) static void _VUIContext_MoveFocus(VUIContext* this, s8 dx, s8 dy) {
    VUIWidget* prior = this->focused;
    AGB_ASSERT(!!prior);
    #if NDEBUG

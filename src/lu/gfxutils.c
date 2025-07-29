@@ -191,7 +191,7 @@ extern void BlitBitmapRect4BitRemapped(
    u16 dst_y,
    u16 width,
    u16 height,
-   const u8* color_mapping
+   const u8 color_mapping[]
 ) {
    s32 src_x_end;
    s32 src_y_end;
@@ -462,7 +462,7 @@ extern void BlitBitmapRect4BitRemapped(
 extern void BlitTile4BitRemapped(
    const u8* src,
    u8*       dst,
-   const u8* color_mapping
+   const u8  color_mapping[]
 ) {
    for(u8 i = 0; i < TILE_SIZE_4BPP; ++i) {
       u8 duo     = src[i];

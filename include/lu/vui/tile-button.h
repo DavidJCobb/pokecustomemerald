@@ -2,6 +2,7 @@
 #define GUARD_LU_VUI_TILEBUTTON_H
 
 #include "lu/vui/vui-widget.h"
+#include "lu/c-attr.define.h"
 
 struct VUITileButton_Callbacks {
    void(*on_press)(void);
@@ -40,7 +41,8 @@ typedef struct VUITileButton {
    u8     window_id;
 } VUITileButton;
 
-extern void VUITileButton_Construct(VUITileButton*, const VUITileButton_InitParams*);
-extern void VUITileButton_Repaint(VUITileButton*, bool8 is_focused);
+NON_NULL_PARAMS(1,2) extern void VUITileButton_Construct(VUITileButton*, const VUITileButton_InitParams*);
+NON_NULL_PARAMS(1) extern void VUITileButton_Repaint(VUITileButton*, bool8 is_focused);
 
+#include "lu/c-attr.undef.h"
 #endif

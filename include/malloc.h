@@ -13,9 +13,21 @@
 #define HEAP_SIZE 0x1C000
 extern u8 gHeap[HEAP_SIZE];
 
-void *Alloc(u32 size);
-void *AllocZeroed(u32 size);
+#if __GNUC__
+   #if __STDC_VERSION__ < 202311L
+      #define MALLOC_ANNOTATION __attribute__((malloc, malloc(Free, 1), alloc_size(1)))
+   #else
+      #define MALLOC_ANNOTATION [[gnu::malloc, gnu::malloc(Free, 1), gnu::alloc_size(1)]]
+   #endif
+#else
+   #define MALLOC_ANNOTATION
+#endif
+
 void Free(void *pointer);
+MALLOC_ANNOTATION void *Alloc(u32 size);
+MALLOC_ANNOTATION void *AllocZeroed(u32 size);
 void InitHeap(void *heapStart, u32 heapSize);
+
+#undef MALLOC_ANNOTATION
 
 #endif // GUARD_ALLOC_H

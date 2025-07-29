@@ -1,6 +1,7 @@
 #ifndef GUARD_LU_VUI_CONTEXT_H
 #define GUARD_LU_VUI_CONTEXT_H
 
+#include "lu/c-attr.define.h"
 #include "gba/types.h"
 
 struct VUIWidget;
@@ -18,8 +19,8 @@ typedef struct VUIContext {
    u8 h;
 } VUIContext;
 
-extern void VUIContext_HandleInput(VUIContext* this);
-extern void VUIContext_FocusWidget(VUIContext* this, struct VUIWidget*);
+NON_NULL_PARAMS(1)   extern void VUIContext_HandleInput(VUIContext* this);
+NON_NULL_PARAMS(1,2) extern void VUIContext_FocusWidget(VUIContext* this, struct VUIWidget*);
 
 /*
    Usage:
@@ -37,4 +38,5 @@ extern void VUIContext_FocusWidget(VUIContext* this, struct VUIWidget*);
       __i_##i##__ < (context)->widgets.size && (varname = (context)->widgets.list[__i_##i##__], 1); \
       ++__i_##i##__)
 
+#include "lu/c-attr.undef.h"
 #endif

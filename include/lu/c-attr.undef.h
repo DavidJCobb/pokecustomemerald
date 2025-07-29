@@ -1,0 +1,2 @@
+
+#undef C_ATTR_NON_NULL_PARAMS

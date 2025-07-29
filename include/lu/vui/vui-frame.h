@@ -1,6 +1,7 @@
 #ifndef GUARD_LU_VUI_FRAME_H
 #define GUARD_LU_VUI_FRAME_H
 
+#include "lu/c-attr.define.h"
 #include "gba/types.h"
 #include "lu/vui/vui-types.h"
 
@@ -68,6 +69,8 @@ typedef struct VUIFrame {
 } VUIFrame;
 
 // Args measured in tiles.
+NON_NULL_PARAMS(1)
 extern void VUIFrame_Draw(const VUIFrame*, const u8 x, const u8 y, const u8 w, const u8 h);
 
+#include "lu/c-attr.undef.h"
 #endif

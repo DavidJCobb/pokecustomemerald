@@ -2,6 +2,7 @@
 #define GUARD_LU_VUI_KEYBOARDVALUE_H
 
 #include "lu/vui/vui-widget.h"
+#include "lu/c-attr.define.h"
 struct VUIFrame;
 
 enum {
@@ -34,8 +35,12 @@ typedef struct VUIKeyboardValue {
    u8 underscore_sprite_ids[VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE];
 } VUIKeyboardValue;
 
+NON_NULL_PARAMS(1,2)
 extern void VUIKeyboardValue_Construct(VUIKeyboardValue*, const VUIKeyboardValue_InitParams*);
+NON_NULL_PARAMS(1)
 extern void VUIKeyboardValue_SetUnderscoreVisibility(VUIKeyboardValue*, bool8);
+NON_NULL_PARAMS(1)
 extern void VUIKeyboardValue_ShowValue(VUIKeyboardValue*, const u8* string);
 
+#include "lu/c-attr.undef.h"
 #endif

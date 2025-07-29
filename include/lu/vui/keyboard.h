@@ -1,6 +1,7 @@
 #ifndef GUARD_LU_VUI_KEYBOARD_H
 #define GUARD_LU_VUI_KEYBOARD_H
 
+#include "lu/c-attr.define.h"
 #include "gba/defines.h"
 #include "lu/vui/vui-widget.h"
 
@@ -70,9 +71,11 @@ typedef struct VUIKeyboard {
    u8 cursor_sprite_id;
 } VUIKeyboard;
 
+NON_NULL_PARAMS(1,2)
 extern void VUIKeyboard_Construct(VUIKeyboard*, const VUIKeyboard_InitParams*);
-extern void VUIKeyboard_Backspace(VUIKeyboard*);
-extern void VUIKeyboard_NextCharset(VUIKeyboard*);
-extern void VUIKeyboard_SetCharset(VUIKeyboard*, enum VUIKeyboardCharsetID);
+NON_NULL_PARAMS(1) extern void VUIKeyboard_Backspace(VUIKeyboard*);
+NON_NULL_PARAMS(1) extern void VUIKeyboard_NextCharset(VUIKeyboard*);
+NON_NULL_PARAMS(1) extern void VUIKeyboard_SetCharset(VUIKeyboard*, enum VUIKeyboardCharsetID);
 
+#include "lu/c-attr.undef.h"
 #endif

@@ -1,6 +1,7 @@
 #ifndef GUARD_LU_VUI_WIDGET_H
 #define GUARD_LU_VUI_WIDGET_H
 
+#include "lu/c-attr.define.h"
 #include "gba/types.h"
 #include "lu/vui/vui-types.h"
 #include "lu/vui/vui-virtual.h"
@@ -70,9 +71,9 @@ typedef struct VUIWidget {
    VUIPos  subgrid_focus;
 } VUIWidget;
 
-extern void  VUIWidget_Construct   (VUIWidget* this);
-extern void  VUIWidget_Destroy     (VUIWidget* this);
-extern bool8 VUIWidget_IsFocusable (const VUIWidget* this);
+NON_NULL_PARAMS(1) extern void  VUIWidget_Construct   (VUIWidget* this);
+NON_NULL_PARAMS(1) extern void  VUIWidget_Destroy     (VUIWidget* this);
+NON_NULL_PARAMS(1) extern bool8 VUIWidget_IsFocusable (const VUIWidget* this);
 
 extern void VUIWidget_SetGridMetrics_(VUIWidget* this, u8 x, u8 y, u8 w, u8 h);
 #define VUIWidget_SetGridMetrics(widget, _x, _y, _w, _h) \
@@ -84,4 +85,5 @@ extern void VUIWidget_SetGridMetrics_(VUIWidget* this, u8 x, u8 y, u8 w, u8 h);
       0 \
    ))
 
+#include "lu/c-attr.undef.h"
 #endif

@@ -1,6 +1,7 @@
 #ifndef GUARD_LU_VUI_CUSTOM_KEYBOARD_H
 #define GUARD_LU_VUI_CUSTOM_KEYBOARD_H
 
+#include "lu/c-attr.define.h"
 #include "gba/defines.h"
 #include "lu/vui/vui-widget.h"
 #include "lu/vui/keyboard.h"
@@ -48,9 +49,14 @@ typedef struct VUICustomKeyboard {
    u8 window_id;
 } VUICustomKeyboard;
 
+NON_NULL_PARAMS(1,2)
 extern void VUICustomKeyboard_Construct(VUICustomKeyboard*, const VUICustomKeyboard_InitParams*);
+NON_NULL_PARAMS(1)
 extern void VUICustomKeyboard_Backspace(VUICustomKeyboard*);
+NON_NULL_PARAMS(1)
 extern void VUICustomKeyboard_NextCharset(VUICustomKeyboard*);
+NON_NULL_PARAMS(1)
 extern void VUICustomKeyboard_SetCharset(VUICustomKeyboard*, u8);
 
+#include "lu/c-attr.undef.h"
 #endif

@@ -1,6 +1,7 @@
 #ifndef GUARD_LU_VUI_NAMINGSCREEN_H
 #define GUARD_LU_VUI_NAMINGSCREEN_H
 
+#include "lu/c-attr.define.h"
 #include "gba/types.h"
 struct SpritePalette;
 struct SpriteTemplate;
@@ -49,6 +50,7 @@ struct LuNamingScreenParams {
    const u8* title; // optional
 };
 
-extern void LuNamingScreen(const struct LuNamingScreenParams*);
+NON_NULL_PARAMS(1) extern void LuNamingScreen(const struct LuNamingScreenParams*);
 
+#include "lu/c-attr.undef.h"
 #endif

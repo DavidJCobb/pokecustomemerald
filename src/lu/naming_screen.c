@@ -59,6 +59,18 @@ extern const u8 gSpeciesNames[][POKEMON_NAME_LENGTH + 1]; // from `data.h`
       onto the destination window, using the former's original palette. In order 
       to make the colors of the keypad icons controllable, we'd have to write a 
       blit function that remaps palette indices during the blit.
+      
+       - lu/gfxutils.h:BlitTile4BitRemapped now exists. We could use that, if we 
+         make the keypad button icons reachable by the outside world; but... 
+         wouldn't it be better to find some way to make the button icon colors 
+         controllable when printing text?
+         
+          - Text printers take three colors; keypad button icons use colors [0, 4] 
+            (background, foreground, shadow, shadow anti-alias, button highlight).
+            
+          - We'd have to audit the game for any places that specifically expect 
+            button icons to always print using those colors. This includes our 
+            own widgets e.g. the keybind strip.
    
     - Investigate changing Game Freak's BG library, so that it maintains tilemap 
       buffers for all BG layers at all times.
