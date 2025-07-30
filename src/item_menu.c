@@ -1,5 +1,6 @@
 #include "global.h"
 #include "item_menu.h"
+#if 1 // Region: Includes
 #include "battle.h"
 #include "battle_controllers.h"
 #include "battle_pyramid.h"
@@ -51,6 +52,7 @@
 #include "constants/items.h"
 #include "constants/rgb.h"
 #include "constants/songs.h"
+#endif // Region: Includes
 
 #define TAG_POCKET_SCROLL_ARROW 110
 #define TAG_BAG_SCROLL_ARROW    111
@@ -92,7 +94,7 @@ enum {
     ACTION_DUMMY,
 };
 
-enum {
+enum { // Window IDs
     WIN_ITEM_LIST,
     WIN_DESCRIPTION,
     WIN_POCKET_NAME,
@@ -121,6 +123,7 @@ struct TempWallyBag {
     u16 pocket;
 };
 
+#if 1 // Region: Function forward declarations
 static void CB2_Bag(void);
 static bool8 SetupBagMenu(void);
 static void BagMenu_InitBGs(void);
@@ -210,8 +213,9 @@ static void ConfirmToss(u8);
 static void CancelToss(u8);
 static void ConfirmSell(u8);
 static void CancelSell(u8);
+#endif // Region: Function forward declarations
 
-enum {
+enum { // Background layers
    BGLAYER_CONTENT = 0,
    BGLAYER_MODALS  = 1,
    BGLAYER_CHROME  = 2, // borders, boxes, etc., for the content
@@ -268,6 +272,8 @@ static const struct ListMenuTemplate sItemListMenu =
     .fontId = FONT_NARROW,
     .cursorKind = CURSOR_BLACK_ARROW
 };
+
+#if 1 // Region: Context menu definitions
 
 static const struct MenuAction sItemMenuActions[] = {
     [ACTION_USE]               = {gMenuText_Use,      {ItemMenu_UseOutOfBattle}},
@@ -344,6 +350,8 @@ static const u8 sContextMenuItems_QuizLady[] = {
     ACTION_CONFIRM_QUIZ_LADY, ACTION_CANCEL
 };
 
+#endif // Region: Context menu definitions
+
 static const TaskFunc sContextMenuFuncs[] = {
     [ITEMMENULOCATION_FIELD] =                  Task_ItemContext_Normal,
     [ITEMMENULOCATION_BATTLE] =                 Task_ItemContext_Normal,
@@ -379,7 +387,7 @@ static const struct ScrollArrowsTemplate sBagScrollArrowsTemplate = {
 
 static const u8 sRegisteredSelect_Gfx[] = INCBIN_U8("graphics/bag/select_button.4bpp");
 
-enum {
+enum { // Text colors
     COLORID_NORMAL,
     COLORID_POCKET_NAME,
     COLORID_GRAY_CURSOR,
@@ -563,6 +571,8 @@ void ResetBagScrollPositions(void)
     memset(gBagPosition.scrollPosition, 0, sizeof(gBagPosition.scrollPosition));
 }
 
+#if 1 // Region: Entry points
+
 void CB2_BagMenuFromStartMenu(void)
 {
     GoToBagMenu(ITEMMENULOCATION_FIELD, POCKETS_COUNT, CB2_ReturnToFieldWithOpenMenu);
@@ -616,6 +626,8 @@ void QuizLadyOpenBagMenu(void)
     GoToBagMenu(ITEMMENULOCATION_QUIZ_LADY, POCKETS_COUNT, CB2_QuizLadyExitBagMenu);
     gSpecialVar_Result = FALSE;
 }
+
+#endif // Region: Entry points
 
 void GoToBagMenu(u8 location, u8 pocket, void ( *exitCallback)())
 {
@@ -671,6 +683,8 @@ void VBlankCB_BagMenuRun(void)
 #define tPocketSwitchDir   data[11]
 #define tPocketSwitchTimer data[12]
 #define tPocketSwitchState data[13]
+
+#if 1 // Region: State and graphics init
 
 static void CB2_Bag(void)
 {
@@ -863,6 +877,8 @@ static void AllocateBagItemListBuffers(void)
     sListBuffer2 = Alloc(sizeof(*sListBuffer2));
 }
 
+#endif // Region: State and graphics init
+
 static void LoadBagItemListBuffers(u8 pocketId)
 {
     u16 i;
@@ -1016,6 +1032,8 @@ static void PrintItemDescription(int itemIndex)
     BagMenu_Print(WIN_DESCRIPTION, FONT_NORMAL, str, 3, 1, 0, 0, 0, COLORID_NORMAL);
 }
 
+#if 1 // Region: Cursor for focused item
+
 static void BagMenu_PrintCursor(u8 listTaskId, u8 colorIndex)
 {
     BagMenu_PrintCursorAtPos(ListMenuGetYCoordForPrintingArrowCursor(listTaskId), colorIndex);
@@ -1029,6 +1047,10 @@ static void BagMenu_PrintCursorAtPos(u8 y, u8 colorIndex)
         BagMenu_Print(WIN_ITEM_LIST, FONT_NORMAL, gText_SelectorArrow2, 0, y, 0, 0, 0, colorIndex);
 
 }
+
+#endif // Region: Cursor for focused item
+
+#if 1 // Region: Scroll arrows
 
 static void CreatePocketScrollArrowPair(void)
 {
@@ -1069,6 +1091,10 @@ static void DestroyPocketSwitchArrowPair(void)
     }
 }
 
+#endif // Region: Scroll arrows
+
+#if 1 // Region: Menu exit
+
 static void FreeBagMenu(void)
 {
     Free(sListBuffer2);
@@ -1104,6 +1130,10 @@ static void Task_CloseBagMenu(u8 taskId)
         DestroyTask(taskId);
     }
 }
+
+#endif // Region: Menu exit
+
+#if 1 // Region: Pocket item list utils
 
 void UpdatePocketItemList(u8 pocketId)
 {
@@ -1165,6 +1195,10 @@ u8 GetItemListPosition(u8 pocketId)
     return gBagPosition.scrollPosition[pocketId] + gBagPosition.cursorPosition[pocketId];
 }
 
+#endif // Region: Pocket item list utils
+
+#if 1 // Region: Item message boxes, with callback-on-dismiss
+
 void DisplayItemMessage(u8 taskId, u8 fontId, const u8 *str, void (*callback)(u8 taskId))
 {
     s16 *data = gTasks[taskId].data;
@@ -1190,6 +1224,10 @@ void CloseItemMessage(u8 taskId)
     ReturnToItemList(taskId);
 }
 
+#endif 1 // Region: Item message boxes, with callback-on-dismiss
+
+#if 1 // Region: Item Quantity window spawn/update
+
 static void AddItemQuantityWindow(u8 windowType)
 {
     PrintItemQuantity(BagMenu_AddWindow(windowType), 1);
@@ -1202,6 +1240,8 @@ static void PrintItemQuantity(u8 windowId, s16 quantity)
     StringExpandPlaceholders(gStringVar4, gText_xVar1);
     AddTextPrinterParameterized(windowId, FONT_NORMAL, gStringVar4, GetStringCenterAlignXOffset(FONT_NORMAL, gStringVar4, 0x28), 2, 0, 0);
 }
+
+#endif // Region: Item Quantity window spawn/update
 
 // Prints the quantity of items to be sold and the amount that would be earned
 static void PrintItemSoldAmount(int windowId, int numSold, int moneyEarned)
@@ -1286,6 +1326,8 @@ static void ReturnToItemList(u8 taskId)
     ScheduleBgCopyTilemapToVram(BGLAYER_CONTENT);
     gTasks[taskId].func = Task_BagMenu_HandleInput;
 }
+
+#if 1 // Region: Switching pockets
 
 static u8 GetSwitchBagPocketDirection(void)
 {
@@ -1419,6 +1461,10 @@ static void DrawPocketIndicatorSquare(u8 x, bool8 isCurrentPocket)
     ScheduleBgCopyTilemapToVram(BGLAYER_CHROME);
 }
 
+#endif // Region: Switching pockets
+
+#if 1 // Region: Item swapping
+
 static bool8 CanSwapItems(void)
 {
     // Swaps can only be done from the field or in battle (as opposed to while selling items, for example)
@@ -1531,6 +1577,10 @@ static void CancelItemSwap(u8 taskId)
     CreatePocketSwitchArrowPair();
     gTasks[taskId].func = Task_BagMenu_HandleInput;
 }
+
+#endif // Region: Item swapping
+
+#if 1 // Region: Context menus
 
 static void OpenContextMenu(u8 taskId)
 {
@@ -1788,6 +1838,8 @@ static void RemoveContextWindow(void)
         BagMenu_RemoveWindow(ITEMWIN_2x3);
 }
 
+#endif // end of region: Context menus
+
 static void ItemMenu_UseOutOfBattle(u8 taskId)
 {
     if (GetItemFieldFunc(gSpecialVar_ItemId))
@@ -1808,6 +1860,8 @@ static void ItemMenu_UseOutOfBattle(u8 taskId)
         }
     }
 }
+
+#if 1 // Region: Toss item
 
 static void ItemMenu_Toss(u8 taskId)
 {
@@ -1884,6 +1938,8 @@ static void ConfirmToss(u8 taskId)
     BagMenu_Print(WIN_DESCRIPTION, FONT_NORMAL, gStringVar4, 3, 1, 0, 0, 0, COLORID_NORMAL);
     gTasks[taskId].func = Task_RemoveItemFromBag;
 }
+
+#endif // Region: Toss item
 
 // Remove selected item(s) from the bag and update list
 // For when items are tossed or deposited
@@ -2069,6 +2125,8 @@ bool8 UseRegisteredKeyItemOnField(void)
 
 #undef tUsingRegisteredKeyItem
 
+#if 1 // Region: Task_ItemContext_Sell
+
 static void Task_ItemContext_Sell(u8 taskId)
 {
     s16 *data = gTasks[taskId].data;
@@ -2194,6 +2252,10 @@ static void WaitAfterItemSell(u8 taskId)
     }
 }
 
+#endif // Region: Task_ItemContext_Sell
+
+#if 1 // Region: Task_ItemContext_Deposit
+
 static void Task_ItemContext_Deposit(u8 taskId)
 {
     s16 *data = gTasks[taskId].data;
@@ -2278,6 +2340,10 @@ static void WaitDepositErrorMessage(u8 taskId)
         ReturnToItemList(taskId);
     }
 }
+
+#endif // Region: Task_ItemContext_Deposit
+
+#if 1 // Region: Wally
 
 static bool8 IsWallysBag(void)
 {
@@ -2366,6 +2432,8 @@ static void Task_WallyTutorialBagMenu(u8 taskId)
 
 #undef tTimer
 
+#endif // Region: Wally
+
 // This action is used to show the Apprentice an item when
 // they ask what item they should make their Pokémon hold
 static void ItemMenu_Show(u8 taskId)
@@ -2411,6 +2479,8 @@ static void CB2_QuizLadyExitBagMenu(void)
     SetMainCallback2(CB2_ReturnToField);
 }
 
+#if 1 // Region: Pocket title display
+
 static void PrintPocketNames(const u8 *pocketName1, const u8 *pocketName2)
 {
     struct WindowTemplate window = {0};
@@ -2447,6 +2517,8 @@ static void CopyPocketNameToWindow(u32 a)
     CopyWindowToVram(WIN_POCKET_NAME, COPYWIN_GFX);
 }
 
+#endif // Region: Pocket title display
+
 static void LoadBagMenuTextWindows(void)
 {
     u8 i;
@@ -2470,6 +2542,8 @@ static void BagMenu_Print(u8 windowId, u8 fontId, const u8 *str, u8 left, u8 top
 {
     AddTextPrinterParameterized4(windowId, fontId, left, top, letterSpacing, lineSpacing, sFontColorTable[colorIndex], speed, str);
 }
+
+#if 1 // Region: Window management
 
 static u8 UNUSED BagMenu_GetWindowId(u8 windowType)
 {
@@ -2523,10 +2597,14 @@ static void RemoveItemMessageWindow(u8 windowType)
     }
 }
 
+#endif // Region: Window management
+
 void BagMenu_YesNo(u8 taskId, u8 windowType, const struct YesNoFuncTable *funcTable)
 {
     CreateYesNoMenuWithCallbacks(taskId, &sContextMenuWindowTemplates[windowType], 1, 0, 2, 1, 14, funcTable);
 }
+
+#if 1 // Region: Money window
 
 static void DisplayCurrentMoneyWindow(void)
 {
@@ -2540,6 +2618,8 @@ static void RemoveMoneyWindow(void)
     BagMenu_RemoveWindow(ITEMWIN_MONEY);
     RemoveMoneyLabelObject();
 }
+
+#endif // Region: Money window
 
 static void PrepareTMHMMoveWindow(void)
 {

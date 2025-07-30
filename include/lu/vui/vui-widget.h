@@ -1,10 +1,10 @@
 #ifndef GUARD_LU_VUI_WIDGET_H
 #define GUARD_LU_VUI_WIDGET_H
 
-#include "lu/c-attr.define.h"
 #include "gba/types.h"
 #include "lu/vui/vui-types.h"
 #include "lu/vui/vui-virtual.h"
+#include "lu/c-attr.define.h"
 
 // Frame-handler flags, to be returned by a v-widget's `on_frame` handler.
 enum {

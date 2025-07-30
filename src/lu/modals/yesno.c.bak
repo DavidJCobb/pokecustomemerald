@@ -1,0 +1,257 @@
+#include "lu/modals/yesno.h"
+#include "lu/c.h"
+#include "lu/c-attr.define.h"
+#include "lu/ui_helpers.h"
+#include "gba/gba.h"
+#include "gba/isagbprint.h"
+#include "bg.h"
+#include "malloc.h"
+#include "palette.h"
+#include "sound.h"
+#include "strings.h"
+#include "task.h"
+#include "text.h"
+#include "window.h"
+
+typedef enum LuModalYesNoTaskTakeoverMode TaskTakeoverMode;
+
+struct LuModalYesNoState {
+   struct LuModalYesNoChoices choices;
+   bool8 cursor : 1;
+   u8    window_id;
+   struct {
+      u8 id : 6;
+      TaskTakeoverMode mode : 2;
+      void(*prior_func)(u8);
+   } task;
+};
+
+NODISCARD static struct LuModalYesNoState* AllocState(void);
+static void SetUpTask(struct LuModalYesNoState*, const struct LuModalYesNoBehavior*);
+static void SpawnWindow(struct LuModalYesNoState*, const struct LuModalYesNoGraphics*);
+
+static void Task_HandleInput(u8);
+static void Task_NoOp(u8);
+
+static void InitialPaint(struct LuModalYesNoState*, const struct LuModalYesNoGraphics*);
+static void RepaintCursor(struct LuModalYesNoState*);
+
+static void ExitModal(struct LuModalYesNoState*);
+static void ExitModal_impl(struct LuModalYesNoState*);
+
+static void ValidateChoices(const struct LuModalYesNoChoices*);
+
+// -------------------------------------------------------------------
+
+extern void LuModalYesNo_a(const struct LuModalYesNoParams* params) {
+   ValidateChoices(&params->choices);
+   
+   auto state = AllocState();
+   state->choices = params->choices;
+   SetUpTask(state, &params->behavior);
+   SpawnWindow(state, &params->graphics);
+}
+extern void LuModalYesNo_b(const struct LuModalYesNoSplitParams* params) {
+   AGB_ASSERT(params->behavior != NULL);
+   AGB_ASSERT(params->choices  != NULL);
+   AGB_ASSERT(params->graphics != NULL);
+   ValidateChoices(params->choices);
+   
+   auto state = AllocState();
+   state->choices = *params->choices;
+   SetUpTask(state, params->behavior);
+   SpawnWindow(state, params->graphics);
+}
+
+// -------------------------------------------------------------------
+
+static struct LuModalYesNoState* AllocState(void) {
+   auto state = (struct LuModalYesNoState*) AllocZeroed(sizeof(struct LuModalYesNoState));
+   state->window_id = WINDOW_NONE;
+   state->task.id   = TASK_NONE;
+   return state;
+}
+static void SpawnWindow(struct LuModalYesNoState* state, const struct LuModalYesNoGraphics* params) {
+   const struct WindowTemplate tmpl = {
+      .bg          = params->bg,
+      .tilemapLeft = params->pos.x,
+      .tilemapTop  = params->pos.y,
+      .width       = LU_MODAL_YESNO_TILE_W,
+      .height      = LU_MODAL_YESNO_TILE_H,
+      .paletteNum  = params->palette,
+      .baseBlock   = params->first_tile_id,
+   };
+   state->window_id = AddWindow(&tmpl);
+   AGB_ASSERT(state->window_id != WINDOW_NONE && "Assert: a window ID was available for us to use.");
+   
+   InitialPaint(state, params);
+}
+static void SetUpTask(struct LuModalYesNoState* state, const struct LuModalYesNoBehavior* params) {
+   auto mode = params->take_over_task.mode;
+   state->task.mode = mode;
+   if (mode != LU_MODAL_YESNO_TASKTAKEOVER_NO_TAKEOVER) {
+      u8 task_id = params->take_over_task.target_task_id;
+      AGB_ASSERT(task_id < NUM_TASKS);
+      auto task = &gTasks[task_id];
+      state->task.id = task_id;
+      if (mode == LU_MODAL_YESNO_TASKTAKEOVER_RETURN_TO_ORIGINAL_FUNC) {
+         state->task.prior_func = task->func;
+      }
+      task->func = Task_HandleInput;
+   } else {
+      state->task.id = CreateTask(Task_HandleInput, 50);
+   }
+   SetWordTaskArg(state->task_id, NUM_TASK_DATA - 2, (u32)state);
+}
+static void Task_HandleInput(u8 task_id) {
+   auto state = (struct LuModalYesNoState*) GetWordTaskArg(task_id, NUM_TASK_DATA - 2);
+   AGB_ASSERT(state != NULL);
+   {
+      bool8 b_button = JOY_NEW(B_BUTTON);
+      if (JOY_NEW(A_BUTTON) || b_button) {
+         if (b_button)
+            state->cursor = FALSE;
+         PlaySE(SE_SELECT);
+         ExitModal(state);
+         return;
+      }
+   }
+   {
+      bool8 down = !!JOY_NEW(DPAD_DOWN);
+      if (down || JOY_NEW(DPAD_UP)) {
+         if (state->cursor == down)
+            return;
+         PlaySE(SE_SELECT);
+         RepaintCursor(state);
+         return;
+      }
+   }
+}
+static void Task_NoOp(u8 task_id) {}
+
+static void InitialPaint(struct LuModalYesNoState* state, const struct LuModalYesNoGraphics* params) {
+   LuUI_DrawWindowFrame(
+      params->bg,
+      params->border.first_tile_id,
+      params->border.palette,
+      params->pos.x,
+      params->pos.y,
+      LU_MODAL_YESNO_TILE_W,
+      LU_MODAL_YESNO_TILE_H
+   );
+   FillWindowPixelBuffer(state->window_id, PIXEL_FILL(1));
+   PutWindowTilemap(state->window_id);
+   
+   struct TextPrinterTemplate printer = {
+      .currentChar   = gText_YesNo,
+      .windowId      = state->window_id,
+      .fontId        = FONT_NORMAL,
+      .x             = 8,
+      .y             = 1,
+      .currentX      = 8,
+      .currentY      = 1,
+      .fgColor       = GetFontAttribute(FONT_NORMAL, FONTATTR_COLOR_FOREGROUND),
+      .bgColor       = GetFontAttribute(FONT_NORMAL, FONTATTR_COLOR_BACKGROUND),
+      .shadowColor   = GetFontAttribute(FONT_NORMAL, FONTATTR_COLOR_SHADOW),
+      .unk           = GetFontAttribute(FONT_NORMAL, FONTATTR_UNKNOWN),
+      .letterSpacing = 0,
+      .lineSpacing   = 0,
+   };
+   AddTextPrinter(&printer, TEXT_SKIP_DRAW, NULL);
+   RepaintCursor(state);
+}
+
+enum {
+   OPTION_X_PX = 0,
+   OPTION_Y_PX = 1,
+   OPTION_H_PX = 16,
+};
+
+static void RepaintCursor(struct LuModalYesNoState* state) {
+   u8 cw = GetMenuCursorDimensionByFont(FONT_NORMAL, 0);
+   u8 ch = GetMenuCursorDimensionByFont(FONT_NORMAL, 0);
+   
+   FillWindowPixelRect(
+      state->window_id,
+      PIXEL_FILL(1),
+      OPTION_X_PX,
+      OPTION_Y_PX,
+      cw,
+      LU_MODAL_YESNO_TILE_H - OPTION_Y_PX
+   );
+   AddTextPrinterParameterized(
+      state->window_id,
+      FONT_NORMAL,
+      gText_SelectorArrow3,
+      OPTION_X_PX,
+      OPTION_Y_PX + OPTION_H_PX * state->cursor,
+      TEXT_SKIP_DRAW,
+      NULL
+   );
+   
+   CopyWindowToVram(state->window_id, COPYWIN_FULL);
+}
+
+static void ExitModal(struct LuModalYesNoState* state) {
+   bool8 cursor = state->cursor;
+   if (state->choices.is_dual_callbacks) {
+      auto callback = state->choices.dual_callbacks.array[cursor];
+      ExitModal_impl(state);
+      (callback)();
+   } else {
+      auto callback = state->choices.single_callback;
+      ExitModal_impl(state);
+      (callback)(cursor);
+   }
+}
+static void ExitModal_impl(struct LuModalYesNoState* state) {
+   AGB_ASSERT(state != NULL);
+   if (state->task.id != TASK_NONE) {
+      switch (state->task.mode) {
+         case LU_MODAL_YESNO_TASKTAKEOVER_NO_TAKEOVER:
+            DestroyTask(state->task.id);
+            break;
+         case LU_MODAL_YESNO_TASKTAKEOVER_RETURN_TO_ORIGINAL_FUNC:
+            gTasks[state->task.id] = state->task.prior_func;
+            break;
+         case LU_MODAL_YESNO_TASKTAKEOVER_GO_TO_NO_OP_FUNC:
+         default:
+            gTasks[state->task.id] = Task_NoOp;
+            break;
+      }
+      state->task.id         = TASK_NONE;
+      state->task.is_owned   = FALSE;
+      state->task.prior_func = NULL;
+   }
+   
+   const u8 window_id = state->window_id;
+   if (window_id != WINDOW_NONE) {
+      auto window = &gWindows[window_id].window;
+      FillBgTilemapBufferRect(
+         window->bg,
+         0,
+         window->tilemapLeft - 1,
+         window->tilemapTop - 1,
+         window->width + 2,
+         window->height + 2,
+         window->paletteNum
+      );
+      FillWindowPixelBuffer(window_id, PIXEL_FILL(0));
+      ClearWindowTilemap(window_id);
+      CopyWindowToVram(window_id, COPYWIN_FULL);
+      
+      RemoveWindow(window_id);
+      state->window_id = WINDOW_NONE;
+   }
+   Free(state);
+}
+
+static void ValidateChoices(const struct LuModalYesNoChoices* params) {
+   AGB_ASSERT(params != NULL);
+   if (params->is_dual_callbacks) {
+      AGB_ASSERT(params->dual_callbacks.yes != NULL);
+      AGB_ASSERT(params->dual_callbacks.no  != NULL);
+   } else {
+      AGB_ASSERT(params->single_callback != NULL);
+   }
+}

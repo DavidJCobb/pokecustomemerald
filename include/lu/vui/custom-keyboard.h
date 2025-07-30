@@ -1,10 +1,10 @@
 #ifndef GUARD_LU_VUI_CUSTOM_KEYBOARD_H
 #define GUARD_LU_VUI_CUSTOM_KEYBOARD_H
 
-#include "lu/c-attr.define.h"
 #include "gba/defines.h"
 #include "lu/vui/vui-widget.h"
 #include "lu/vui/keyboard.h"
+#include "lu/c-attr.define.h"
 struct VUIFrame;
 
 struct VUICustomKeyboardCharset {

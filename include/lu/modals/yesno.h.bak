@@ -1,0 +1,77 @@
+#ifndef GUARD_LU_MODALS_YESNO_H
+#define GUARD_LU_MODALS_YESNO_H
+
+#include "lu/c-attr.define.h"
+#include "gba/types.h"
+
+enum {
+   LU_MODAL_YESNO_TILE_W     = 5,
+   LU_MODAL_YESNO_TILE_H     = 4,
+   LU_MODAL_YESNO_TILE_COUNT = LU_MODAL_YESNO_TILE_W * LU_MODAL_YESNO_TILE_H,
+};
+enum LuModalYesNoTaskTakeoverMode {
+   LU_MODAL_YESNO_TASKTAKEOVER_NO_TAKEOVER = 0,
+   LU_MODAL_YESNO_TASKTAKEOVER_RETURN_TO_ORIGINAL_FUNC,
+   LU_MODAL_YESNO_TASKTAKEOVER_GO_TO_NO_OP_FUNC,
+};
+
+struct LuModalYesNoBehavior {
+   struct {
+      // The last two data slots must be available.
+      u8 target_task_id;
+      enum LuModalYesNoTaskTakeoverMode mode : 2;
+   } take_over_task;
+};
+struct LuModalYesNoChoices {
+   union {
+      void(*single_callback)(bool8 yes);
+      union {
+         void(*array)(void)[2];
+         struct {
+            void(*yes)(void);
+            void(*no)(void);
+         };
+      } dual_callbacks;
+   };
+   bool8 is_dual_callbacks;
+};
+struct LuModalYesNoGraphics {
+   u8 bg      : 2;
+   u8 palette : 4;
+   struct {
+      u8 x; // in tiles
+      u8 y;
+   } pos;
+   u16 first_tile_id : 10;
+   struct {
+      u16   first_tile_id  : 10;
+      u8    palette        :  4;
+      bool8 already_loaded :  1;
+   } border;
+};
+
+struct LuModalYesNoParams {
+   struct LuModalYesNoBehavior behavior;
+   struct LuModalYesNoChoices  choices;
+   struct LuModalYesNoGraphics graphics;
+};
+
+struct LuModalYesNoSplitParams {
+   const struct LuModalYesNoBehavior* behavior;
+   const struct LuModalYesNoChoices*  choices;
+   const struct LuModalYesNoGraphics* graphics;
+};
+
+NON_NULL_PARAMS(1) extern void LuModalYesNo_a(const struct LuModalYesNoParams*);
+NON_NULL_PARAMS(1) extern void LuModalYesNo_b(const struct LuModalYesNoSplitParams*);
+#define LuModalYesNo(_p)   \
+   do {                    \
+      _Auto_type ptr = _p; \
+      _Generic(ptr,        \
+         struct LuModalYesNoParams*      : LuModalYesNo_a(ptr), \
+         struct LuModalYesNoSplitParams* : LuModalYesNo_b(ptr)  \
+      ); \
+   } while (0)
+
+#include "lu/c-attr.undef.h"
+#endif

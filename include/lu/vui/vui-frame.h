@@ -1,9 +1,9 @@
 #ifndef GUARD_LU_VUI_FRAME_H
 #define GUARD_LU_VUI_FRAME_H
 
-#include "lu/c-attr.define.h"
 #include "gba/types.h"
 #include "lu/vui/vui-types.h"
+#include "lu/c-attr.define.h"
 
 enum {
    VUIFRAME_TILEID_SENTINEL  = 0xF000,
