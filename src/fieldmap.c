@@ -670,11 +670,22 @@ bool8 CameraMove(int x, int y)
             check the player's alignment, and will return NULL should the 
             player not be aligned with any connected map.
             
+            (For example, if you're standing in Route 114, then there is a 
+            map connection to the east, leading to Fallarbor Town; so as 
+            far as GetPostCameraMoveMapBorderId is concerned, you can exit 
+            Route 114 to the east. However, if you're standing on Route 
+            114's bridge, which is at a Y-coordate south of Fallarbor Town's 
+            edge, then there isn't any map connection to the east of your 
+            specific position, which is what GetIncomingConnection cares 
+            about. If somehow you could walk eastward from that spot, out 
+            of Route 114's boundaries without being physically blocked by 
+            its border tiles, then...)
+            
             These mismatched behaviors result in an edge-case whenever the 
             player is able to walk through walls (e.g. as the result of an 
             added debug command or cheat code). They can exit a map via a 
             side that has a map connection, without actually being aligned 
-            with the connected map (and thus not entering said map); and 
+            with any connected map (and thus not entering said map); and 
             once they travel far enough in that direction, the checks done 
             by GetPostCameraMoveMapBorderId will here trigger a map load, 
             but GetIncomingConnection will give us a nullptr connection.
