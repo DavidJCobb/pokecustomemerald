@@ -1224,7 +1224,7 @@ void CloseItemMessage(u8 taskId)
     ReturnToItemList(taskId);
 }
 
-#endif 1 // Region: Item message boxes, with callback-on-dismiss
+#endif // Region: Item message boxes, with callback-on-dismiss
 
 #if 1 // Region: Item Quantity window spawn/update
 

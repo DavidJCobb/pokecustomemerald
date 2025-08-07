@@ -658,11 +658,44 @@ bool8 CameraMove(int x, int y)
     }
     else
     {
+        #if defined(BUGFIX) || defined(UBFIX)
+        /*
+            GetPostCameraMoveMapBorderId (via GetMapBorderIdAt), called in 
+            the check above, relies on a set of flags which indicate what 
+            sides of the current map have connections, so it'll claim that 
+            there's a connection available for the player to step over 
+            despite the player not being aligned with any connection.
+            
+            However, GetIncomingConnection, called below, actually does 
+            check the player's alignment, and will return NULL should the 
+            player not be aligned with any connected map.
+            
+            These mismatched behaviors result in an edge-case whenever the 
+            player is able to walk through walls (e.g. as the result of an 
+            added debug command or cheat code). They can exit a map via a 
+            side that has a map connection, without actually being aligned 
+            with the connected map (and thus not entering said map); and 
+            once they travel far enough in that direction, the checks done 
+            by GetPostCameraMoveMapBorderId will here trigger a map load, 
+            but GetIncomingConnection will give us a nullptr connection.
+            
+            The solution, of course, is to get the connection before we 
+            do anything else, and null-check it.
+        */
+        connection = GetIncomingConnection(direction, gSaveBlock1Ptr->pos.x, gSaveBlock1Ptr->pos.y);
+        if (connection == NULL) {
+            gSaveBlock1Ptr->pos.x += x;
+            gSaveBlock1Ptr->pos.y += y;
+            return gCamera.active;
+        }
+        #endif
         SaveMapView();
         ClearMirageTowerPulseBlendEffect();
         old_x = gSaveBlock1Ptr->pos.x;
         old_y = gSaveBlock1Ptr->pos.y;
+        #if !(defined(BUGFIX) || defined(UBFIX))
         connection = GetIncomingConnection(direction, gSaveBlock1Ptr->pos.x, gSaveBlock1Ptr->pos.y);
+        #endif
         SetPositionFromConnection(connection, direction, x, y);
         LoadMapFromCameraTransition(connection->mapGroup, connection->mapNum);
         gCamera.active = TRUE;
