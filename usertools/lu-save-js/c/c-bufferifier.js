@@ -31,6 +31,8 @@ export default class CBufferifier {
       }
    };
    
+   static BITFIELDS_ARE_LITTLE_ENDIAN = true;
+   
    constructor() {
       this.buffer = null; // ArrayBuffer
       this.view   = null; // DataView
@@ -140,9 +142,9 @@ export default class CBufferifier {
             let shift = bitfield_info.offset % 32;
             v = v << shift;
             
-            let unit = this.view.getUint32(place, true);
+            let unit = this.view.getUint32(place, CBufferifier.BITFIELDS_ARE_LITTLE_ENDIAN);
             unit |= v;
-            this.view.setUint32(place, unit, true);
+            this.view.setUint32(place, unit, CBufferifier.BITFIELDS_ARE_LITTLE_ENDIAN);
             
             this.#advance_by_bits(bitfield_info.size);
             return;
@@ -151,9 +153,9 @@ export default class CBufferifier {
          switch (type) {
             case "boolean":
                {
-                  this.view.setUint8(this.offset, inst.value ? 1 : 0);
+                  this.view.setUint8(this.byte_offset, inst.value ? 1 : 0);
                   for(let i = 1; i < size; ++i)
-                     this.view.setUint8(this.offset + i, 0);
+                     this.view.setUint8(this.byte_offset + i, 0);
                }
                this.#advance_by_bytes(size);
                break;

@@ -132,6 +132,28 @@ const EMERALD_DISPLAY_OVERRIDES = (function() {
    overrides.push(new CInstanceDisplayOverrides({ // Secret Base decoration position
       criteria: [
          new CInstanceDisplayOverrideCriteria({
+            type: "SerializedBoxPokemon",
+         }),
+      ],
+      overrides: {
+         display_string: function(/*CInstance*/ inst) {
+            if (inst instanceof CArrayInstance)
+               return null;
+            let egg     = inst.members.isEgg?.value;
+            let bad_egg = inst.members.isBadEgg?.value;
+            if (bad_egg) {
+               return `[color=red]Bad Egg[/color]`;
+            }
+            if (egg) {
+               return `[style=value-text]egg[/style]`;
+            }
+            return null;
+         },
+      }
+   }));
+   overrides.push(new CInstanceDisplayOverrides({ // Secret Base decoration position
+      criteria: [
+         new CInstanceDisplayOverrideCriteria({
             type: "SaveBlock1",
             path: "playerRoomDecorationPositions[*]",
          }),

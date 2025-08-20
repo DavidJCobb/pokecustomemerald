@@ -277,7 +277,7 @@ export default class InstructionsApplier {
                      {
                         let o = value.decl.compute_integer_bounds();
                         let v = value.value - o.min;
-                        this.bitstream.write_unsigned(o.bitcount, v)
+                        this.bitstream.write_unsigned(o.bitcount, v);
                      }
                      break;
                      

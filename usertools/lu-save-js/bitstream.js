@@ -17,7 +17,7 @@ export default class Bitstream {
    }
    
    #consume_byte_for_read(bitcount) {
-      let raw      = this.dataview.getUint8(this.target) & (0xFF >> this.shift);
+      let raw      = this.dataview.getUint8(this.target) & (0xFF >>> this.shift);
       let read     = 8 - this.shift;
       let consumed = 0;
       if (bitcount < read) {
@@ -112,7 +112,7 @@ export default class Bitstream {
                this.#advance_by_bits(bitcount);
                return;
             }
-            this.dataview.setUint8(this.target, value >> (bitcount - 8));
+            this.dataview.setUint8(this.target, value >>> (bitcount - 8));
             this.#advance_by_bytes(1);
             bitcount -= 8;
             continue;
@@ -128,8 +128,8 @@ export default class Bitstream {
             this.#advance_by_bits(bitcount);
             return;
          }
-         byte &= ~(0xFF >> this.shift); // clear the bits we're about to write
-         byte |= ((value >> (bitcount - extra)) & 0xFF);
+         byte &= ~(0xFF >>> this.shift); // clear the bits we're about to write
+         byte |= ((value >>> (bitcount - extra)) & 0xFF);
          this.dataview.setUint8(this.target, byte);
          this.#advance_by_bits(extra);
          bitcount -= extra;
