@@ -10,15 +10,12 @@ extern void FlipTile4bpp(u8* tile_data, bool8 flip_h, bool8 flip_v) {
    enum {
       BYTES_PER_ROW = 4,
    };
-   #define XOR_SWAP(_a, _b)     \
+   #define SWAP(_a, _b)         \
       do {                      \
          __auto_type _0 = (_a); \
          __auto_type _1 = (_b); \
-         _0 = _1 ^ _0;          \
-         _1 = _0 ^ _1;          \
-         _0 = _1 ^ _0;          \
-         _a = _0;               \
-         _b = _1;               \
+         _a = _1;               \
+         _b = _0;               \
       } while (0)
    
    if (flip_h) {
@@ -35,8 +32,8 @@ extern void FlipTile4bpp(u8* tile_data, bool8 flip_h, bool8 flip_v) {
       //
       for(u8 y = 0; y < TILE_HEIGHT; ++y) {
          u8* row = &tile_data[y * BYTES_PER_ROW];
-         XOR_SWAP(row[0], row[3]);
-         XOR_SWAP(row[1], row[2]);
+         SWAP(row[0], row[3]);
+         SWAP(row[1], row[2]);
       }
    }
    if (flip_v) {
@@ -45,11 +42,11 @@ extern void FlipTile4bpp(u8* tile_data, bool8 flip_h, bool8 flip_v) {
       //
       u32* rows = (u32*)tile_data;
       for(u8 y = 0, v = TILE_HEIGHT - 1; y < TILE_HEIGHT / 2; ++y, --v) {
-         XOR_SWAP(rows[y], rows[v]);
+         SWAP(rows[y], rows[v]);
       }
    }
    
-   #undef XOR_SWAP
+   #undef SWAP
 }
 
 extern void FlipWindowTile(u8 window_id, u8 tile_x, u8 tile_y, bool8 flip_h, bool8 flip_v) {
