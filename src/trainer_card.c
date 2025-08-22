@@ -33,6 +33,9 @@
 #include "constants/trainers.h"
 #include "constants/union_room.h"
 
+#define FADE_DELAY_PER_FRAME_ON_ENTRY -2 // vanilla: -1
+#define FADE_DELAY_PER_FRAME_TO_EXIT  -2 // vanilla: -1
+
 enum {
     WIN_MSG,
     WIN_CARD_TEXT,
@@ -420,7 +423,7 @@ static void Task_TrainerCard(u8 taskId)
             CreateWirelessStatusIndicatorSprite(DISPLAY_WIDTH - 10, DISPLAY_HEIGHT - 10);
         }
         BlendPalettes(PALETTES_ALL, 16, sData->blendColor);
-        BeginNormalPaletteFade(PALETTES_ALL, -1, 16, 0, sData->blendColor);
+        BeginNormalPaletteFade(PALETTES_ALL, FADE_DELAY_PER_FRAME_ON_ENTRY, 16, 0, sData->blendColor);
         SetVBlankCallback(VblankCb_TrainerCard);
         sData->mainState++;
         break;
@@ -457,7 +460,7 @@ static void Task_TrainerCard(u8 taskId)
             }
             else
             {
-                BeginNormalPaletteFade(PALETTES_ALL, -1, 0, 16, sData->blendColor);
+                BeginNormalPaletteFade(PALETTES_ALL, FADE_DELAY_PER_FRAME_TO_EXIT, 0, 16, sData->blendColor);
                 sData->mainState = STATE_CLOSE_CARD;
             }
         }
@@ -478,7 +481,7 @@ static void Task_TrainerCard(u8 taskId)
             }
             else if (gReceivedRemoteLinkPlayers)
             {
-                BeginNormalPaletteFade(PALETTES_ALL, -1, 0, 16, sData->blendColor);
+                BeginNormalPaletteFade(PALETTES_ALL, FADE_DELAY_PER_FRAME_TO_EXIT, 0, 16, sData->blendColor);
                 sData->mainState = STATE_CLOSE_CARD;
             }
             else
@@ -496,7 +499,7 @@ static void Task_TrainerCard(u8 taskId)
            }
            else
            {
-               BeginNormalPaletteFade(PALETTES_ALL, -1, 0, 16, sData->blendColor);
+               BeginNormalPaletteFade(PALETTES_ALL, FADE_DELAY_PER_FRAME_TO_EXIT, 0, 16, sData->blendColor);
                sData->mainState = STATE_CLOSE_CARD;
            }
         }
@@ -511,7 +514,7 @@ static void Task_TrainerCard(u8 taskId)
     case STATE_CLOSE_CARD_LINK:
         if (!gReceivedRemoteLinkPlayers)
         {
-            BeginNormalPaletteFade(PALETTES_ALL, -1, 0, 16, sData->blendColor);
+            BeginNormalPaletteFade(PALETTES_ALL, FADE_DELAY_PER_FRAME_TO_EXIT, 0, 16, sData->blendColor);
             sData->mainState = STATE_CLOSE_CARD;
         }
         break;

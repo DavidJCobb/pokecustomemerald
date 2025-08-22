@@ -22,6 +22,19 @@
 #include "constants/songs.h"
 #include "constants/rgb.h"
 
+#define POKE_BALL_THROW_DURATION 24 // vanilla: 34
+#define POKEBLOCK_THROW_DURATION 20 // vanilla: 30
+
+// Configuration for the Poke Ball bouncing after it initially ensnares a Pokemon.
+// The ball's fall speed is proportional to the number of times it has already 
+// bounced.
+#define POKE_BALL_BOUNCE_COUNT           4 // vanilla: 4
+#define POKE_BALL_BOUNCE_BASE_FALL_SPEED 4 // vanilla: 4
+#define POKE_BALL_BOUNCE_BASE_RISE_SPEED 4 // vanilla: 4
+
+#define POKE_BALL_CATCH_ATTEMPT_INITIAL_WOBBLE_DELAY 31 // vanilla: 31. measured in frames
+#define POKE_BALL_CATCH_ATTEMPT_DELAY_BETWEEN_SHAKES 31 // vanilla: 31. measured in frames
+
 // iwram
 COMMON_DATA u32 gMonShrinkDuration = 0;
 COMMON_DATA u16 gMonShrinkDelta = 0;
@@ -776,7 +789,7 @@ void AnimTask_ThrowBall(u8 taskId)
 
     ballId = ItemIdToBallId(gLastUsedItem);
     spriteId = CreateSprite(&gBallSpriteTemplates[ballId], 32, 80, 29);
-    gSprites[spriteId].sDuration = 34;
+    gSprites[spriteId].sDuration = POKE_BALL_THROW_DURATION;
     gSprites[spriteId].sTargetX = GetBattlerSpriteCoord(gBattleAnimTarget, BATTLER_COORD_X);
     gSprites[spriteId].sTargetY = GetBattlerSpriteCoord(gBattleAnimTarget, BATTLER_COORD_Y) - 16;
     gSprites[spriteId].callback = SpriteCB_Ball_Throw;
@@ -814,7 +827,7 @@ void AnimTask_ThrowBall_StandingTrainer(u8 taskId)
     ballId = ItemIdToBallId(gLastUsedItem);
     subpriority = GetBattlerSpriteSubpriority(GetBattlerAtPosition(B_POSITION_OPPONENT_LEFT)) + 1;
     spriteId = CreateSprite(&gBallSpriteTemplates[ballId], x + 32, y | 80, subpriority);
-    gSprites[spriteId].sDuration = 34;
+    gSprites[spriteId].sDuration = POKE_BALL_THROW_DURATION;
     gSprites[spriteId].sTargetX = GetBattlerSpriteCoord(gBattleAnimTarget, BATTLER_COORD_X);
     gSprites[spriteId].sTargetY = GetBattlerSpriteCoord(gBattleAnimTarget, BATTLER_COORD_Y) - 16;
     gSprites[spriteId].callback = SpriteCallbackDummy;
@@ -1039,7 +1052,7 @@ static void SpriteCB_Ball_Bounce_Step(struct Sprite *sprite)
     {
     case BALL_FALLING:
         sprite->y2 = -Cos(sprite->sPhase, sprite->sAmplitude);
-        sprite->sPhase += PHASE_DELTA(sprite->sState) + 4;
+        sprite->sPhase += PHASE_DELTA(sprite->sState) + POKE_BALL_BOUNCE_BASE_FALL_SPEED;
         // Once the ball touches the ground
         if (sprite->sPhase >= 64)
         {
@@ -1047,7 +1060,7 @@ static void SpriteCB_Ball_Bounce_Step(struct Sprite *sprite)
             RISE_FASTER(sprite->sState);
 
             bounceCount = BOUNCES(sprite->sState);
-            if (bounceCount == 4)
+            if (bounceCount == POKE_BALL_BOUNCE_COUNT)
                 lastBounce = TRUE;
 
             switch (bounceCount)
@@ -1069,7 +1082,7 @@ static void SpriteCB_Ball_Bounce_Step(struct Sprite *sprite)
         break;
     case BALL_RISING:
         sprite->y2 = -Cos(sprite->sPhase, sprite->sAmplitude);
-        sprite->sPhase -= PHASE_DELTA(sprite->sState) + 4;
+        sprite->sPhase -= PHASE_DELTA(sprite->sState) + POKE_BALL_BOUNCE_BASE_RISE_SPEED;
         // Once ball reaches max height
         if (sprite->sPhase <= 0)
         {
@@ -1115,7 +1128,9 @@ static void SpriteCB_Ball_Bounce_Step(struct Sprite *sprite)
 
 static void SpriteCB_Ball_Wobble(struct Sprite *sprite)
 {
-    if (++sprite->sTimer == 31)
+    #if POKE_BALL_CATCH_ATTEMPT_INITIAL_WOBBLE_DELAY > 0
+    if (++sprite->sTimer == POKE_BALL_CATCH_ATTEMPT_INITIAL_WOBBLE_DELAY)
+    #endif
     {
         sprite->sState = 0;
         sprite->affineAnimPaused = TRUE;
@@ -1267,7 +1282,7 @@ static void SpriteCB_Ball_Wobble_Step(struct Sprite *sprite)
         break;
     case BALL_WAIT_NEXT_SHAKE:
     default:
-        if (++sprite->sTimer == 31)
+        if (++sprite->sTimer == POKE_BALL_CATCH_ATTEMPT_DELAY_BETWEEN_SHAKES)
         {
             sprite->sTimer = 0;
             RESET_STATE(sprite->sState);
@@ -2429,7 +2444,7 @@ void AnimTask_FreePokeblockGfx(u8 taskId)
 static void SpriteCB_PokeBlock_Throw(struct Sprite *sprite)
 {
     InitSpritePosToAnimAttacker(sprite, FALSE);
-    sprite->sDuration = 30;
+    sprite->sDuration = POKEBLOCK_THROW_DURATION;
     sprite->sTargetX = GetBattlerSpriteCoord(GetBattlerAtPosition(B_POSITION_OPPONENT_LEFT), BATTLER_COORD_X) + gBattleAnimArgs[2];
     sprite->sTargetY = GetBattlerSpriteCoord(GetBattlerAtPosition(B_POSITION_OPPONENT_LEFT), BATTLER_COORD_Y) + gBattleAnimArgs[3];
     sprite->sAmplitude = -32;

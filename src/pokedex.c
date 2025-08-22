@@ -29,6 +29,9 @@
 #include "constants/rgb.h"
 #include "constants/songs.h"
 
+#define FADE_TO_BLACK_DELAY_PER_FRAME  -2 // vanilla: 0 // also for fading *from* black
+#define MOVE_MON_FOR_INFO_SCREEN_SPEED  2 // vanilla: 1
+
 enum
 {
     PAGE_MAIN,
@@ -1675,7 +1678,7 @@ static void Task_HandlePokedexInput(u8 taskId)
         if (JOY_NEW(A_BUTTON) && sPokedexView->pokedexList[sPokedexView->selectedPokemon].seen)
         {
             UpdateSelectedMonSpriteId();
-            BeginNormalPaletteFade(~(1 << (gSprites[sPokedexView->selectedMonSpriteId].oam.paletteNum + 16)), 0, 0, 0x10, RGB_BLACK);
+            BeginNormalPaletteFade(~(1 << (gSprites[sPokedexView->selectedMonSpriteId].oam.paletteNum + 16)), FADE_TO_BLACK_DELAY_PER_FRAME, 0, 0x10, RGB_BLACK);
             gSprites[sPokedexView->selectedMonSpriteId].callback = SpriteCB_MoveMonForInfoScreen;
             gTasks[taskId].func = Task_OpenInfoScreenAfterMonMovement;
             PlaySE(SE_PIN);
@@ -3018,15 +3021,35 @@ void SpriteCB_MoveMonForInfoScreen(struct Sprite *sprite)
     sprite->y2 = 0;
     if (sprite->x != MON_PAGE_X || sprite->y != MON_PAGE_Y)
     {
-        if (sprite->x > MON_PAGE_X)
-            sprite->x--;
-        if (sprite->x < MON_PAGE_X)
-            sprite->x++;
+        if (sprite->x > MON_PAGE_X) {
+            sprite->x -= MOVE_MON_FOR_INFO_SCREEN_SPEED;
+            #if MOVE_MON_FOR_INFO_SCREEN_SPEED > 1
+               if (sprite->x < MON_PAGE_X)
+                  sprite->x = MON_PAGE_X;
+            #endif
+        }
+        if (sprite->x < MON_PAGE_X) {
+            sprite->x += MOVE_MON_FOR_INFO_SCREEN_SPEED;
+            #if MOVE_MON_FOR_INFO_SCREEN_SPEED > 1
+               if (sprite->x > MON_PAGE_X)
+                  sprite->x = MON_PAGE_X;
+            #endif
+        }
 
-        if (sprite->y > MON_PAGE_Y)
-            sprite->y--;
-        if (sprite->y < MON_PAGE_Y)
-            sprite->y++;
+        if (sprite->y > MON_PAGE_Y) {
+            sprite->y -= MOVE_MON_FOR_INFO_SCREEN_SPEED;
+            #if MOVE_MON_FOR_INFO_SCREEN_SPEED > 1
+               if (sprite->y < MON_PAGE_Y)
+                  sprite->y = MON_PAGE_Y;
+            #endif
+        }
+        if (sprite->y < MON_PAGE_Y) {
+            sprite->y += MOVE_MON_FOR_INFO_SCREEN_SPEED;
+            #if MOVE_MON_FOR_INFO_SCREEN_SPEED > 1
+               if (sprite->y > MON_PAGE_Y)
+                  sprite->y = MON_PAGE_Y;
+            #endif
+        }
     }
     else
     {
@@ -3295,7 +3318,7 @@ static void Task_LoadInfoScreen(u8 taskId)
                 preservedPalettes = 0x14; // each bit represents a palette index
             if (gTasks[taskId].tMonSpriteDone)
                 preservedPalettes |= (1 << (gSprites[gTasks[taskId].tMonSpriteId].oam.paletteNum + 16));
-            BeginNormalPaletteFade(~preservedPalettes, 0, 16, 0, RGB_BLACK);
+            BeginNormalPaletteFade(~preservedPalettes, FADE_TO_BLACK_DELAY_PER_FRAME, 16, 0, RGB_BLACK);
             SetVBlankCallback(gPokedexVBlankCB);
             gMain.state++;
         }
@@ -3365,14 +3388,14 @@ static void Task_HandleInfoScreenInput(u8 taskId)
     if (gTasks[taskId].tScrolling)
     {
         // Scroll up/down
-        BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+        BeginNormalPaletteFade(PALETTES_ALL, FADE_TO_BLACK_DELAY_PER_FRAME, 0, 16, RGB_BLACK);
         gTasks[taskId].func = Task_LoadInfoScreenWaitForFade;
         PlaySE(SE_DEX_SCROLL);
         return;
     }
     if (JOY_NEW(B_BUTTON))
     {
-        BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+        BeginNormalPaletteFade(PALETTES_ALL, FADE_TO_BLACK_DELAY_PER_FRAME, 0, 16, RGB_BLACK);
         gTasks[taskId].func = Task_ExitInfoScreen;
         PlaySE(SE_PC_OFF);
         return;
@@ -3382,13 +3405,13 @@ static void Task_HandleInfoScreenInput(u8 taskId)
         switch (sPokedexView->selectedScreen)
         {
         case AREA_SCREEN:
-            BeginNormalPaletteFade(PALETTES_ALL & ~(0x14), 0, 0, 16, RGB_BLACK);
+            BeginNormalPaletteFade(PALETTES_ALL & ~(0x14), FADE_TO_BLACK_DELAY_PER_FRAME, 0, 16, RGB_BLACK);
             sPokedexView->screenSwitchState = 1;
             gTasks[taskId].func = Task_SwitchScreensFromInfoScreen;
             PlaySE(SE_PIN);
             break;
         case CRY_SCREEN:
-            BeginNormalPaletteFade(PALETTES_ALL & ~(0x14), 0, 0, 0x10, RGB_BLACK);
+            BeginNormalPaletteFade(PALETTES_ALL & ~(0x14), FADE_TO_BLACK_DELAY_PER_FRAME, 0, 0x10, RGB_BLACK);
             sPokedexView->screenSwitchState = 2;
             gTasks[taskId].func = Task_SwitchScreensFromInfoScreen;
             PlaySE(SE_PIN);
