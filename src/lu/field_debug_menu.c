@@ -52,6 +52,7 @@
 #include "overworld.h" // CB2_ReturnToField, IsOverworldLinkActive
 #include "pokedex.h"
 #include "region_map.h" // CB2_OpenFlyMap
+#include "roamer.h"
 #include "secret_base.h" // CheckPlayerHasSecretBase
 #include "string_util.h"
 #include "wallclock.h" // CB2_StartWallClock
@@ -89,6 +90,7 @@ enum {
    MENU_ACTION_FAST_TRAVEL,
    MENU_ACTION_VIEW_POKEDEX_ENTRY,
    MENU_ACTION_RESET_ALL_TRAINERS,
+   MENU_ACTION_ROAMER,
    MENU_ACTION_SET_MONEY,
    MENU_ACTION_SET_TIME,
    MENU_ACTION_SET_WEATHER,
@@ -121,6 +123,7 @@ static void FieldDebugMenuActionHandler_EnableAllRematches(u8 taskId);
 static void FieldDebugMenuActionHandler_EnableNationalDex(u8 taskId);
 static void FieldDebugMenuActionHandler_FastTravel(u8 taskId);
 static void FieldDebugMenuActionHandler_ResetAllTrainers(u8 taskId);
+static void FieldDebugMenuActionHandler_Roamer(u8 taskId);
 static void FieldDebugMenuActionHandler_SetMoney(u8 taskId);
 static void FieldDebugMenuActionHandler_SetTime(u8 taskId);
 static void FieldDebugMenuActionHandler_SetWeather(u8 taskId);
@@ -181,6 +184,10 @@ static const struct FieldDebugMenuAction sFieldDebugMenuActions[] = {
    [MENU_ACTION_RESET_ALL_TRAINERS] = {
       .label   = gText_lu_FieldDebugMenu_ResetAllTrainers,
       .handler = FieldDebugMenuActionHandler_ResetAllTrainers,
+   },
+   [MENU_ACTION_ROAMER] = {
+      .label   = gText_lu_FieldDebugMenu_Roamer,
+      .handler = FieldDebugMenuActionHandler_Roamer,
    },
    [MENU_ACTION_SET_MONEY] = {
       .label   = gText_lu_FieldDebugMenu_SetMoney,
@@ -306,6 +313,25 @@ static const struct FieldDebugMenuAction sFieldEffectActions[] = {
    {
       .label   = gMoveNames[MOVE_WATERFALL],
       .handler = FieldDebugMenuActionHandler_FieldEffect_Waterfall,
+   },
+};
+
+
+static void FieldDebugMenuActionHandler_Roamer_Battle(u8 taskId);
+static u8 FieldDebugMenuActionStateGetter_Roamer_Battle(void);
+static void FieldDebugMenuActionHandler_Roamer_DisableMovement(u8 taskId);
+static u8 FieldDebugMenuActionStateGetter_Roamer_DisableMovement(void);
+
+static const struct FieldDebugMenuAction sRoamerActions[] = {
+   {
+      .label   = gText_lu_FieldDebugMenu_Roamer_Battle,
+      .handler = FieldDebugMenuActionHandler_Roamer_Battle,
+      .state   = FieldDebugMenuActionStateGetter_Roamer_Battle,
+   },
+   {
+      .label   = gText_lu_FieldDebugMenu_Roamer_DisableMovement,
+      .handler = FieldDebugMenuActionHandler_Roamer_DisableMovement,
+      .state   = FieldDebugMenuActionStateGetter_Roamer_DisableMovement,
    },
 };
 
@@ -594,6 +620,10 @@ static void FieldDebugMenuActionHandler_ResetAllTrainers(u8 taskId) {
    DisplayItemMessageOnField(taskId, gText_lu_FieldDebugMenu_ResetAllTrainers_YouSureYouWannaDoThatBuddy, ResetAllTrainers_Prompt);
 }
 
+static void FieldDebugMenuActionHandler_Roamer(u8 taskId) {
+   MENU_TASK_SET_MENU(sRoamerActions);
+}
+
 static void FieldDebugMenuActionHandler_SetMoney_callback(bool8 accepted, s32 value) {
    ScriptUnfreezeObjectEvents();
    UnlockPlayerFieldControls();
@@ -870,6 +900,31 @@ static void FieldDebugMenuActionHandler_UseAnyFishingRod_Good(u8 taskId) {
 static void FieldDebugMenuActionHandler_UseAnyFishingRod_Super(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
    StartFishing(SUPER_ROD);
+}
+
+//
+// Roamer
+//
+
+static u8 FieldDebugMenuActionStateGetter_Roamer_Battle(void) {
+   if (!gSaveBlock1Ptr->roamer.active) {
+      return MENU_ACTION_STATE_DISABLED;
+   }
+   return MENU_ACTION_STATE_NORMAL;
+}
+static void FieldDebugMenuActionHandler_Roamer_Battle(u8 taskId) {
+   DestroyFieldDebugMenu(taskId);
+   CreateRoamerMonInstance();
+   BattleSetup_StartRoamerBattle();
+}
+static u8 FieldDebugMenuActionStateGetter_Roamer_DisableMovement(void) {
+   if (gFieldDebugMenuState.disable_roamer_movement) {
+      return MENU_ACTION_STATE_ACTIVE;
+   }
+   return MENU_ACTION_STATE_NORMAL;
+}
+static void FieldDebugMenuActionHandler_Roamer_DisableMovement(u8 taskId) {
+   gFieldDebugMenuState.disable_roamer_movement = !gFieldDebugMenuState.disable_roamer_movement;
 }
 
 //

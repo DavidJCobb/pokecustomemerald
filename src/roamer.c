@@ -4,6 +4,8 @@
 #include "random.h"
 #include "roamer.h"
 
+#include "lu/field_debug_menu.h"
+
 // Despite having a variable to track it, the roamer is
 // hard-coded to only ever be in map group 0
 #define ROAMER_MAP_GROUP 0
@@ -126,6 +128,9 @@ void UpdateLocationHistoryForRoamer(void)
 
 void RoamerMoveToOtherLocationSet(void)
 {
+    if (gFieldDebugMenuState.disable_roamer_movement)
+       return;
+    
     u8 mapNum = 0;
 
     if (!ROAMER->active)
@@ -148,6 +153,9 @@ void RoamerMoveToOtherLocationSet(void)
 
 void RoamerMove(void)
 {
+    if (gFieldDebugMenuState.disable_roamer_movement)
+       return;
+   
     u8 locSet = 0;
 
     if ((Random() % 16) == 0)

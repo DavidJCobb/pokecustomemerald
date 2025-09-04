@@ -13,6 +13,7 @@ extern const u8 gText_lu_FieldDebugMenu_UseAnyFieldMove[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod[];
 extern const u8 gText_lu_FieldDebugMenu_ViewPokedexEntry[];
 extern const u8 gText_lu_FieldDebugMenu_ResetAllTrainers[];
+extern const u8 gText_lu_FieldDebugMenu_Roamer[];
 extern const u8 gText_lu_FieldDebugMenu_SetMoney[];
 extern const u8 gText_lu_FieldDebugMenu_SetTime[];
 extern const u8 gText_lu_FieldDebugMenu_SetWeather[];
@@ -29,6 +30,9 @@ extern const u8 gText_lu_FieldDebugMenu_UseAnyBike_Mach[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod_Old[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod_Good[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod_Super[];
+
+extern const u8 gText_lu_FieldDebugMenu_Roamer_Battle[];
+extern const u8 gText_lu_FieldDebugMenu_Roamer_DisableMovement[];
 
 extern const u8 gText_lu_FieldDebugMenu_SetWeather_SunnyCloudy[];
 extern const u8 gText_lu_FieldDebugMenu_SetWeather_Sunny[];

@@ -10,6 +10,7 @@ const u8 gText_lu_FieldDebugMenu_UseAnyFieldMove[] = _("Use any field move");
 const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod[] = _("Use any fishing rod");
 const u8 gText_lu_FieldDebugMenu_ViewPokedexEntry[] = _("View Pokedex entry");
 const u8 gText_lu_FieldDebugMenu_ResetAllTrainers[] = _("Reset all trainers");
+const u8 gText_lu_FieldDebugMenu_Roamer[] = _("Roamer commands");
 const u8 gText_lu_FieldDebugMenu_SetMoney[] = _("Set money");
 const u8 gText_lu_FieldDebugMenu_SetTime[] = _("Set time of day");
 const u8 gText_lu_FieldDebugMenu_SetWeather[] = _("Set weather");
@@ -26,6 +27,9 @@ const u8 gText_lu_FieldDebugMenu_UseAnyBike_Mach[] = _("Mach Bike");
 const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod_Old[] = _("Old Rod");
 const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod_Good[] = _("Good Rod");
 const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod_Super[] = _("Super Rod");
+
+const u8 gText_lu_FieldDebugMenu_Roamer_Battle[] = _("Battle the roamer");
+const u8 gText_lu_FieldDebugMenu_Roamer_DisableMovement[] = _("Disable roamer movement");
 
 const u8 gText_lu_FieldDebugMenu_SetWeather_SunnyCloudy[] = _("Sunny + clouds");
 const u8 gText_lu_FieldDebugMenu_SetWeather_Sunny[] = _("Sunny");
