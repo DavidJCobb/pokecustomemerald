@@ -1436,6 +1436,7 @@ static const u8 sText_LinkTrainerWantsToBattlePause[] = _("{B_LINK_OPPONENT1_NAM
 static const u8 sText_TwoLinkTrainersWantToBattlePause[] = _("{B_LINK_OPPONENT1_NAME} and {B_LINK_OPPONENT2_NAME}\nwant to battle!{PAUSE 49}");
 
 static const u8 sText_PlayerThrewPokeBall[] = _("{B_PLAYER_NAME} threw a\n{B_LAST_ITEM}!");
+static const u8 sText_PlayerThrewPokeBallVowel[] = _("{B_PLAYER_NAME} threw an\n{B_LAST_ITEM}!");
 
 // This is four lists of moves which use a different attack string in Japanese
 // to the default. See the documentation for ChooseTypeOfMoveUsedString for more detail.
@@ -2265,6 +2266,42 @@ void BufferStringBattleWithData(u16 stringID, struct BattleMsgData* data)
       stringPtr = gBattleStringsTable[stringID - BATTLESTRINGS_TABLE_START];
       if (Lu_ItemIsAPokeBall(gLastUsedItem)) {
          stringPtr = sText_PlayerThrewPokeBall;
+         
+         bool8 has_leading_vowel = FALSE;
+         {
+            const u8* name = NULL;
+            if (gLastUsedItem == ITEM_ENIGMA_BERRY) {
+               name = sText_EnigmaBerry;
+               if (!(gBattleTypeFlags & BATTLE_TYPE_MULTI)) {
+                  if (
+                     (gBattleScripting.multiplayerId != 0 &&  (gPotentialItemEffectBattler & BIT_SIDE)) ||
+                     (gBattleScripting.multiplayerId == 0 && !(gPotentialItemEffectBattler & BIT_SIDE))
+                  ) {
+                     name = gEnigmaBerries[gPotentialItemEffectBattler].name;
+                  }
+               } else {
+                  if (gLinkPlayers[gBattleScripting.multiplayerId].id == gPotentialItemEffectBattler) {
+                     name = gEnigmaBerries[gPotentialItemEffectBattler].name;
+                  }
+               }
+            } else {
+               name = GetItemName(gLastUsedItem);
+            }
+            if (name) {
+               switch (name[0]) {
+                  case CHAR_A:
+                  case CHAR_E:
+                  case CHAR_I:
+                  case CHAR_O:
+                  case CHAR_U:
+                  case CHAR_Y:
+                     has_leading_vowel = TRUE;
+                     break;
+               }
+            }
+         }
+         if (has_leading_vowel)
+            stringPtr = sText_PlayerThrewPokeBallVowel;
       }
       break;
     
