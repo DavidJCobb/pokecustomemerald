@@ -58,7 +58,7 @@ void StopBattleAmbientWeatherAnim_Sunny(bool8 instant) {
    }
    struct Task* task = &gTasks[gAmbientWeatherTaskId];
    if (instant) {
-      task->tState = TASKSTATE_TEARDOWN;
+      task->tState = TASKSTATE_TEARDOWN_WAIT_FOR_SPRITES;
       return;
    }
    if (task->tState < TASKSTATE_TEARDOWN_REQUESTED) {

@@ -10,6 +10,7 @@
 #include "bg.h"
 #include "main.h"
 #include "menu.h"
+#include "menu_helpers.h" // yes/no menu helpers
 #include "sound.h"
 #include "strings.h" // gText_SelectorArrow3
 #include "text.h"
@@ -29,6 +30,7 @@
 // Menu actions
 #include "constants/field_effects.h" // FLDEFF_...
 #include "constants/items.h" // OLD_ROD and friends
+#include "constants/opponents.h" // MAX_TRAINERS_COUNT
 #include "constants/rematches.h" // REMATCH_SPECIAL_TRAINER_START
 #include "constants/species.h"
 #include "constants/weather.h" // WEATHER_...
@@ -44,6 +46,7 @@
 #include "fldeff.h" // SetUpFieldMove_RockSmash and friends
 #include "fldeff_misc.h" // SetUpFieldMove_SecretPower
 #include "global.fieldmap.h" // gPlayerAvatar, PLAYER_AVATAR_FLAG_...
+#include "item_menu.h" // DisplayItemMessageOnField
 #include "metatile_behavior.h" // MetatileBehavior_IsSecretBaseCave
 #include "money.h" // GetMoney, SetMoney
 #include "overworld.h" // CB2_ReturnToField, IsOverworldLinkActive
@@ -85,6 +88,7 @@ enum {
    MENU_ACTION_ENABLE_NATIONAL_DEX,
    MENU_ACTION_FAST_TRAVEL,
    MENU_ACTION_VIEW_POKEDEX_ENTRY,
+   MENU_ACTION_RESET_ALL_TRAINERS,
    MENU_ACTION_SET_MONEY,
    MENU_ACTION_SET_TIME,
    MENU_ACTION_SET_WEATHER,
@@ -116,6 +120,7 @@ static u8   FieldDebugMenuActionStateGetter_EnableNationalDex(void);
 static void FieldDebugMenuActionHandler_EnableAllRematches(u8 taskId);
 static void FieldDebugMenuActionHandler_EnableNationalDex(u8 taskId);
 static void FieldDebugMenuActionHandler_FastTravel(u8 taskId);
+static void FieldDebugMenuActionHandler_ResetAllTrainers(u8 taskId);
 static void FieldDebugMenuActionHandler_SetMoney(u8 taskId);
 static void FieldDebugMenuActionHandler_SetTime(u8 taskId);
 static void FieldDebugMenuActionHandler_SetWeather(u8 taskId);
@@ -172,6 +177,10 @@ static const struct FieldDebugMenuAction sFieldDebugMenuActions[] = {
    [MENU_ACTION_VIEW_POKEDEX_ENTRY] = {
       .label   = gText_lu_FieldDebugMenu_ViewPokedexEntry,
       .handler = FieldDebugMenuActionHandler_ViewPokedexEntry,
+   },
+   [MENU_ACTION_RESET_ALL_TRAINERS] = {
+      .label   = gText_lu_FieldDebugMenu_ResetAllTrainers,
+      .handler = FieldDebugMenuActionHandler_ResetAllTrainers,
    },
    [MENU_ACTION_SET_MONEY] = {
       .label   = gText_lu_FieldDebugMenu_SetMoney,
@@ -562,6 +571,29 @@ static void FieldDebugMenuActionHandler_FastTravel(u8 taskId) {
    SetMainCallback2(CB2_OpenFlyMap);
 }
 
+static void ResetAllTrainers_Yes(u8 taskId) {
+   ClearDialogWindowAndFrame(0, FALSE); // tear down DisplayItemMessageOnField window
+   DestroyFieldDebugMenu(taskId);
+   for(u16 i = 0; i < MAX_TRAINERS_COUNT; ++i) {
+      ClearTrainerFlag(i);
+   }
+}
+static void ResetAllTrainers_No(u8 taskId) {
+   ClearDialogWindowAndFrame(0, FALSE); // tear down DisplayItemMessageOnField window
+   DestroyFieldDebugMenu(taskId);
+}
+static const struct YesNoFuncTable sResetAllTrainersYesNoFunctions = {
+   .yesFunc = ResetAllTrainers_Yes,
+   .noFunc  = ResetAllTrainers_No,
+};
+static void ResetAllTrainers_Prompt(u8 taskId) {
+   DisplayYesNoMenuWithDefault(1);
+   DoYesNoFuncWithChoice(taskId, &sResetAllTrainersYesNoFunctions);
+}
+static void FieldDebugMenuActionHandler_ResetAllTrainers(u8 taskId) {
+   DisplayItemMessageOnField(taskId, gText_lu_FieldDebugMenu_ResetAllTrainers_YouSureYouWannaDoThatBuddy, ResetAllTrainers_Prompt);
+}
+
 static void FieldDebugMenuActionHandler_SetMoney_callback(bool8 accepted, s32 value) {
    ScriptUnfreezeObjectEvents();
    UnlockPlayerFieldControls();
@@ -616,7 +648,7 @@ static void FieldDebugMenuActionHandler_SetMoney(u8 taskId) {
 static void FieldDebugMenuActionHandler_SetTime(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
    SetMainCallback2(CB2_StartWallClock);
-    gMain.savedCallback = CB2_ReturnToField;
+   gMain.savedCallback = CB2_ReturnToField;
 }
 
 static void FieldDebugMenuActionHandler_TestGFXScreen_Callback(void) {
@@ -846,7 +878,7 @@ static void FieldDebugMenuActionHandler_UseAnyFishingRod_Super(u8 taskId) {
 
 static void FieldDebugMenuActionHandler_Task(u8 taskId) {
    u8 dex_task_id = gTasks[taskId].data[0];
-   if (!gTasks[dex_task_id].isActive) {
+   if (dex_task_id == TASK_NONE || !gTasks[dex_task_id].isActive) {
       DestroyTask(taskId);
       SetMainCallback2(CB2_ReturnToField);
    }
@@ -855,6 +887,10 @@ static void FieldDebugMenuActionHandler_Task(u8 taskId) {
 static void FieldDebugMenuActionHandler_ViewPokedexEntry_Callback(u16 species) {
    u8 monitor_task_id = CreateTask(FieldDebugMenuActionHandler_Task, 50);
    if (monitor_task_id == TASK_NONE) {
+      return;
+   }
+   gTasks[monitor_task_id].data[0] = TASK_NONE;
+   if (species == 0 || species == PICKSPECIESMENU_RESULT_CANCELED) {
       return;
    }
    u8 dex_task_id = DisplayCaughtMonDexPage(species, 0, 0);

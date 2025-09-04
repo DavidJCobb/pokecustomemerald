@@ -32,6 +32,7 @@ enum {
    TASKSTATE_TEARDOWN_LIGHTEN_BACKGROUND,
    TASKSTATE_TEARDOWN_WAIT_FOR_SPRITES,
    TASKSTATE_TEARDOWN,
+   TASKSTATE_TEARDOWN_REQUESTED_INSTANT,
 };
 
 void StartBattleAmbientWeatherAnim_Rain(void) {
@@ -44,7 +45,10 @@ void StopBattleAmbientWeatherAnim_Rain(bool8 instant) {
    }
    struct Task* task = &gTasks[gAmbientWeatherTaskId];
    if (instant) {
-      task->tState = TASKSTATE_TEARDOWN;
+      if (task->tState >= TASKSTATE_TEARDOWN_REQUESTED && task->tState != TASKSTATE_TEARDOWN_LIGHTEN_BACKGROUND) {
+         return;
+      }
+      task->tState = TASKSTATE_TEARDOWN_REQUESTED_INSTANT;
       return;
    }
    if (task->tState < TASKSTATE_TEARDOWN_REQUESTED) {
@@ -237,6 +241,14 @@ static void TaskHandler(u8 taskId) {
          DebugPrintf("[Battle Ambient Weather][Rain] Destroying task.");
          DestroyTask(taskId);
          gAmbientWeatherTaskId = TASK_NONE;
+         break;
+      
+      case TASKSTATE_TEARDOWN_REQUESTED_INSTANT:
+         #if ENABLE_LOOPING_AMBIENT_SFX
+            DestroySELoopTask(taskId);
+         #endif
+         task->tState = TASKSTATE_TEARDOWN_WAIT_FOR_SPRITES;
+         DebugPrintf("[Battle Ambient Weather][Rain] Advancing (from start of instant teardown) to TASKSTATE_TEARDOWN_WAIT_FOR_SPRITES.");
          break;
    }
 }

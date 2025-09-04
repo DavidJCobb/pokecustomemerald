@@ -12,6 +12,7 @@ extern const u8 gText_lu_FieldDebugMenu_UseAnyBike[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyFieldMove[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyFishingRod[];
 extern const u8 gText_lu_FieldDebugMenu_ViewPokedexEntry[];
+extern const u8 gText_lu_FieldDebugMenu_ResetAllTrainers[];
 extern const u8 gText_lu_FieldDebugMenu_SetMoney[];
 extern const u8 gText_lu_FieldDebugMenu_SetTime[];
 extern const u8 gText_lu_FieldDebugMenu_SetWeather[];
@@ -19,6 +20,8 @@ extern const u8 gText_lu_FieldDebugMenu_TestBattleTransition[];
 extern const u8 gText_lu_FieldDebugMenu_TestGfxScreen[];
 extern const u8 gText_lu_FieldDebugMenu_TestVUINamingScreen[];
 extern const u8 gText_lu_FieldDebugMenu_WalkThroughWalls[];
+
+extern const u8 gText_lu_FieldDebugMenu_ResetAllTrainers_YouSureYouWannaDoThatBuddy[];
 
 extern const u8 gText_lu_FieldDebugMenu_UseAnyBike_Acro[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyBike_Mach[];
