@@ -5,6 +5,7 @@
 
 extern const u8 gText_lu_FieldDebugMenu_DisableTrainerLOS[];
 extern const u8 gText_lu_FieldDebugMenu_DisableWildEncounters[];
+extern const u8 gText_lu_FieldDebugMenu_EnableAllRematches[];
 extern const u8 gText_lu_FieldDebugMenu_EnableNationalDex[];
 extern const u8 gText_lu_FieldDebugMenu_FastTravel[];
 extern const u8 gText_lu_FieldDebugMenu_UseAnyBike[];

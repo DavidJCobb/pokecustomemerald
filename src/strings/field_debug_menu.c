@@ -2,6 +2,7 @@
 
 const u8 gText_lu_FieldDebugMenu_DisableTrainerLOS[] = _("Disable trainer LOS");
 const u8 gText_lu_FieldDebugMenu_DisableWildEncounters[] = _("Disable wild encounters");
+const u8 gText_lu_FieldDebugMenu_EnableAllRematches[] = _("Enable all rematches");
 const u8 gText_lu_FieldDebugMenu_EnableNationalDex[] = _("Enable National Dex");
 const u8 gText_lu_FieldDebugMenu_FastTravel[] = _("Fast-travel");
 const u8 gText_lu_FieldDebugMenu_UseAnyBike[] = _("Use any bike");

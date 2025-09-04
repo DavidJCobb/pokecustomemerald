@@ -29,8 +29,10 @@
 // Menu actions
 #include "constants/field_effects.h" // FLDEFF_...
 #include "constants/items.h" // OLD_ROD and friends
+#include "constants/rematches.h" // REMATCH_SPECIAL_TRAINER_START
 #include "constants/species.h"
 #include "constants/weather.h" // WEATHER_...
+#include "battle_setup.h" // UpdateRematchIfDefeated
 #include "battle_transition.h"
 #include "bike.h" // GetOnOffBike
 #include "event_data.h" // EnableNationalPokedex, FlagSet, gSpecialVar_Result
@@ -79,6 +81,7 @@ static const struct WindowTemplate sWindowTemplate = {
 enum {
    MENU_ACTION_DISABLE_TRAINER_LOS,
    MENU_ACTION_DISABLE_WILD_ENCOUNTERS,
+   MENU_ACTION_ENABLE_ALL_REMATCHES,
    MENU_ACTION_ENABLE_NATIONAL_DEX,
    MENU_ACTION_FAST_TRAVEL,
    MENU_ACTION_VIEW_POKEDEX_ENTRY,
@@ -110,6 +113,7 @@ static void FieldDebugMenuActionHandler_DisableTrainerLOS(u8 taskId);
 static u8   FieldDebugMenuActionStateGetter_DisableWildEncounters(void);
 static void FieldDebugMenuActionHandler_DisableWildEncounters(u8 taskId);
 static u8   FieldDebugMenuActionStateGetter_EnableNationalDex(void);
+static void FieldDebugMenuActionHandler_EnableAllRematches(u8 taskId);
 static void FieldDebugMenuActionHandler_EnableNationalDex(u8 taskId);
 static void FieldDebugMenuActionHandler_FastTravel(u8 taskId);
 static void FieldDebugMenuActionHandler_SetMoney(u8 taskId);
@@ -140,6 +144,10 @@ static const struct FieldDebugMenuAction sFieldDebugMenuActions[] = {
       .label   = gText_lu_FieldDebugMenu_DisableWildEncounters,
       .handler = FieldDebugMenuActionHandler_DisableWildEncounters,
       .state   = FieldDebugMenuActionStateGetter_DisableWildEncounters,
+   },
+   [MENU_ACTION_ENABLE_ALL_REMATCHES] = {
+      .label   = gText_lu_FieldDebugMenu_EnableAllRematches,
+      .handler = FieldDebugMenuActionHandler_EnableAllRematches,
    },
    [MENU_ACTION_ENABLE_NATIONAL_DEX] = {
       .label   = gText_lu_FieldDebugMenu_EnableNationalDex,
@@ -527,6 +535,11 @@ static u8 FieldDebugMenuActionStateGetter_DisableWildEncounters(void) {
 }
 static void FieldDebugMenuActionHandler_DisableWildEncounters(u8 taskId) {
    gFieldDebugMenuState.disable_wild_encounters = !gFieldDebugMenuState.disable_wild_encounters;
+}
+static void FieldDebugMenuActionHandler_EnableAllRematches(u8 taskId) {
+   for(int i = 0; i <= REMATCH_SPECIAL_TRAINER_START; ++i) {
+      UpdateRematchIfDefeated(i);
+   }
 }
 static u8 FieldDebugMenuActionStateGetter_EnableNationalDex(void) {
    if (IsNationalPokedexEnabled()) {

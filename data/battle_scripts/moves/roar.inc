@@ -8,7 +8,7 @@ BattleScript_EffectRoar::
 	jumpifbattletype BATTLE_TYPE_ARENA, BattleScript_Failed_AtkStringNoPPReduce
    
    @ May invoke `BattleScript_SuccessForceOut`:
-	forcerandomswitch BattleScript_ButItFailed
+	forcerandomswitch BattleScript_Failed_AtkStringNoPPReduce
 
 BattleScript_AbilityPreventsPhasingOut::
 	attackstring
