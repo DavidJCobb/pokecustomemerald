@@ -39,8 +39,6 @@
 #define FADE_DELAY_PER_FRAME_ON_ENTRY -2 // vanilla: -1
 #define FADE_DELAY_PER_FRAME_TO_EXIT  -2 // vanilla: -1
 
-#define PRINT_CARD_FRONT_ALL_AT_ONCE 1
-
 enum {
     WIN_MSG,
     WIN_CARD_TEXT,
@@ -113,7 +111,7 @@ static void HblankCb_TrainerCard(void);
 static void BlinkTimeColon(void);
 static void CB2_TrainerCard(void);
 static void CloseTrainerCard(u8 task);
-static bool8 PrintAllOnCardFront(void);
+static void PrintAllOnCardFront(void);
 static void DrawTrainerCardWindow(u8);
 static void CreateTrainerCardTrainerPic(void);
 static void DrawCardScreenBackground(u16 *);
@@ -382,11 +380,9 @@ static void CloseTrainerCard(u8 taskId)
 
 // States for Task_TrainerCard.
 enum MainState {
-   MAINSTATE_CLEAR_TEXT_WINDOW = 0,
-   MAINSTATE_PRINT_ALL_ON_CARD_FRONT,
+   MAINSTATE_PRINT_ALL_ON_CARD_FRONT = 0,
    MAINSTATE_DRAW_TRAINER_PIC,
-   MAINSTATE_DRAW_SCREEN_BACKGROUND,
-   MAINSTATE_DRAW_CARD_FRONT_OR_BACK,
+   MAINSTATE_DRAW_SCREEN_BACKGROUND_AND_CARD,
    MAINSTATE_DRAW_STARS_AND_BADGES,
    MAINSTATE_BEGIN_INTRO_FADE,
    MAINSTATE_WAIT_FOR_INTRO_FADE,
@@ -409,17 +405,13 @@ static void Task_TrainerCard(u8 taskId)
     switch (sData->mainState)
     {
     // Draw card initially
-    case MAINSTATE_CLEAR_TEXT_WINDOW:
+    case MAINSTATE_PRINT_ALL_ON_CARD_FRONT:
         if (IsDma3ManagerBusyWithBgCopy())
             break;
         FillWindowPixelBuffer(WIN_CARD_TEXT, PIXEL_FILL(0));
+        PrintAllOnCardFront();
+        DrawTrainerCardWindow(WIN_CARD_TEXT);
         sData->mainState++;
-        FALLTHROUGH;
-    case MAINSTATE_PRINT_ALL_ON_CARD_FRONT:
-        if (PrintAllOnCardFront()) {
-            DrawTrainerCardWindow(WIN_CARD_TEXT);
-            sData->mainState++;
-        }
         break;
     case MAINSTATE_DRAW_TRAINER_PIC:
         FillWindowPixelBuffer(WIN_TRAINER_PIC, PIXEL_FILL(0));
@@ -427,11 +419,8 @@ static void Task_TrainerCard(u8 taskId)
         DrawTrainerCardWindow(WIN_TRAINER_PIC);
         sData->mainState++;
         break;
-    case MAINSTATE_DRAW_SCREEN_BACKGROUND:
+    case MAINSTATE_DRAW_SCREEN_BACKGROUND_AND_CARD:
         DrawCardScreenBackground(sData->bgTilemap);
-        sData->mainState++;
-        FALLTHROUGH;
-    case MAINSTATE_DRAW_CARD_FRONT_OR_BACK:
         DrawCardFrontOrBack(sData->frontTilemap);
         sData->mainState++;
         break;
@@ -609,6 +598,7 @@ static bool8 LoadCardGfx(void)
         //
         if (sData->cardType == CARD_TYPE_FRLG)
             LZ77UnCompWram(sTrainerCardStickers_Gfx, sData->stickerTiles);
+        LoadStickerGfx();
         break;
     default:
         sData->gfxLoadState = GFXLOADSTATE_START;
@@ -620,10 +610,7 @@ static bool8 LoadCardGfx(void)
 
 enum InitState {
    INITSTATE_START,
-   INITSTATE_RESET_VISUALS_AND_INIT_CANVASES,
-   INITSTATE_LOAD_POKEMON_ICONS,
    INITSTATE_LOAD_CARD_GRAPHICS, // see GfxLoadState
-   INITSTATE_LOAD_STICKERS,
    INITSTATE_INIT_GPU_REGS,
    INITSTATE_SETUP_CARD_BACKGROUNDS, // SetCardBgsAndPals
    INITSTATE_DONE,
@@ -635,32 +622,20 @@ static void CB2_InitTrainerCard(void)
     case INITSTATE_START:
         ResetGpuRegs();
         SetUpTrainerCardTask();
-        gMain.state++;
-        break;
-    case INITSTATE_RESET_VISUALS_AND_INIT_CANVASES:
+        //
         DmaClear32(3, (void *)OAM, OAM_SIZE);
         if (!sData->blendColor)
             DmaClear16(3, (void *)PLTT, PLTT_SIZE);
-        //
         ResetSpriteData();
         FreeAllSpritePalettes();
         ResetPaletteFade();
-        //
         InitBgsAndWindows();
-        gMain.state++;
-        //
-        FALLTHROUGH;
-    case INITSTATE_LOAD_POKEMON_ICONS:
         LoadMonIconGfx();
         gMain.state++;
         break;
     case INITSTATE_LOAD_CARD_GRAPHICS:
         if (!LoadCardGfx())
            break;
-        gMain.state++;
-        FALLTHROUGH;
-    case INITSTATE_LOAD_STICKERS:
-        LoadStickerGfx();
         gMain.state++;
         break;
     case INITSTATE_INIT_GPU_REGS:
@@ -964,42 +939,13 @@ enum PrintStateFront {
    PRINTSTATEFRONT_DONE,
    PRINTSTATEFRONT_START = PRINTSTATEFRONT_NAME_ON_FRONT,
 };
-static bool8 PrintAllOnCardFront(void) {
-   #if PRINT_CARD_FRONT_ALL_AT_ONCE
-      PrintNameOnCardFront();
-      PrintIdOnCard();
-      PrintMoneyOnCard();
-      PrintPokedexOnCard();
-      PrintTimeOnCard();
-      PrintProfilePhraseOnCard();
-      return TRUE;
-   #else
-      switch (sData->printState) {
-         case PRINTSTATEFRONT_NAME_ON_FRONT:
-            PrintNameOnCardFront();
-            break;
-         case PRINTSTATEFRONT_ID:
-            PrintIdOnCard();
-            break;
-         case PRINTSTATEFRONT_MONEY:
-            PrintMoneyOnCard();
-            break;
-         case PRINTSTATEFRONT_POKEDEX:
-            PrintPokedexOnCard();
-            break;
-         case PRINTSTATEFRONT_TIME:
-            PrintTimeOnCard();
-            break;
-         case PRINTSTATEFRONT_PROFILE_PHRASE:
-            PrintProfilePhraseOnCard();
-            break;
-         default:
-            sData->printState = PRINTSTATEFRONT_START;
-            return TRUE;
-      }
-      sData->printState++;
-      return FALSE;
-   #endif
+static void PrintAllOnCardFront(void) {
+   PrintNameOnCardFront();
+   PrintIdOnCard();
+   PrintMoneyOnCard();
+   PrintPokedexOnCard();
+   PrintTimeOnCard();
+   PrintProfilePhraseOnCard();
 }
 
 static bool8 PrintAllOnCardBack(void)
@@ -1758,8 +1704,7 @@ static bool8 Task_DrawFlippedCardSide(struct Task *task)
             }
             else
             {
-                if (!PrintAllOnCardFront())
-                    return FALSE;
+                PrintAllOnCardFront();
             }
             break;
         case FLIPSTATE_DRAW_STEP_1:
