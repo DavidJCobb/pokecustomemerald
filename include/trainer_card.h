@@ -4,7 +4,7 @@
 #define TRAINER_CARD_PROFILE_LENGTH  4
 #define TRAINER_CARD_STICKER_TYPES   3
 
-enum
+enum TrainerCardType
 {
     CARD_TYPE_FRLG,
     CARD_TYPE_RS,

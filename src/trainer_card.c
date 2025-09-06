@@ -33,6 +33,8 @@
 #include "constants/trainers.h"
 #include "constants/union_room.h"
 
+#include "lu/game_typedefs.h"
+
 #define FADE_DELAY_PER_FRAME_ON_ENTRY -2 // vanilla: -1
 #define FADE_DELAY_PER_FRAME_TO_EXIT  -2 // vanilla: -1
 
@@ -42,6 +44,29 @@ enum {
     WIN_TRAINER_PIC,
 };
 
+enum PrintStateFront {
+   PRINTSTATEFRONT_NAME_ON_FRONT,
+   PRINTSTATEFRONT_ID,
+   PRINTSTATEFRONT_MONEY,
+   PRINTSTATEFRONT_POKEDEX,
+   PRINTSTATEFRONT_TIME,
+   PRINTSTATEFRONT_PROFILE_PHRASE,
+   
+   PRINTSTATEFRONT_DONE,
+   PRINTSTATEFRONT_START = PRINTSTATEFRONT_NAME_ON_FRONT,
+};
+enum GfxLoadState {
+   GFXLOADSTATE_TILEMAP_BG,
+   GFXLOADSTATE_TILEMAP_CARD_BACK,
+   GFXLOADSTATE_TILEMAP_CARD_FRONT,
+   GFXLOADSTATE_TILES_BADGES,
+   GFXLOADSTATE_TILES_CARD,
+   GFXLOADSTATE_TILES_STICKERS,
+   
+   GFXLOADSTATE_DONE,
+   GFXLOADSTATE_START = 0
+};
+
 struct TrainerCardData
 {
     u8 mainState;
@@ -49,21 +74,26 @@ struct TrainerCardData
     u8 gfxLoadState;
     u8 bgPalLoadState;
     u8 flipDrawState;
-    bool8 isLink;
     u8 timeColonBlinkTimer;
-    bool8 timeColonInvisible;
-    bool8 onBack;
-    bool8 allowDMACopy;
-    bool8 hasPokedex;
-    bool8 hasHofResult;
-    bool8 hasLinkResults;
-    bool8 hasBattleTowerWins;
-    bool8 unused_E;
-    bool8 unused_F;
-    bool8 hasTrades;
+    bool8 isLink              : 1;
+    bool8 timeColonInvisible  : 1;
+    bool8 timeColonNeedDraw   : 1;
+    bool8 onBack              : 1;
+    bool8 allowDMACopy        : 1;
+    bool8 hasPokedex          : 1;
+    bool8 hasHofResult        : 1;
+    bool8 hasLinkResults      : 1;
+    bool8 hasBattleTowerWins  : 1;
+    bool8 unused_E            : 1;
+    bool8 unused_F            : 1;
+    bool8 hasTrades           : 1;
+    bool8 isHoenn             : 1;
+    bool8 cardBackTextPrepped : 1;
     u8 badgeCount[NUM_BADGES];
     u8 easyChatProfile[TRAINER_CARD_PROFILE_LENGTH][13];
-    u8 textPlayersCard[70];
+    
+    // Text buffers for the back of the trainer card.
+    u8 textPlayersCard[70]; // "NAME's TRAINER CARD"
     u8 textHofTime[70];
     u8 textLinkBattleType[140];
     u8 textLinkBattleWins[70];
@@ -74,11 +104,10 @@ struct TrainerCardData
     u8 textNumLinkPokeblocks[70];
     u8 textNumLinkContests[70];
     u8 textBattleFacilityStat[70];
+    
     u16 monIconPal[16 * PARTY_SIZE];
     s8 flipBlendY;
-    bool8 timeColonNeedDraw;
-    u8 cardType;
-    bool8 isHoenn;
+    enum TrainerCardType cardType;
     u16 blendColor;
     void (*callback2)(void);
     struct TrainerCard trainerCard;
@@ -91,14 +120,14 @@ struct TrainerCardData
     u16 cardTilemapBuffer[0x1000];
     u16 bgTilemapBuffer[0x1000];
     u16 cardTop;
-    u8 language;
+    LanguageID language;
 };
 
 // EWRAM
 EWRAM_DATA struct TrainerCard gTrainerCards[4] = {0};
 EWRAM_DATA static struct TrainerCardData *sData = NULL;
 
-//this file's functions
+#if 1 // Forward-declaring file functions
 static void VblankCb_TrainerCard(void);
 static void HblankCb_TrainerCard(void);
 static void BlinkTimeColon(void);
@@ -121,7 +150,7 @@ static u8 GetRubyTrainerStars(struct TrainerCard *);
 static u16 GetCaughtMonsCount(void);
 static void SetPlayerCardData(struct TrainerCard *, u8);
 static void TrainerCard_GenerateCardForPlayer(struct TrainerCard *);
-static u8 VersionToCardType(u8);
+static enum TrainerCardType VersionToCardType(u8);
 static void SetDataFromTrainerCard(void);
 static void InitGpuRegs(void);
 static void ResetGpuRegs(void);
@@ -129,7 +158,7 @@ static void InitBgsAndWindows(void);
 static void SetTrainerCardCb2(void);
 static void SetUpTrainerCardTask(void);
 static void InitTrainerCardData(void);
-static u8 GetSetCardType(void);
+static enum TrainerCardType GetSetCardType(void);
 static void PrintNameOnCardFront(void);
 static void PrintIdOnCard(void);
 static void PrintMoneyOnCard(void);
@@ -170,7 +199,9 @@ static bool8 Task_AnimateCardFlipUp(struct Task *task);
 static bool8 Task_EndCardFlip(struct Task *task);
 static void UpdateCardFlipRegs(u16);
 static void LoadMonIconGfx(void);
+#endif
 
+#if 1 // Graphics resources and definitions
 static const u32 sTrainerCardStickers_Gfx[]      = INCBIN_U32("graphics/trainer_card/frlg/stickers.4bpp.lz");
 static const u16 sUnused_Pal[]                   = INCBIN_U16("graphics/trainer_card/unused.gbapal");
 static const u16 sHoennTrainerCardBronze_Pal[]   = INCBIN_U16("graphics/trainer_card/bronze.gbapal");
@@ -319,6 +350,7 @@ static const u8 sTrainerPicFacilityClass[][GENDER_COUNT] =
         [FEMALE] = FACILITY_CLASS_MAY
     }
 };
+#endif
 
 static bool8 (*const sTrainerCardFlipTasks[])(struct Task *) =
 {
@@ -368,55 +400,70 @@ static void CloseTrainerCard(u8 taskId)
     DestroyTask(taskId);
 }
 
-// States for Task_TrainerCard. Skips the initial states, which are done once in order
-#define STATE_HANDLE_INPUT_FRONT  10
-#define STATE_HANDLE_INPUT_BACK   11
-#define STATE_WAIT_FLIP_TO_BACK   12
-#define STATE_WAIT_FLIP_TO_FRONT  13
-#define STATE_CLOSE_CARD          14
-#define STATE_WAIT_LINK_PARTNER   15
-#define STATE_CLOSE_CARD_LINK     16
-
+// States for Task_TrainerCard.
+enum MainState {
+   MAINSTATE_CLEAR_TEXT_WINDOW = 0,
+   MAINSTATE_PRINT_ALL_ON_CARD_FRONT,
+   MAINSTATE_DRAW_TEXT_WINDOW,
+   MAINSTATE_DRAW_TRAINER_PIC,
+   MAINSTATE_DRAW_SCREEN_BACKGROUND,
+   MAINSTATE_DRAW_CARD_FRONT_OR_BACK,
+   MAINSTATE_DRAW_STARS_AND_BADGES,
+   MAINSTATE_BEGIN_INTRO_FADE,
+   MAINSTATE_WAIT_FOR_INTRO_FADE,
+   MAINSTATE_WAIT_FOR_INTRO_SOUND,
+   //
+   // The above states are only run once. The below states 
+   // may run multiple times during the menu's operation.
+   //
+   MAINSTATE_HANDLE_INPUT_FRONT,
+   MAINSTATE_WAIT_FLIP_TO_BACK,
+   MAINSTATE_HANDLE_INPUT_BACK,
+   MAINSTATE_WAIT_LINK_PARTNER,
+   MAINSTATE_CLOSE_CARD_LINK,
+   MAINSTATE_CLOSE_CARD,
+   MAINSTATE_WAIT_FLIP_TO_FRONT,
+};
+//
 static void Task_TrainerCard(u8 taskId)
 {
     switch (sData->mainState)
     {
     // Draw card initially
-    case 0:
+    case MAINSTATE_CLEAR_TEXT_WINDOW:
         if (!IsDma3ManagerBusyWithBgCopy())
         {
             FillWindowPixelBuffer(WIN_CARD_TEXT, PIXEL_FILL(0));
             sData->mainState++;
         }
         break;
-    case 1:
+    case MAINSTATE_PRINT_ALL_ON_CARD_FRONT:
         if (PrintAllOnCardFront())
             sData->mainState++;
         break;
-    case 2:
+    case MAINSTATE_DRAW_TEXT_WINDOW:
         DrawTrainerCardWindow(WIN_CARD_TEXT);
         sData->mainState++;
         break;
-    case 3:
+    case MAINSTATE_DRAW_TRAINER_PIC:
         FillWindowPixelBuffer(WIN_TRAINER_PIC, PIXEL_FILL(0));
         CreateTrainerCardTrainerPic();
         DrawTrainerCardWindow(WIN_TRAINER_PIC);
         sData->mainState++;
         break;
-    case 4:
+    case MAINSTATE_DRAW_SCREEN_BACKGROUND:
         DrawCardScreenBackground(sData->bgTilemap);
         sData->mainState++;
         break;
-    case 5:
+    case MAINSTATE_DRAW_CARD_FRONT_OR_BACK:
         DrawCardFrontOrBack(sData->frontTilemap);
         sData->mainState++;
         break;
-    case 6:
+    case MAINSTATE_DRAW_STARS_AND_BADGES:
         DrawStarsAndBadgesOnCard();
         sData->mainState++;
         break;
-    // Fade in
-    case 7:
+    case MAINSTATE_BEGIN_INTRO_FADE:
         if (gWirelessCommType == 1 && gReceivedRemoteLinkPlayers == TRUE)
         {
             LoadWirelessStatusIndicatorSpriteGfx();
@@ -427,18 +474,18 @@ static void Task_TrainerCard(u8 taskId)
         SetVBlankCallback(VblankCb_TrainerCard);
         sData->mainState++;
         break;
-    case 8:
+    case MAINSTATE_WAIT_FOR_INTRO_FADE:
         if (!UpdatePaletteFade() && !IsDma3ManagerBusyWithBgCopy())
         {
             PlaySE(SE_RG_CARD_OPEN);
-            sData->mainState = STATE_HANDLE_INPUT_FRONT;
+            sData->mainState = MAINSTATE_HANDLE_INPUT_FRONT;
         }
         break;
-    case 9:
+    case MAINSTATE_WAIT_FOR_INTRO_SOUND:
         if (!IsSEPlaying())
             sData->mainState++;
         break;
-    case STATE_HANDLE_INPUT_FRONT:
+    case MAINSTATE_HANDLE_INPUT_FRONT:
         // Blink the : in play time
         if (!gReceivedRemoteLinkPlayers && sData->timeColonNeedDraw)
         {
@@ -450,44 +497,44 @@ static void Task_TrainerCard(u8 taskId)
         {
             FlipTrainerCard();
             PlaySE(SE_RG_CARD_FLIP);
-            sData->mainState = STATE_WAIT_FLIP_TO_BACK;
+            sData->mainState = MAINSTATE_WAIT_FLIP_TO_BACK;
         }
         else if (JOY_NEW(B_BUTTON))
         {
             if (gReceivedRemoteLinkPlayers && sData->isLink && InUnionRoom() == TRUE)
             {
-                sData->mainState = STATE_WAIT_LINK_PARTNER;
+                sData->mainState = MAINSTATE_WAIT_LINK_PARTNER;
             }
             else
             {
                 BeginNormalPaletteFade(PALETTES_ALL, FADE_DELAY_PER_FRAME_TO_EXIT, 0, 16, sData->blendColor);
-                sData->mainState = STATE_CLOSE_CARD;
+                sData->mainState = MAINSTATE_CLOSE_CARD;
             }
         }
         break;
-    case STATE_WAIT_FLIP_TO_BACK:
+    case MAINSTATE_WAIT_FLIP_TO_BACK:
         if (IsCardFlipTaskActive() && Overworld_IsRecvQueueAtMax() != TRUE)
         {
             PlaySE(SE_RG_CARD_OPEN);
-            sData->mainState = STATE_HANDLE_INPUT_BACK;
+            sData->mainState = MAINSTATE_HANDLE_INPUT_BACK;
         }
         break;
-    case STATE_HANDLE_INPUT_BACK:
+    case MAINSTATE_HANDLE_INPUT_BACK:
         if (JOY_NEW(B_BUTTON))
         {
             if (gReceivedRemoteLinkPlayers && sData->isLink && InUnionRoom() == TRUE)
             {
-                sData->mainState = STATE_WAIT_LINK_PARTNER;
+                sData->mainState = MAINSTATE_WAIT_LINK_PARTNER;
             }
             else if (gReceivedRemoteLinkPlayers)
             {
                 BeginNormalPaletteFade(PALETTES_ALL, FADE_DELAY_PER_FRAME_TO_EXIT, 0, 16, sData->blendColor);
-                sData->mainState = STATE_CLOSE_CARD;
+                sData->mainState = MAINSTATE_CLOSE_CARD;
             }
             else
             {
                 FlipTrainerCard();
-                sData->mainState = STATE_WAIT_FLIP_TO_FRONT;
+                sData->mainState = MAINSTATE_WAIT_FLIP_TO_FRONT;
                 PlaySE(SE_RG_CARD_FLIP);
             }
         }
@@ -495,37 +542,37 @@ static void Task_TrainerCard(u8 taskId)
         {
            if (gReceivedRemoteLinkPlayers && sData->isLink && InUnionRoom() == TRUE)
            {
-               sData->mainState = STATE_WAIT_LINK_PARTNER;
+               sData->mainState = MAINSTATE_WAIT_LINK_PARTNER;
            }
            else
            {
                BeginNormalPaletteFade(PALETTES_ALL, FADE_DELAY_PER_FRAME_TO_EXIT, 0, 16, sData->blendColor);
-               sData->mainState = STATE_CLOSE_CARD;
+               sData->mainState = MAINSTATE_CLOSE_CARD;
            }
         }
         break;
-    case STATE_WAIT_LINK_PARTNER:
+    case MAINSTATE_WAIT_LINK_PARTNER:
         SetCloseLinkCallback();
         DrawDialogueFrame(WIN_MSG, TRUE);
         AddTextPrinterParameterized(WIN_MSG, FONT_NORMAL, gText_WaitingTrainerFinishReading, 0, 1, 255, 0);
         CopyWindowToVram(WIN_MSG, COPYWIN_FULL);
-        sData->mainState = STATE_CLOSE_CARD_LINK;
+        sData->mainState = MAINSTATE_CLOSE_CARD_LINK;
         break;
-    case STATE_CLOSE_CARD_LINK:
+    case MAINSTATE_CLOSE_CARD_LINK:
         if (!gReceivedRemoteLinkPlayers)
         {
             BeginNormalPaletteFade(PALETTES_ALL, FADE_DELAY_PER_FRAME_TO_EXIT, 0, 16, sData->blendColor);
-            sData->mainState = STATE_CLOSE_CARD;
+            sData->mainState = MAINSTATE_CLOSE_CARD;
         }
         break;
-    case STATE_CLOSE_CARD:
+    case MAINSTATE_CLOSE_CARD:
         if (!UpdatePaletteFade())
             CloseTrainerCard(taskId);
         break;
-    case STATE_WAIT_FLIP_TO_FRONT:
+    case MAINSTATE_WAIT_FLIP_TO_FRONT:
         if (IsCardFlipTaskActive() && Overworld_IsRecvQueueAtMax() != TRUE)
         {
-            sData->mainState = STATE_HANDLE_INPUT_FRONT;
+            sData->mainState = MAINSTATE_HANDLE_INPUT_FRONT;
             PlaySE(SE_RG_CARD_OPEN);
         }
         break;
@@ -536,19 +583,19 @@ static bool8 LoadCardGfx(void)
 {
     switch (sData->gfxLoadState)
     {
-    case 0:
+    case GFXLOADSTATE_TILEMAP_BG:
         if (sData->cardType != CARD_TYPE_FRLG)
             LZ77UnCompWram(gHoennTrainerCardBg_Tilemap, sData->bgTilemap);
         else
             LZ77UnCompWram(gKantoTrainerCardBg_Tilemap, sData->bgTilemap);
         break;
-    case 1:
+    case GFXLOADSTATE_TILEMAP_CARD_BACK:
         if (sData->cardType != CARD_TYPE_FRLG)
             LZ77UnCompWram(gHoennTrainerCardBack_Tilemap, sData->backTilemap);
         else
             LZ77UnCompWram(gKantoTrainerCardBack_Tilemap, sData->backTilemap);
         break;
-    case 2:
+    case GFXLOADSTATE_TILEMAP_CARD_FRONT:
         if (!sData->isLink)
         {
             if (sData->cardType != CARD_TYPE_FRLG)
@@ -564,78 +611,83 @@ static bool8 LoadCardGfx(void)
                 LZ77UnCompWram(gKantoTrainerCardFrontLink_Tilemap, sData->frontTilemap);
         }
         break;
-    case 3:
+    case GFXLOADSTATE_TILES_BADGES:
         if (sData->cardType != CARD_TYPE_FRLG)
             LZ77UnCompWram(sHoennTrainerCardBadges_Gfx, sData->badgeTiles);
         else
             LZ77UnCompWram(sKantoTrainerCardBadges_Gfx, sData->badgeTiles);
         break;
-    case 4:
+    case GFXLOADSTATE_TILES_CARD:
         if (sData->cardType != CARD_TYPE_FRLG)
             LZ77UnCompWram(gHoennTrainerCard_Gfx, sData->cardTiles);
         else
             LZ77UnCompWram(gKantoTrainerCard_Gfx, sData->cardTiles);
         break;
-    case 5:
+    case GFXLOADSTATE_TILES_STICKERS:
         if (sData->cardType == CARD_TYPE_FRLG)
             LZ77UnCompWram(sTrainerCardStickers_Gfx, sData->stickerTiles);
         break;
     default:
-        sData->gfxLoadState = 0;
+        sData->gfxLoadState = GFXLOADSTATE_START;
         return TRUE;
     }
     sData->gfxLoadState++;
     return FALSE;
 }
 
+enum InitState {
+   INITSTATE_START,
+   INITSTATE_CLEAR_OAM_AND_PALETTES,
+   INITSTATE_RESET_VISUALS,
+   INITSTATE_BGS_AND_WINDOWS,
+   INITSTATE_LOAD_POKEMON_ICONS,
+   INITSTATE_LOAD_CARD_GRAPHICS, // see GfxLoadState
+   INITSTATE_LOAD_STICKERS,
+   INITSTATE_INIT_GPU_REGS,
+   INITSTATE_SETUP_CARD_BACKGROUNDS,
+   INITSTATE_DONE,
+};
 static void CB2_InitTrainerCard(void)
 {
     switch (gMain.state)
     {
-    case 0:
+    case INITSTATE_START:
         ResetGpuRegs();
         SetUpTrainerCardTask();
         gMain.state++;
         break;
-    case 1:
+    case INITSTATE_CLEAR_OAM_AND_PALETTES:
         DmaClear32(3, (void *)OAM, OAM_SIZE);
-        gMain.state++;
-        break;
-    case 2:
         if (!sData->blendColor)
             DmaClear16(3, (void *)PLTT, PLTT_SIZE);
         gMain.state++;
         break;
-    case 3:
+    case INITSTATE_RESET_VISUALS:
         ResetSpriteData();
         FreeAllSpritePalettes();
         ResetPaletteFade();
         gMain.state++;
-    case 4:
+    case INITSTATE_BGS_AND_WINDOWS:
         InitBgsAndWindows();
         gMain.state++;
         break;
-    case 5:
+    case INITSTATE_LOAD_POKEMON_ICONS:
         LoadMonIconGfx();
         gMain.state++;
         break;
-    case 6:
+    case INITSTATE_LOAD_CARD_GRAPHICS:
         if (LoadCardGfx() == TRUE)
             gMain.state++;
         break;
-    case 7:
+    case INITSTATE_LOAD_STICKERS:
         LoadStickerGfx();
         gMain.state++;
         break;
-    case 8:
+    case INITSTATE_INIT_GPU_REGS:
         InitGpuRegs();
         gMain.state++;
         break;
-    case 9:
-        BufferTextsVarsForCardPage2();
-        gMain.state++;
-        break;
-    case 10:
+    case INITSTATE_SETUP_CARD_BACKGROUNDS:
         if (SetCardBgsAndPals() == TRUE)
             gMain.state++;
         break;
@@ -925,26 +977,26 @@ static bool8 PrintAllOnCardFront(void)
 {
     switch (sData->printState)
     {
-    case 0:
+    case PRINTSTATEFRONT_NAME_ON_FRONT:
         PrintNameOnCardFront();
         break;
-    case 1:
+    case PRINTSTATEFRONT_ID:
         PrintIdOnCard();
         break;
-    case 2:
+    case PRINTSTATEFRONT_MONEY:
         PrintMoneyOnCard();
         break;
-    case 3:
+    case PRINTSTATEFRONT_POKEDEX:
         PrintPokedexOnCard();
         break;
-    case 4:
+    case PRINTSTATEFRONT_TIME:
         PrintTimeOnCard();
         break;
-    case 5:
+    case PRINTSTATEFRONT_PROFILE_PHRASE:
         PrintProfilePhraseOnCard();
         break;
     default:
-        sData->printState = 0;
+        sData->printState = PRINTSTATEFRONT_START;
         return TRUE;
     }
     sData->printState++;
@@ -1001,8 +1053,11 @@ static void BufferTextsVarsForCardPage2(void)
     BufferLinkPokeblocksNum();
     BufferLinkContestNum();
     BufferBattleFacilityStats();
+    
+    sData->cardBackTextPrepped = TRUE;
 }
 
+#if 1 // Print contents of card front
 static void PrintNameOnCardFront(void)
 {
     u8 buffer[32];
@@ -1163,7 +1218,9 @@ static void PrintProfilePhraseOnCard(void)
         AddTextPrinterParameterized3(WIN_CARD_TEXT, FONT_NORMAL, GetStringWidth(FONT_NORMAL, sData->easyChatProfile[2], 0) + 14, yOffsetsLine2[sData->isHoenn], sTrainerCardTextColors, TEXT_SKIP_DRAW, sData->easyChatProfile[3]);
     }
 }
+#endif
 
+#if 1 // Buffer and print contents of card back
 static void BufferNameForCardBack(void)
 {
     StringCopy(sData->textPlayersCard, sData->trainerCard.playerName);
@@ -1342,6 +1399,7 @@ static void PrintBattleFacilityStringOnCard(void)
         break;
     }
 }
+#endif
 
 static void PrintPokemonIconsOnCard(void)
 {
@@ -1584,6 +1642,7 @@ u8 GetTrainerCardStars(u8 cardId)
     return trainerCards[cardId].stars;
 }
 
+#if 1 // Flipping the card from front to back and vice versa
 #define tFlipState data[0]
 #define tCardTop   data[1]
 
@@ -1670,6 +1729,25 @@ static bool8 Task_AnimateCardFlipDown(struct Task *task)
     return FALSE;
 }
 
+enum FlipState {
+   FLIPSTATE_CLEAR_CARD_TEXT = 0,
+   FLIPSTATE_PRINT_CARD_TEXT,
+   
+   FLIPSTATE_DRAW_STEP_1,
+   FLIPSTATE_DRAW_STEP_2,
+   FLIPSTATE_DRAW_STEP_3,
+   
+   FLIPSTATE_DONE,
+   
+   // Directional states
+   FLIPSTATE_TO_FRONT_DRAW_CARD_TEXT    = FLIPSTATE_DRAW_STEP_1,
+   FLIPSTATE_TO_FRONT_CLEAR_TRAINER_PIC = FLIPSTATE_DRAW_STEP_2,
+   FLIPSTATE_TO_FRONT_DRAW_TRAINER_PIC  = FLIPSTATE_DRAW_STEP_3,
+   
+   // Directional states
+   FLIPSTATE_TO_BACK_DRAW_CARD_BACK = FLIPSTATE_DRAW_STEP_1,
+   FLIPSTATE_TO_BACK_DRAW_CARD_TEXT = FLIPSTATE_DRAW_STEP_2,
+};
 static bool8 Task_DrawFlippedCardSide(struct Task *task)
 {
     sData->allowDMACopy = FALSE;
@@ -1680,11 +1758,19 @@ static bool8 Task_DrawFlippedCardSide(struct Task *task)
     {
         switch (sData->flipDrawState)
         {
-        case 0:
+        case FLIPSTATE_CLEAR_CARD_TEXT:
             FillWindowPixelBuffer(WIN_CARD_TEXT, PIXEL_FILL(0));
             FillBgTilemapBufferRect_Palette0(3, 0, 0, 0, 0x20, 0x20);
+            if (!sData->onBack) {
+               //
+               // We're on the front, and flipping to the back.
+               //
+               if (!sData->cardBackTextPrepped) {
+                  BufferTextsVarsForCardPage2();
+               }
+            }
             break;
-        case 1:
+        case FLIPSTATE_PRINT_CARD_TEXT:
             if (!sData->onBack)
             {
                 if (!PrintAllOnCardBack())
@@ -1696,19 +1782,19 @@ static bool8 Task_DrawFlippedCardSide(struct Task *task)
                     return FALSE;
             }
             break;
-        case 2:
+        case FLIPSTATE_DRAW_STEP_1:
             if (!sData->onBack)
                 DrawCardFrontOrBack(sData->backTilemap);
             else
                 DrawTrainerCardWindow(WIN_CARD_TEXT);
             break;
-        case 3:
+        case FLIPSTATE_DRAW_STEP_2:
             if (!sData->onBack)
                 DrawCardBackStats();
             else
                 FillWindowPixelBuffer(WIN_TRAINER_PIC, PIXEL_FILL(0));
             break;
-        case 4:
+        case FLIPSTATE_DRAW_STEP_3:
             if (sData->onBack)
                 CreateTrainerCardTrainerPic();
             break;
@@ -1797,6 +1883,7 @@ static bool8 Task_EndCardFlip(struct Task *task)
     DestroyTask(FindTaskIdByFunc(Task_DoCardFlipTask));
     return FALSE;
 }
+#endif
 
 void ShowPlayerTrainerCard(void (*callback)(void))
 {
@@ -1836,12 +1923,13 @@ static void InitTrainerCardData(void)
     sData->timeColonInvisible = FALSE;
     sData->onBack = FALSE;
     sData->flipBlendY = 0;
+    sData->cardBackTextPrepped = FALSE;
     sData->cardType = GetSetCardType();
     for (i = 0; i < TRAINER_CARD_PROFILE_LENGTH; i++)
         CopyEasyChatWord(sData->easyChatProfile[i], sData->trainerCard.easyChatProfile[i]);
 }
 
-static u8 GetSetCardType(void)
+static enum TrainerCardType GetSetCardType(void)
 {
     if (sData == NULL)
     {
@@ -1872,7 +1960,7 @@ static u8 GetSetCardType(void)
     }
 }
 
-static u8 VersionToCardType(u8 version)
+static enum TrainerCardType VersionToCardType(u8 version)
 {
     if (version == VERSION_FIRE_RED || version == VERSION_LEAF_GREEN)
         return CARD_TYPE_FRLG;
