@@ -47,18 +47,6 @@ enum {
     WIN_TRAINER_PIC,
 };
 
-enum GfxLoadState {
-   GFXLOADSTATE_TILEMAP_BG,
-   GFXLOADSTATE_TILEMAP_CARD_BACK,
-   GFXLOADSTATE_TILEMAP_CARD_FRONT,
-   GFXLOADSTATE_TILES_BADGES,
-   GFXLOADSTATE_TILES_CARD,
-   GFXLOADSTATE_TILES_STICKERS,
-   
-   GFXLOADSTATE_DONE,
-   GFXLOADSTATE_START = 0
-};
-
 struct TrainerCardData
 {
     u8 mainState;
@@ -422,12 +410,11 @@ static void Task_TrainerCard(u8 taskId)
     {
     // Draw card initially
     case MAINSTATE_CLEAR_TEXT_WINDOW:
-        if (!IsDma3ManagerBusyWithBgCopy())
-        {
-            FillWindowPixelBuffer(WIN_CARD_TEXT, PIXEL_FILL(0));
-            sData->mainState++;
-        }
-        break;
+        if (IsDma3ManagerBusyWithBgCopy())
+            break;
+        FillWindowPixelBuffer(WIN_CARD_TEXT, PIXEL_FILL(0));
+        sData->mainState++;
+        FALLTHROUGH;
     case MAINSTATE_PRINT_ALL_ON_CARD_FRONT:
         if (PrintAllOnCardFront()) {
             DrawTrainerCardWindow(WIN_CARD_TEXT);
@@ -443,7 +430,7 @@ static void Task_TrainerCard(u8 taskId)
     case MAINSTATE_DRAW_SCREEN_BACKGROUND:
         DrawCardScreenBackground(sData->bgTilemap);
         sData->mainState++;
-        break;
+        FALLTHROUGH;
     case MAINSTATE_DRAW_CARD_FRONT_OR_BACK:
         DrawCardFrontOrBack(sData->frontTilemap);
         sData->mainState++;
@@ -568,6 +555,15 @@ static void Task_TrainerCard(u8 taskId)
    }
 }
 
+enum GfxLoadState {
+   GFXLOADSTATE_TILEMAP_BG,
+   GFXLOADSTATE_TILEMAP_CARD_BACK,
+   GFXLOADSTATE_TILEMAP_CARD_FRONT,
+   GFXLOADSTATE_TILES_CARD_AND_DOODADS,
+   
+   GFXLOADSTATE_DONE,
+   GFXLOADSTATE_START = 0
+};
 static bool8 LoadCardGfx(void)
 {
     switch (sData->gfxLoadState)
@@ -600,19 +596,17 @@ static bool8 LoadCardGfx(void)
                 LZ77UnCompWram(gKantoTrainerCardFrontLink_Tilemap, sData->frontTilemap);
         }
         break;
-    case GFXLOADSTATE_TILES_BADGES:
-        if (sData->cardType != CARD_TYPE_FRLG)
-            LZ77UnCompWram(sHoennTrainerCardBadges_Gfx, sData->badgeTiles);
-        else
-            LZ77UnCompWram(sKantoTrainerCardBadges_Gfx, sData->badgeTiles);
-        break;
-    case GFXLOADSTATE_TILES_CARD:
+    case GFXLOADSTATE_TILES_CARD_AND_DOODADS:
         if (sData->cardType != CARD_TYPE_FRLG)
             LZ77UnCompWram(gHoennTrainerCard_Gfx, sData->cardTiles);
         else
             LZ77UnCompWram(gKantoTrainerCard_Gfx, sData->cardTiles);
-        break;
-    case GFXLOADSTATE_TILES_STICKERS:
+        //
+        if (sData->cardType != CARD_TYPE_FRLG)
+            LZ77UnCompWram(sHoennTrainerCardBadges_Gfx, sData->badgeTiles);
+        else
+            LZ77UnCompWram(sKantoTrainerCardBadges_Gfx, sData->badgeTiles);
+        //
         if (sData->cardType == CARD_TYPE_FRLG)
             LZ77UnCompWram(sTrainerCardStickers_Gfx, sData->stickerTiles);
         break;
