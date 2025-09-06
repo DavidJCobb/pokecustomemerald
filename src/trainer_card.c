@@ -168,7 +168,7 @@ static void BufferLinkContestNum(void);
 static void BufferBattleFacilityStats(void);
 static void PrintStatOnBackOfCard(u8 top, const u8 *str1, u8 *str2, const u8 *color);
 static void LoadStickerGfx(void);
-static u8 SetCardBgsAndPals(void);
+static void SetCardBgsAndPals(void);
 static void DrawCardBackStats(void);
 static void Task_DoCardFlipTask(u8);
 static bool8 Task_BeginCardFlip(struct Task *task);
@@ -620,9 +620,7 @@ static bool8 LoadCardGfx(void)
 
 enum InitState {
    INITSTATE_START,
-   INITSTATE_CLEAR_OAM_AND_PALETTES,
-   INITSTATE_RESET_VISUALS,
-   INITSTATE_BGS_AND_WINDOWS,
+   INITSTATE_RESET_VISUALS_AND_INIT_CANVASES,
    INITSTATE_LOAD_POKEMON_ICONS,
    INITSTATE_LOAD_CARD_GRAPHICS, // see GfxLoadState
    INITSTATE_LOAD_STICKERS,
@@ -639,30 +637,28 @@ static void CB2_InitTrainerCard(void)
         SetUpTrainerCardTask();
         gMain.state++;
         break;
-    case INITSTATE_CLEAR_OAM_AND_PALETTES:
+    case INITSTATE_RESET_VISUALS_AND_INIT_CANVASES:
         DmaClear32(3, (void *)OAM, OAM_SIZE);
         if (!sData->blendColor)
             DmaClear16(3, (void *)PLTT, PLTT_SIZE);
-        gMain.state++;
-        break;
-    case INITSTATE_RESET_VISUALS:
+        //
         ResetSpriteData();
         FreeAllSpritePalettes();
         ResetPaletteFade();
-        gMain.state++;
-        FALLTHROUGH;
-    case INITSTATE_BGS_AND_WINDOWS:
+        //
         InitBgsAndWindows();
         gMain.state++;
+        //
         FALLTHROUGH;
     case INITSTATE_LOAD_POKEMON_ICONS:
         LoadMonIconGfx();
         gMain.state++;
         break;
     case INITSTATE_LOAD_CARD_GRAPHICS:
-        if (LoadCardGfx() == TRUE)
-            gMain.state++;
-        break;
+        if (!LoadCardGfx())
+           break;
+        gMain.state++;
+        FALLTHROUGH;
     case INITSTATE_LOAD_STICKERS:
         LoadStickerGfx();
         gMain.state++;
@@ -670,10 +666,10 @@ static void CB2_InitTrainerCard(void)
     case INITSTATE_INIT_GPU_REGS:
         InitGpuRegs();
         gMain.state++;
-        break;
+        FALLTHROUGH;
     case INITSTATE_SETUP_CARD_BACKGROUNDS:
-        if (SetCardBgsAndPals() == TRUE)
-            gMain.state++;
+        SetCardBgsAndPals();
+        gMain.state++;
         break;
     default:
         SetTrainerCardCb2();
@@ -1482,42 +1478,27 @@ static void DrawTrainerCardWindow(u8 windowId)
     CopyWindowToVram(windowId, COPYWIN_FULL);
 }
 
-static u8 SetCardBgsAndPals(void)
-{
-    switch (sData->bgPalLoadState)
-    {
-    case 0:
-        LoadBgTiles(3, sData->badgeTiles, ARRAY_COUNT(sData->badgeTiles), 0);
-        LoadBgTiles(0, sData->cardTiles, 0x1800, 0);
-        if (sData->cardType != CARD_TYPE_FRLG)
-        {
-            LoadPalette(sHoennTrainerCardPals[sData->trainerCard.stars], BG_PLTT_ID(0), 3 * PLTT_SIZE_4BPP);
-            LoadPalette(sHoennTrainerCardBadges_Pal, BG_PLTT_ID(3), PLTT_SIZE_4BPP);
-            if (sData->trainerCard.gender != MALE)
-                LoadPalette(sHoennTrainerCardFemaleBg_Pal, BG_PLTT_ID(1), PLTT_SIZE_4BPP);
-        }
-        else
-        {
-            LoadPalette(sKantoTrainerCardPals[sData->trainerCard.stars], BG_PLTT_ID(0), 3 * PLTT_SIZE_4BPP);
-            LoadPalette(sKantoTrainerCardBadges_Pal, BG_PLTT_ID(3), PLTT_SIZE_4BPP);
-            if (sData->trainerCard.gender != MALE)
-                LoadPalette(sKantoTrainerCardFemaleBg_Pal, BG_PLTT_ID(1), PLTT_SIZE_4BPP);
-        }
-        LoadPalette(sTrainerCardStar_Pal, BG_PLTT_ID(4), PLTT_SIZE_4BPP);
-        break;
-    case 1:
-        SetBgTilemapBuffer(0, sData->cardTilemapBuffer);
-        SetBgTilemapBuffer(2, sData->bgTilemapBuffer);
-        break;
-    case 2:
-        FillBgTilemapBufferRect_Palette0(0, 0, 0, 0, 32, 32);
-        FillBgTilemapBufferRect_Palette0(2, 0, 0, 0, 32, 32);
-        FillBgTilemapBufferRect_Palette0(3, 0, 0, 0, 32, 32);
-    default:
-        return 1;
-    }
-    sData->bgPalLoadState++;
-    return 0;
+static void SetCardBgsAndPals(void) {
+   LoadBgTiles(3, sData->badgeTiles, ARRAY_COUNT(sData->badgeTiles), 0);
+   LoadBgTiles(0, sData->cardTiles, 0x1800, 0);
+   if (sData->cardType != CARD_TYPE_FRLG) {
+      LoadPalette(sHoennTrainerCardPals[sData->trainerCard.stars], BG_PLTT_ID(0), 3 * PLTT_SIZE_4BPP);
+      LoadPalette(sHoennTrainerCardBadges_Pal, BG_PLTT_ID(3), PLTT_SIZE_4BPP);
+      if (sData->trainerCard.gender != MALE)
+         LoadPalette(sHoennTrainerCardFemaleBg_Pal, BG_PLTT_ID(1), PLTT_SIZE_4BPP);
+   } else {
+      LoadPalette(sKantoTrainerCardPals[sData->trainerCard.stars], BG_PLTT_ID(0), 3 * PLTT_SIZE_4BPP);
+      LoadPalette(sKantoTrainerCardBadges_Pal, BG_PLTT_ID(3), PLTT_SIZE_4BPP);
+      if (sData->trainerCard.gender != MALE)
+         LoadPalette(sKantoTrainerCardFemaleBg_Pal, BG_PLTT_ID(1), PLTT_SIZE_4BPP);
+   }
+   LoadPalette(sTrainerCardStar_Pal, BG_PLTT_ID(4), PLTT_SIZE_4BPP);
+
+   SetBgTilemapBuffer(0, sData->cardTilemapBuffer);
+   SetBgTilemapBuffer(2, sData->bgTilemapBuffer);
+   FillBgTilemapBufferRect_Palette0(0, 0, 0, 0, 32, 32);
+   FillBgTilemapBufferRect_Palette0(2, 0, 0, 0, 32, 32);
+   FillBgTilemapBufferRect_Palette0(3, 0, 0, 0, 32, 32);
 }
 
 static void DrawCardScreenBackground(u16 *ptr)
