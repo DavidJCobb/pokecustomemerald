@@ -33,10 +33,13 @@
 #include "constants/trainers.h"
 #include "constants/union_room.h"
 
+#include "lu/c-attr.define.h"
 #include "lu/game_typedefs.h"
 
 #define FADE_DELAY_PER_FRAME_ON_ENTRY -2 // vanilla: -1
 #define FADE_DELAY_PER_FRAME_TO_EXIT  -2 // vanilla: -1
+
+#define PRINT_CARD_FRONT_ALL_AT_ONCE 1
 
 enum {
     WIN_MSG,
@@ -44,17 +47,6 @@ enum {
     WIN_TRAINER_PIC,
 };
 
-enum PrintStateFront {
-   PRINTSTATEFRONT_NAME_ON_FRONT,
-   PRINTSTATEFRONT_ID,
-   PRINTSTATEFRONT_MONEY,
-   PRINTSTATEFRONT_POKEDEX,
-   PRINTSTATEFRONT_TIME,
-   PRINTSTATEFRONT_PROFILE_PHRASE,
-   
-   PRINTSTATEFRONT_DONE,
-   PRINTSTATEFRONT_START = PRINTSTATEFRONT_NAME_ON_FRONT,
-};
 enum GfxLoadState {
    GFXLOADSTATE_TILEMAP_BG,
    GFXLOADSTATE_TILEMAP_CARD_BACK,
@@ -404,7 +396,6 @@ static void CloseTrainerCard(u8 taskId)
 enum MainState {
    MAINSTATE_CLEAR_TEXT_WINDOW = 0,
    MAINSTATE_PRINT_ALL_ON_CARD_FRONT,
-   MAINSTATE_DRAW_TEXT_WINDOW,
    MAINSTATE_DRAW_TRAINER_PIC,
    MAINSTATE_DRAW_SCREEN_BACKGROUND,
    MAINSTATE_DRAW_CARD_FRONT_OR_BACK,
@@ -438,12 +429,10 @@ static void Task_TrainerCard(u8 taskId)
         }
         break;
     case MAINSTATE_PRINT_ALL_ON_CARD_FRONT:
-        if (PrintAllOnCardFront())
+        if (PrintAllOnCardFront()) {
+            DrawTrainerCardWindow(WIN_CARD_TEXT);
             sData->mainState++;
-        break;
-    case MAINSTATE_DRAW_TEXT_WINDOW:
-        DrawTrainerCardWindow(WIN_CARD_TEXT);
-        sData->mainState++;
+        }
         break;
     case MAINSTATE_DRAW_TRAINER_PIC:
         FillWindowPixelBuffer(WIN_TRAINER_PIC, PIXEL_FILL(0));
@@ -644,7 +633,7 @@ enum InitState {
    INITSTATE_LOAD_CARD_GRAPHICS, // see GfxLoadState
    INITSTATE_LOAD_STICKERS,
    INITSTATE_INIT_GPU_REGS,
-   INITSTATE_SETUP_CARD_BACKGROUNDS,
+   INITSTATE_SETUP_CARD_BACKGROUNDS, // SetCardBgsAndPals
    INITSTATE_DONE,
 };
 static void CB2_InitTrainerCard(void)
@@ -667,10 +656,11 @@ static void CB2_InitTrainerCard(void)
         FreeAllSpritePalettes();
         ResetPaletteFade();
         gMain.state++;
+        FALLTHROUGH;
     case INITSTATE_BGS_AND_WINDOWS:
         InitBgsAndWindows();
         gMain.state++;
-        break;
+        FALLTHROUGH;
     case INITSTATE_LOAD_POKEMON_ICONS:
         LoadMonIconGfx();
         gMain.state++;
@@ -973,34 +963,53 @@ static void SetUpTrainerCardTask(void)
     SetDataFromTrainerCard();
 }
 
-static bool8 PrintAllOnCardFront(void)
-{
-    switch (sData->printState)
-    {
-    case PRINTSTATEFRONT_NAME_ON_FRONT:
-        PrintNameOnCardFront();
-        break;
-    case PRINTSTATEFRONT_ID:
-        PrintIdOnCard();
-        break;
-    case PRINTSTATEFRONT_MONEY:
-        PrintMoneyOnCard();
-        break;
-    case PRINTSTATEFRONT_POKEDEX:
-        PrintPokedexOnCard();
-        break;
-    case PRINTSTATEFRONT_TIME:
-        PrintTimeOnCard();
-        break;
-    case PRINTSTATEFRONT_PROFILE_PHRASE:
-        PrintProfilePhraseOnCard();
-        break;
-    default:
-        sData->printState = PRINTSTATEFRONT_START;
-        return TRUE;
-    }
-    sData->printState++;
-    return FALSE;
+enum PrintStateFront {
+   PRINTSTATEFRONT_NAME_ON_FRONT,
+   PRINTSTATEFRONT_ID,
+   PRINTSTATEFRONT_MONEY,
+   PRINTSTATEFRONT_POKEDEX,
+   PRINTSTATEFRONT_TIME,
+   PRINTSTATEFRONT_PROFILE_PHRASE,
+   
+   PRINTSTATEFRONT_DONE,
+   PRINTSTATEFRONT_START = PRINTSTATEFRONT_NAME_ON_FRONT,
+};
+static bool8 PrintAllOnCardFront(void) {
+   #if PRINT_CARD_FRONT_ALL_AT_ONCE
+      PrintNameOnCardFront();
+      PrintIdOnCard();
+      PrintMoneyOnCard();
+      PrintPokedexOnCard();
+      PrintTimeOnCard();
+      PrintProfilePhraseOnCard();
+      return TRUE;
+   #else
+      switch (sData->printState) {
+         case PRINTSTATEFRONT_NAME_ON_FRONT:
+            PrintNameOnCardFront();
+            break;
+         case PRINTSTATEFRONT_ID:
+            PrintIdOnCard();
+            break;
+         case PRINTSTATEFRONT_MONEY:
+            PrintMoneyOnCard();
+            break;
+         case PRINTSTATEFRONT_POKEDEX:
+            PrintPokedexOnCard();
+            break;
+         case PRINTSTATEFRONT_TIME:
+            PrintTimeOnCard();
+            break;
+         case PRINTSTATEFRONT_PROFILE_PHRASE:
+            PrintProfilePhraseOnCard();
+            break;
+         default:
+            sData->printState = PRINTSTATEFRONT_START;
+            return TRUE;
+      }
+      sData->printState++;
+      return FALSE;
+   #endif
 }
 
 static bool8 PrintAllOnCardBack(void)
@@ -1485,11 +1494,7 @@ static u8 SetCardBgsAndPals(void)
     {
     case 0:
         LoadBgTiles(3, sData->badgeTiles, ARRAY_COUNT(sData->badgeTiles), 0);
-        break;
-    case 1:
         LoadBgTiles(0, sData->cardTiles, 0x1800, 0);
-        break;
-    case 2:
         if (sData->cardType != CARD_TYPE_FRLG)
         {
             LoadPalette(sHoennTrainerCardPals[sData->trainerCard.stars], BG_PLTT_ID(0), 3 * PLTT_SIZE_4BPP);
@@ -1506,11 +1511,11 @@ static u8 SetCardBgsAndPals(void)
         }
         LoadPalette(sTrainerCardStar_Pal, BG_PLTT_ID(4), PLTT_SIZE_4BPP);
         break;
-    case 3:
+    case 1:
         SetBgTilemapBuffer(0, sData->cardTilemapBuffer);
         SetBgTilemapBuffer(2, sData->bgTilemapBuffer);
         break;
-    case 4:
+    case 2:
         FillBgTilemapBufferRect_Palette0(0, 0, 0, 0, 32, 32);
         FillBgTilemapBufferRect_Palette0(2, 0, 0, 0, 32, 32);
         FillBgTilemapBufferRect_Palette0(3, 0, 0, 0, 32, 32);
