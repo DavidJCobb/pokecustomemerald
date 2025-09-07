@@ -35,7 +35,7 @@
 #include "constants/songs.h"
 #include "constants/trainer_hill.h"
 
-#include "lu/custom_game_options.h"
+#include "custom_game_options/options.h"
 #include "lu/field_debug_menu.h"
 #include "lu/running_prefs.h"
 

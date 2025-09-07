@@ -10,7 +10,7 @@
 #include "constants/map_types.h"
 #include "constants/songs.h"
 
-#include "lu/custom_game_options.h"
+#include "custom_game_options/options.h"
 #include "lu/field_debug_menu.h"
 
 // this file's functions

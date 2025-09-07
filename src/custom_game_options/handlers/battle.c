@@ -1,7 +1,8 @@
-#include "lu/custom_game_option_handlers/battle.h"
-#include "lu/custom_game_options.h"
+#include "custom_game_options/handlers/battle.h"
+#include "custom_game_options/options.h"
 
 #include "constants/battle.h"
+#include "global.h" // dependency of battle.h
 #include "battle.h"
 #include "battle_anim.h" // GetBattlerPosition
 
@@ -50,13 +51,13 @@ u16 ApplyCustomGameBattleAccuracyScaling(u16 accuracy) {
    }
    switch (IdentifyCurrentAttacker()) {
       case ENEMY:
-         scale = gCustomGameOptions.scale_battle_accuracy.enemy;
+         scale = gCustomGameOptions.battle.scale_outgoing_accuracy.enemy;
          break;
       case PLAYER:
-         scale = gCustomGameOptions.scale_battle_accuracy.player;
+         scale = gCustomGameOptions.battle.scale_outgoing_accuracy.player;
          break;
       case ALLY:
-         scale = gCustomGameOptions.scale_battle_accuracy.ally;
+         scale = gCustomGameOptions.battle.scale_outgoing_accuracy.ally;
          break;
    }
    return ApplyCustomGameScale_u16(accuracy, scale);
@@ -70,35 +71,35 @@ void ApplyCustomGameBattleDamageScaling(void) {
    }
    switch (IdentifyCurrentAttacker()) {
       case ENEMY:
-         scale = gCustomGameOptions.scale_battle_damage.by_enemy;
+         scale = gCustomGameOptions.battle.scale_outgoing_damage.by_enemy;
          break;
       case PLAYER:
-         scale = gCustomGameOptions.scale_battle_damage.by_player;
+         scale = gCustomGameOptions.battle.scale_outgoing_damage.by_player;
          break;
       case ALLY:
-         scale = gCustomGameOptions.scale_battle_damage.by_ally;
+         scale = gCustomGameOptions.battle.scale_outgoing_damage.by_ally;
          break;
    }
    gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, scale);
 }
 
 u32 ApplyCustomGameBattleMoneyVictoryScaling(u32 reward) {
-   return ApplyCustomGameScale_u32(reward, gCustomGameOptions.scale_player_money_gain_on_victory);
+   return ApplyCustomGameScale_u32(reward, gCustomGameOptions.battle.money.scale_gain_on_victory);
 }
 
 bool8 CustomGamesAllowBattleBackfieldHealing() {
-   switch (gCustomGameOptions.battle_item_usage) {
-      case CustomGame_ItemUseInBattles_NoBackfield:
-      case CustomGame_ItemUseInBattles_NoBackfieldAndNoRevives:
+   switch (gCustomGameOptions.battle.item_usage) {
+      case CGO_BATTLEITEMUSAGE_NO_BACKLINE:
+      case CGO_BATTLEITEMUSAGE_NO_BACKLINE_OR_REVIVES:
          return FALSE;
    }
    return TRUE;
 }
 
 bool8 CustomGamesAllowRevivesInBattle() {
-   switch (gCustomGameOptions.battle_item_usage) {
-      case CustomGame_ItemUseInBattles_NoRevives:
-      case CustomGame_ItemUseInBattles_NoBackfieldAndNoRevives:
+   switch (gCustomGameOptions.battle.item_usage) {
+      case CGO_BATTLEITEMUSAGE_NO_REVIVES:
+      case CGO_BATTLEITEMUSAGE_NO_BACKLINE_OR_REVIVES:
          return FALSE;
    }
    return TRUE;

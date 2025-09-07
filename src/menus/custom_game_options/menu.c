@@ -1,6 +1,6 @@
 #include "global.h"
-#include "lu/custom_game_options_menu.h"
-#include "lu/custom_game_options.h"
+#include "menus/custom_game_options/menu.h"
+#include "custom_game_options/options.h"
 
 #include "bg.h"
 #include "gpu_regs.h"
@@ -122,10 +122,10 @@ enum {
 #define SOUND_EFFECT_SUBMENU_EXIT  SE_SELECT
 #define SOUND_EFFECT_HELP_EXIT     SE_SELECT
 
-EWRAM_DATA static struct CustomGameOptions sTempOptions;
+EWRAM_DATA static struct CustomGameOptionsSet sTempOptions;
 
-#include "lu/custom_game_options_menu/menu_item.h"
-#include "lu/custom_game_options_menu/menu_hierarchy_definition.h" // sTopLevelMenu is the top-level menu
+#include "menus/custom_game_options/menu_item.h"
+#include "menus/custom_game_options/menu_hierarchy_definition.h" // sTopLevelMenu is the top-level menu
 
 //
 // Menu state and associated funcs:

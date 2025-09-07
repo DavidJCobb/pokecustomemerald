@@ -46,7 +46,7 @@
 #include "union_room_chat.h"
 #include "constants/items.h"
 
-#include "lu/custom_game_options.h"
+#include "custom_game_options/options.h"
 
 extern const u8 EventScript_ResetAllMapFlags[];
 

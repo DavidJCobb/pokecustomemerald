@@ -1,4 +1,4 @@
-#include "lu/custom_game_options_menu/menu_item.h"
+#include "menus/custom_game_options/menu_item.h"
 #include "lu/strings.h"
 
 #include "strings/custom_game_options.battle.h"
@@ -7,6 +7,10 @@
 #include "strings/custom_game_options.mirage_island.h"
 #include "strings/custom_game_options.overworld_poison.h"
 #include "strings/custom_game_options.rematch.h"
+
+#include "custom_game_options/value_types/battle_item_usage.h"
+#include "custom_game_options/value_types/eon_ticket_mode.h"
+#include "custom_game_options/value_types/starter_pokemon_gender.h"
 
 #define END_OF_LIST_SENTINEL { \
    .name        = NULL, \
@@ -26,7 +30,7 @@ static const struct CGOptionMenuItem sCatchingOptions[] = {
       .help_string = gText_lu_CGOptionHelp_CatchEXP,
       .value_type = VALUE_TYPE_BOOL8,
       .target = {
-         .as_bool8 = &sTempOptions.enable_catch_exp
+         .as_bool8 = &sTempOptions.battle.catching.enable_catch_exp
       }
    },
    {  // Base catch rate
@@ -41,7 +45,7 @@ static const struct CGOptionMenuItem sCatchingOptions[] = {
          }
       },
       .target = {
-         .as_u8 = &sTempOptions.catch_rate_increase_base
+         .as_u8 = &sTempOptions.battle.catching.catch_rate_increase_base
       }
    },
    {  // Scale catch rate
@@ -56,7 +60,7 @@ static const struct CGOptionMenuItem sCatchingOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.catch_rate_scale
+         .as_u16 = &sTempOptions.battle.catching.catch_rate_scale
       }
    },
    END_OF_LIST_SENTINEL,
@@ -136,7 +140,6 @@ static const u8* const sOption_MoneyLossOnDefeat_ValueHelpStrings[] = {
    NULL,
 };
 //
-//
 static const struct CGOptionMenuItem sBattleOptions[] = {
    {  // Item use
       .name        = gText_lu_CGOptionName_ItemUseInBattles,
@@ -151,7 +154,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u8 = &sTempOptions.battle_item_usage
+         .as_u8 = (u8*)&sTempOptions.battle.item_usage
       }
    },
    {  // Scale accuracy by player
@@ -167,7 +170,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_battle_accuracy.player
+         .as_u16 = &sTempOptions.battle.scale_outgoing_accuracy.player
       }
    },
    {  // Scale accuracy by enemy
@@ -182,7 +185,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_battle_accuracy.enemy
+         .as_u16 = &sTempOptions.battle.scale_outgoing_accuracy.enemy
       }
    },
    {  // Scale accuracy by ally
@@ -197,7 +200,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_battle_accuracy.ally
+         .as_u16 = &sTempOptions.battle.scale_outgoing_accuracy.ally
       }
    },
    {  // Scale damage by player
@@ -212,7 +215,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_battle_damage.by_player
+         .as_u16 = &sTempOptions.battle.scale_outgoing_damage.by_player
       }
    },
    {  // Scale damage by enemy
@@ -227,7 +230,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_battle_damage.by_enemy
+         .as_u16 = &sTempOptions.battle.scale_outgoing_damage.by_enemy
       }
    },
    {  // Scale damage by ally
@@ -242,7 +245,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_battle_damage.by_ally
+         .as_u16 = &sTempOptions.battle.scale_outgoing_damage.by_ally
       }
    },
    {  // Scale EXP gains (normal)
@@ -257,7 +260,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_exp_gains.normal
+         .as_u16 = &sTempOptions.battle.scale_exp.received.normal
       }
    },
    {  // Scale EXP gains (traded)
@@ -272,7 +275,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_exp_gains.traded
+         .as_u16 = &sTempOptions.battle.scale_exp.received.traded
       }
    },
    {  // Scale EXP gains (trainer battles)
@@ -287,7 +290,22 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_exp_gains.trainer_battles
+         .as_u16 = &sTempOptions.battle.scale_exp.awarded.trainer_battles
+      }
+   },
+   {  // Scale EXP gains (wild battles)
+      .name        = gText_lu_CGOptionName_BattlesScaleEXPWildBattles,
+      .help_string = gText_lu_CGOptionHelp_BattlesScaleEXPWildBattles,
+      .flags       = (1 << MENUITEM_FLAG_PERCENTAGE),
+      .value_type = VALUE_TYPE_U16,
+      .values = {
+         .integral = {
+            .min = 0,
+            .max = 5000,
+         }
+      },
+      .target = {
+         .as_u16 = &sTempOptions.battle.scale_exp.awarded.wild_battles
       }
    },
    {  // Scale monetary earnings on victory
@@ -302,7 +320,7 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.scale_player_money_gain_on_victory
+         .as_u16 = &sTempOptions.battle.money.scale_gain_on_victory
       }
    },
    {  // Use modern calc for money loss on defeat
@@ -318,7 +336,16 @@ static const struct CGOptionMenuItem sBattleOptions[] = {
          }
       },
       .target = {
-         .as_bool8 = &sTempOptions.modern_calc_player_money_loss_on_defeat
+         .as_bool8 = &sTempOptions.battle.money.modern_calc_loss_on_defeat
+      }
+   },
+   {  // Never lose money from wild battles
+      .name        = gText_lu_CGOptionName_MoneyLossWild,
+      .help_string = gText_lu_CGOptionHelp_MoneyLossWild,
+      .flags       = 0,
+      .value_type = VALUE_TYPE_BOOL8,
+      .target = {
+         .as_bool8 = &sTempOptions.battle.money.lose_money_from_wild_battles
       }
    },
    {  // SUBMENU: Rematch
@@ -341,7 +368,7 @@ static const struct CGOptionMenuItem sDaycareEggsOptions[] = {
       .help_string = gText_lu_CGOptionHelp_DaycareEggs_DaycareCanTeachMoves,
       .value_type = VALUE_TYPE_BOOL8,
       .target = {
-         .as_bool8 = &sTempOptions.daycare_eggs.daycare_can_teach_moves
+         .as_bool8 = &sTempOptions.daycare_eggs.can_teach_moves
       }
    },
    {  // Daycare scale cost
@@ -356,7 +383,7 @@ static const struct CGOptionMenuItem sDaycareEggsOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.daycare_eggs.daycare_scale_cost
+         .as_u16 = &sTempOptions.daycare_eggs.scale_cost
       }
    },
    {  // Daycare scale EXP
@@ -371,7 +398,7 @@ static const struct CGOptionMenuItem sDaycareEggsOptions[] = {
          }
       },
       .target = {
-         .as_u16 = &sTempOptions.daycare_eggs.daycare_scale_step_exp
+         .as_u16 = &sTempOptions.daycare_eggs.scale_step_exp
       }
    },
    {  // Egg lay chance
@@ -437,14 +464,32 @@ static const struct CGOptionMenuItem sEventsMirageIslandOptions[] = {
    END_OF_LIST_SENTINEL,
 };
 
+static const u8* const sOption_Events_EonTicket_ValueNameStrings[] = {
+   gText_lu_CGOptionValues_common_Disabled,
+   gText_lu_CGOptionValues_common_Enabled,
+   gText_lu_CGOptionValueName_Events_EonTicket_AfterRoamer,
+};   
+static const u8* const sOption_Events_EonTicket_ValueHelpStrings[] = {
+   NULL,
+   NULL,
+   gText_lu_CGOptionValueHelp_Events_EonTicket_AfterRoamer,
+};
+
 static const struct CGOptionMenuItem sEventOptions[] = {
    {  // Eon Ticket
       .name        = gText_lu_CGOptionName_Events_EonTicket,
       .help_string = gText_lu_CGOptionHelp_Events_EonTicket,
-      .flags       = 0,
-      .value_type = VALUE_TYPE_BOOL8,
+      .flags       = (1 << MENUITEM_FLAG_IS_ENUM),
+      .value_type  = VALUE_TYPE_U8,
+      .values = {
+         .named = {
+            .name_strings = sOption_Events_EonTicket_ValueNameStrings,
+            .help_strings = sOption_Events_EonTicket_ValueHelpStrings,
+            .count = 3,
+         }
+      },
       .target = {
-         .as_bool8 = &sTempOptions.events.eon_ticket
+         .as_u8 = (u8*)&sTempOptions.events.eon_ticket
       }
    },
    {  // SUBMENU: Mirage Island
@@ -505,7 +550,7 @@ static const struct CGOptionMenuItem sOverworldPoisonOptions[] = {
       .name        = gText_lu_CGOptionName_OverworldPoison_Termination,
       .help_string = gText_lu_CGOptionHelp_OverworldPoison_Termination,
       .flags       = (1 << MENUITEM_FLAG_IS_ENUM),
-      .value_type = VALUE_TYPE_BOOL8,
+      .value_type  = VALUE_TYPE_BOOL8,
       .values = {
          .named = {
             .name_strings = sOption_OverworldPoison_Faint_ValueNameStrings,
@@ -571,7 +616,7 @@ static const struct CGOptionMenuItem sStarterPokemonOptions[] = {
          }
       },
       .target = {
-         .as_u8 = &sTempOptions.starters.forceGender
+         .as_u8 = (u8*)&sTempOptions.starters.force_gender
       }
    },
    {  // Level

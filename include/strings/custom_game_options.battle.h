@@ -32,6 +32,8 @@ extern const u8 gText_lu_CGOptionName_BattlesScaleEXPNormal[];
 extern const u8 gText_lu_CGOptionHelp_BattlesScaleEXPNormal[];
 extern const u8 gText_lu_CGOptionName_BattlesScaleEXPTraded[];
 extern const u8 gText_lu_CGOptionHelp_BattlesScaleEXPTraded[];
+extern const u8 gText_lu_CGOptionName_BattlesScaleEXPWildBattles[];
+extern const u8 gText_lu_CGOptionHelp_BattlesScaleEXPWildBattles[];
 extern const u8 gText_lu_CGOptionName_BattlesScaleEXPTrainerBattles[];
 extern const u8 gText_lu_CGOptionHelp_BattlesScaleEXPTrainerBattles[];
 
@@ -42,5 +44,7 @@ extern const u8 gText_lu_CGOptionName_MoneyLossOnDefeat[];
 extern const u8 gText_lu_CGOptionHelp_MoneyLossOnDefeat[];
 extern const u8 gText_lu_CGOptionValueName_MoneyLossOnDefeat_Classic[];
 extern const u8 gText_lu_CGOptionValueName_MoneyLossOnDefeat_Modern[];
+extern const u8 gText_lu_CGOptionName_MoneyLossWild[];
+extern const u8 gText_lu_CGOptionHelp_MoneyLossWild[];
 
 #endif

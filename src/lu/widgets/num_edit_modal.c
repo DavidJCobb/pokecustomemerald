@@ -61,6 +61,9 @@ extern void InitNumEditModal(
       u8 b = CountDigitsIn(params->max_value);
       
       widget->digit_count = (a < b) ? b : a;
+      widget->cursor_pos  = widget->digit_count;
+      if (widget->cursor_pos > 0)
+         --widget->cursor_pos;
    }
    tile_w += widget->digit_count;
    if (widget->min_value < 0)
@@ -116,6 +119,7 @@ extern void InitNumEditModal(
       sprite->x = 3 + (tile_x + 1) * TILE_WIDTH;
       sprite->y = 9 + (tile_y + 1) * TILE_HEIGHT;
       sprite->invisible = FALSE;
+      UpdateCursorSprite(widget);
    }
    
    RepaintValue(widget);
@@ -444,7 +448,7 @@ static void MoveCursor(struct LuNumEditModal* widget, s8 by) {
       u8 max = widget->digit_count;
       if (widget->min_value < 0 && widget->max_value > 0)
          ++max;
-      if (widget->cursor_pos > max)
+      if (widget->cursor_pos + 1 >= max)
          return;
       ++widget->cursor_pos;
    }

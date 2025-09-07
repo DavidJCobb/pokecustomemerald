@@ -1,6 +1,6 @@
-#ifndef GUARD_LU_CUSTOM_GAME_OPTION_HANDLERS_BATTLE_H
-#define GUARD_LU_CUSTOM_GAME_OPTION_HANDLERS_BATTLE_H
-#include "global.h"
+#ifndef GUARD_LU_CGO_HANDLERS_BATTLE_H
+#define GUARD_LU_CGO_HANDLERS_BATTLE_H
+#include "gba/types.h"
 
 u16 ApplyCustomGameBattleAccuracyScaling(u16);
 void ApplyCustomGameBattleDamageScaling(void); // modifies gBattleMoveDamage

@@ -52,9 +52,9 @@
 #include "constants/songs.h"
 #include "constants/trainers.h"
 
-#include "lu/custom_game_option_handlers/battle.h"
-#include "lu/custom_game_option_script_helpers.h"
-#include "lu/custom_game_options.h"
+#include "custom_game_options/handlers/battle.h"
+#include "custom_game_options/script_helpers.h"
+#include "custom_game_options/options.h"
 #include "battle_util/stat_change.h"
 
 extern const u8 *const gBattleScriptsForMoveEffects[];
@@ -3493,7 +3493,9 @@ static void Cmd_getexp(void)
                         gBattleMoveDamage = (gBattleMoveDamage * 150) / 100;
                     if (gBattleTypeFlags & BATTLE_TYPE_TRAINER) {
                         // gBattleMoveDamage = (gBattleMoveDamage * 150) / 100; // vanilla
-                        gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.scale_exp_gains.trainer_battles);
+                        gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.battle.scale_exp.awarded.trainer_battles);
+                    } else {
+                        gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.battle.scale_exp.awarded.wild_battles);
                     }
 
                     if (IsTradedMon(&gPlayerParty[gBattleStruct->expGetterMonId]))
@@ -3501,12 +3503,12 @@ static void Cmd_getexp(void)
                         // check if the Pokémon doesn't belong to the player
                         if (gBattleTypeFlags & BATTLE_TYPE_INGAME_PARTNER && gBattleStruct->expGetterMonId >= 3)
                         {
-                            gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.scale_exp_gains.normal);
+                            gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.battle.scale_exp.received.normal);
                             i = STRINGID_EMPTYSTRING4;
                         }
                         else
                         {
-                            gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.scale_exp_gains.traded); // default: 150
+                            gBattleMoveDamage = ApplyCustomGameScale_s32(gBattleMoveDamage, gCustomGameOptions.battle.scale_exp.received.traded); // default: 150
                             i = STRINGID_ABOOSTED;
                         }
                     }
@@ -10051,10 +10053,10 @@ static void Cmd_handleballthrow(void)
             }
         }
         
-        odds = ApplyCustomGameScale_u32(odds, gCustomGameOptions.catch_rate_scale);
+        odds = ApplyCustomGameScale_u32(odds, gCustomGameOptions.battle.catching.catch_rate_scale);
         //
-        if (gCustomGameOptions.catch_rate_increase_base > 0) {
-            u8 increase = (u16)25400 / gCustomGameOptions.catch_rate_increase_base;
+        if (gCustomGameOptions.battle.catching.catch_rate_increase_base > 0) {
+            u8 increase = (u16)25400 / gCustomGameOptions.battle.catching.catch_rate_increase_base;
             odds += increase;
         }
 

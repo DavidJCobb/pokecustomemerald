@@ -1,9 +1,9 @@
-#include "lu/custom_game_option_handlers/starter.h"
+#include "custom_game_options/handlers/starter.h"
 #include "constants/items.h"
 #include "global.h"
 #include "pokedex.h"
 #include "pokemon.h"
-#include "lu/custom_game_options.h"
+#include "custom_game_options/options.h"
 #include "lu/generate_pokemon.h"
 
 void GenerateAndGivePlayerStarter(PokemonSpeciesID species) {
@@ -16,13 +16,13 @@ void GenerateAndGivePlayerStarter(PokemonSpeciesID species) {
          .level     = gCustomGameOptions.starters.level,
          .species   = species,
       };
-      if (gCustomGameOptions.starters.forceGender != CustomGame_PlayerStarterForceGender_Random) {
+      if (gCustomGameOptions.starters.force_gender != CGO_STARTERPOKEMONGENDER_RANDOM) {
          params.flags |= GENERATE_POKEMON_WITH_GENDER;
-         switch (gCustomGameOptions.starters.forceGender) {
-            case CustomGame_PlayerStarterForceGender_Male:
+         switch (gCustomGameOptions.starters.force_gender) {
+            case CGO_STARTERPOKEMONGENDER_MALE:
                params.gender = MON_MALE;
                break;
-            case CustomGame_PlayerStarterForceGender_Female:
+            case CGO_STARTERPOKEMONGENDER_FEMALE:
                params.gender = MON_FEMALE;
                break;
             default:

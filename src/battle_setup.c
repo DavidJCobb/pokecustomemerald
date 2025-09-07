@@ -48,8 +48,8 @@
 #include "constants/trainer_hill.h"
 #include "constants/weather.h"
 
-#include "lu/custom_game_option_handlers/starter.h" // GenerateAndGivePlayerStarter
-#include "lu/custom_game_options.h" // gCustomGameOptions
+#include "custom_game_options/handlers/starter.h" // GenerateAndGivePlayerStarter
+#include "custom_game_options/options.h" // gCustomGameOptions
 
 enum {
     TRANSITION_TYPE_NORMAL,

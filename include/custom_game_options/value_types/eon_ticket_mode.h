@@ -1,0 +1,14 @@
+#ifndef GUARD_CGO_VALUETYPE_EON_TICKET_MODE
+#define GUARD_CGO_VALUETYPE_EON_TICKET_MODE
+
+#include "lu/c.h"
+#include "lu/bitpack_options.h"
+#include "gba/types.h"
+
+enum LU_BP_MINMAX(0, 2) LU_BP_DEFAULT(0) CGO_EonTicketMode WITH_UNDERLYING_TYPE(u8) {
+   CGO_EONTICKETMODE_VANILLA = 0,
+   CGO_EONTICKETMODE_ENABLED,
+   CGO_EONTICKETMODE_AFTER_ROAMING_LATI,
+};
+
+#endif

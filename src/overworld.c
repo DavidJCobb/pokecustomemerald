@@ -67,8 +67,9 @@
 #include "constants/trainer_hill.h"
 #include "constants/weather.h"
 
-#include "lu/custom_game_options.h"
+#include "custom_game_options/options.h"
 #include "constants/flags.h" // NUM_BADGES
+#include "battle.h" // gBattleTypeFlags
 
 struct CableClubPlayer
 {
@@ -371,35 +372,43 @@ static const u8 sWhiteOutMoneyLossMultipliers[NUM_BADGES + 1] = {
 };
 
 // code
-void DoWhiteOut(void)
-{
-    RunScriptImmediately(EventScript_WhiteOut);
-    if (gCustomGameOptions.modern_calc_player_money_loss_on_defeat) {
-        u8  badges = 0;
-        u8  level;
-        u32 penalty;
-        u32 money;
-        {
-           u8 i;
-           for(i = 0; i < NUM_BADGES; ++i)
-              if (FlagGet(FLAG_BADGE01_GET + i))
-                 ++badges;
-        }
-        level = GetPlayerPartyHighestLevel();
-        
-        penalty = level * 4 * sWhiteOutMoneyLossMultipliers[badges];
-        money   = GetMoney(&gSaveBlock1Ptr->money);
-        if (penalty > money)
-           penalty = money;
-        
-        SetMoney(&gSaveBlock1Ptr->money, money - penalty);
-    } else {
-        SetMoney(&gSaveBlock1Ptr->money, GetMoney(&gSaveBlock1Ptr->money) / 2);
-    }
-    HealPlayerParty();
-    Overworld_ResetStateAfterWhiteOut();
-    SetWarpDestinationToLastHealLocation();
-    WarpIntoMap();
+void DoWhiteOut(void) {
+   RunScriptImmediately(EventScript_WhiteOut);
+   {
+      bool8 should_lose_money = TRUE;
+      if (gCustomGameOptions.battle.money.lose_money_from_wild_battles) {
+         if (!(gBattleTypeFlags & BATTLE_TYPE_TRAINER))
+            should_lose_money = FALSE;
+      }
+      if (should_lose_money) {
+         if (gCustomGameOptions.battle.money.modern_calc_loss_on_defeat) {
+            u8  badges = 0;
+            u8  level;
+            u32 penalty;
+            u32 money;
+            {
+               u8 i;
+               for(i = 0; i < NUM_BADGES; ++i)
+                  if (FlagGet(FLAG_BADGE01_GET + i))
+                     ++badges;
+            }
+            level = GetPlayerPartyHighestLevel();
+              
+            penalty = level * 4 * sWhiteOutMoneyLossMultipliers[badges];
+            money   = GetMoney(&gSaveBlock1Ptr->money);
+            if (penalty > money)
+               penalty = money;
+              
+            SetMoney(&gSaveBlock1Ptr->money, money - penalty);
+         } else {
+            SetMoney(&gSaveBlock1Ptr->money, GetMoney(&gSaveBlock1Ptr->money) / 2);
+         }
+      }
+   }
+   HealPlayerParty();
+   Overworld_ResetStateAfterWhiteOut();
+   SetWarpDestinationToLastHealLocation();
+   WarpIntoMap();
 }
 
 void Overworld_ResetStateAfterFly(void)

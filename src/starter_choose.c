@@ -25,7 +25,7 @@
 #include "constants/rgb.h"
 
 #include "lu/game_typedefs.h"
-#include "lu/custom_game_options.h"
+#include "custom_game_options/options.h"
 
 #define STARTER_MON_COUNT   3
 

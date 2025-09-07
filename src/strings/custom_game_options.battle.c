@@ -32,6 +32,8 @@ const u8 gText_lu_CGOptionName_BattlesScaleEXPTraded[] = _("Scale EXP gains (tra
 const u8 gText_lu_CGOptionHelp_BattlesScaleEXPTraded[] = _("Scale the EXP awarded to the player's traded Pokémon. Text in the UI will display as normal, describing the EXP earned as “boosted” regardless of the value you set here.\n\nDefault: 150%.");
 const u8 gText_lu_CGOptionName_BattlesScaleEXPTrainerBattles[] = _("Scale EXP gains (trainer battles)");
 const u8 gText_lu_CGOptionHelp_BattlesScaleEXPTrainerBattles[] = _("Scale the EXP awarded to the player's Pokémon during trainer battles. In all games up to Gen 7, trainer battles scaled EXP gain by 150%.\n\nDefault: 150%.");
+const u8 gText_lu_CGOptionName_BattlesScaleEXPWildBattles[] = _("Scale EXP gains (wild battles)");
+const u8 gText_lu_CGOptionHelp_BattlesScaleEXPWildBattles[] = _("Scale the EXP awarded to the player's Pokémon during wild battles.\n\nDefault: 100%.");
 
 const u8 gText_lu_CGOptionName_BattlesScaleVictoryPayout[] = _("Money gain on victory");
 const u8 gText_lu_CGOptionHelp_BattlesScaleVictoryPayout[] = _("Applies a percentage multiplier to the money the player earns after winning a battle. This only affects the payout received from the opposing trainer; it doesn't affect other income, such as the results of using Pay Day.");
@@ -41,3 +43,6 @@ const u8 gText_lu_CGOptionHelp_MoneyLossOnDefeat[] = _("In the classic Pokémon 
 //
 const u8 gText_lu_CGOptionValueName_MoneyLossOnDefeat_Classic[] = _("Classic");
 const u8 gText_lu_CGOptionValueName_MoneyLossOnDefeat_Modern[] = _("Modern");
+
+const u8 gText_lu_CGOptionName_MoneyLossWild[] = _("Lose money from wild battles");
+const u8 gText_lu_CGOptionHelp_MoneyLossWild[] = _("Control whether the player loses money when they're defeated by a Wild Pokémon.\n\nDefault: Enabled.");

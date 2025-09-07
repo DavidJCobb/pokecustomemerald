@@ -1,5 +1,6 @@
-#include "lu/custom_game_options_menu/menu_item.h"
+#include "menus/custom_game_options/menu_item.h"
 #include "lu/strings.h"
+#include "global.h" // dependency of data.h
 #include "data.h" // gSpeciesNames
 #include "constants/species.h" // NUM_SPECIES and similar
 

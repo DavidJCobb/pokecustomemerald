@@ -42,7 +42,7 @@
 #include "constants/items.h"
 #include "constants/songs.h"
 
-#include "lu/custom_game_option_handlers/battle.h"
+#include "custom_game_options/handlers/battle.h"
 #include "lu/utils_item.h"
 #include "lu/strings.h"
 #include "lu/string_wrap.h"

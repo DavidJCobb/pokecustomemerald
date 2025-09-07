@@ -10,7 +10,7 @@
 #include "script.h"
 #include "task.h"
 
-#include "lu/custom_game_options.h"
+#include "custom_game_options/options.h"
 
 static u32 GetMirageRnd(void)
 {

@@ -64,7 +64,7 @@
 
 #include "battle/battle_allows_forfeiting.h"
 #include "lu/battle_ambient_weather/core.h"
-#include "lu/custom_game_options.h"
+#include "custom_game_options/options.h"
 
 extern const struct BgTemplate gBattleBgTemplates[];
 extern const struct WindowTemplate *const gBattleWindowTemplates[];
@@ -4232,7 +4232,7 @@ static void HandleTurnActionSelectionState(void)
                                             | BATTLE_TYPE_EREADER_TRAINER
                                             | BATTLE_TYPE_RECORDED_LINK
                         )) != 0 ||
-                        gCustomGameOptions.battle_item_usage == CustomGame_ItemUseInBattles_Disabled
+                        gCustomGameOptions.battle.item_usage == CGO_BATTLEITEMUSAGE_DISABLED
                     ) {
                         RecordedBattle_ClearBattlerAction(gActiveBattler, 1);
                         gSelectionBattleScripts[gActiveBattler] = BattleScript_ActionSelectionItemsCantBeUsed;

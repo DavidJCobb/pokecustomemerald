@@ -1,7 +1,8 @@
 #ifndef GUARD_LU_CUSTOM_GAME_OPTIONS_MENU_ITEM
 #define GUARD_LU_CUSTOM_GAME_OPTIONS_MENU_ITEM
 
-#include "global.h"
+#include "gba/defines.h" // TRUE, FALSE, NULL
+#include "gba/types.h"
 
 enum { // CGOptionMenuItem::value_type
    VALUE_TYPE_NONE, // e.g. "Cancel"
