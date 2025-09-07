@@ -17,14 +17,14 @@
   "warp_events": [
     {
       "x": 8,
-      "y": 18,
+      "y": 20,
       "elevation": 0,
       "dest_map": "MAP_DYNAMIC",
       "dest_warp_id": "WARP_ID_DYNAMIC"
     },
     {
       "x": 14,
-      "y": 1,
+      "y": 3,
       "elevation": 3,
       "dest_map": "MAP_TERRA_CAVE_END",
       "dest_warp_id": "0"
