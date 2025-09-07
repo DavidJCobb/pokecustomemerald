@@ -46,18 +46,8 @@ extern const u8 gText_lu_CGOptionName_AllowRunningIndoors[];
 
 extern const u8 gText_lu_CGOptionName_AllowBikingIndoors[];
 
-//
-
-extern const u8 gText_lu_CGOptionCategoryName_Catching[];
-
-extern const u8 gText_lu_CGOptionName_CatchEXP[];
-extern const u8 gText_lu_CGOptionHelp_CatchEXP[];
-
-extern const u8 gText_lu_CGOptionName_CatchRateBase[];
-extern const u8 gText_lu_CGOptionHelp_CatchRateBase[];
-
-extern const u8 gText_lu_CGOptionName_CatchRateScale[];
-extern const u8 gText_lu_CGOptionHelp_CatchRateScale[];
+extern const u8 gText_lu_CGOptionName_InfiniteUseTMs[];
+extern const u8 gText_lu_CGOptionHelp_InfiniteUseTMs[];
 
 //
 

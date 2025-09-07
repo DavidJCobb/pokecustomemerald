@@ -75,6 +75,7 @@
 #include "constants/songs.h"
 
 #include "custom_game_options/handlers/battle.h"
+#include "custom_game_options/options.h"
 #include "lu/utils_item.h"
 
 enum {
@@ -4898,7 +4899,7 @@ static void Task_LearnedMove(u8 taskId)
     if (move[1] == 0)
     {
         AdjustFriendship(mon, FRIENDSHIP_EVENT_LEARN_TMHM);
-        if (item < ITEM_HM01)
+        if (item < ITEM_HM01 && !gCustomGameOptions.infinite_use_tms)
             RemoveBagItem(item, 1);
     }
     GetMonNickname(mon, gStringVar1);

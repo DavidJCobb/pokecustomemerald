@@ -665,6 +665,15 @@ static const struct CGOptionMenuItem sTopLevelMenu[] = {
          .as_bool8 = &sTempOptions.can_bike_indoors
       }
    },
+   {  // Infinite-use TMs
+      .name        = gText_lu_CGOptionName_InfiniteUseTMs,
+      .help_string = gText_lu_CGOptionHelp_InfiniteUseTMs,
+      .flags       = 0,
+      .value_type = VALUE_TYPE_BOOL8,
+      .target = {
+         .as_bool8 = &sTempOptions.infinite_use_tms
+      }
+   },
    {  // SUBMENU: Battle options
       .name        = gText_lu_CGOptionCategoryName_Battles,
       .help_string = NULL,

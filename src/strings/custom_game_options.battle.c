@@ -46,3 +46,16 @@ const u8 gText_lu_CGOptionValueName_MoneyLossOnDefeat_Modern[] = _("Modern");
 
 const u8 gText_lu_CGOptionName_MoneyLossWild[] = _("Lose money from wild battles");
 const u8 gText_lu_CGOptionHelp_MoneyLossWild[] = _("Control whether the player loses money when they're defeated by a Wild Pokémon.\n\nDefault: Enabled.");
+
+#if 1 // Catching
+   const u8 gText_lu_CGOptionCategoryName_Catching[] = _("Pokémon catching options");
+
+   const u8 gText_lu_CGOptionName_CatchEXP[] = _("Catch EXP");
+   const u8 gText_lu_CGOptionHelp_CatchEXP[] = _("Control whether the player's Pokémon earn EXP when the player catches a Wild Pokémon. EXP earnings are the same as if the Wild Pokémon were defeated in battle.\n\nDefault: Disabled.");
+
+   const u8 gText_lu_CGOptionName_CatchRateBase[] = _("Catch rate increase");
+   const u8 gText_lu_CGOptionHelp_CatchRateBase[] = _("Apply a flat increase to all computed catch rates. Setting this value to 100%, for example, would guarantee catch odds of 100%.\n\nDefault: 0%: catch rates do not receive a flat increase.");
+
+   const u8 gText_lu_CGOptionName_CatchRateScale[] = _("Catch rate scale");
+   const u8 gText_lu_CGOptionHelp_CatchRateScale[] = _("Multiply the computed catch chance when throwing any Poké Ball. This multiplier is applied after all catch calculations are complete.\n\nDefault: 100%.");
+#endif

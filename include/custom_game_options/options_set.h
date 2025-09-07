@@ -81,6 +81,8 @@ struct CustomGameOptionsSet {
    struct {
       CustomGameScalePct scale_encounter_rate;
    } wild_encounters;
+   
+   bool8 infinite_use_tms;
 };
 
 #endif

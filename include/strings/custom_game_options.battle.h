@@ -47,4 +47,19 @@ extern const u8 gText_lu_CGOptionValueName_MoneyLossOnDefeat_Modern[];
 extern const u8 gText_lu_CGOptionName_MoneyLossWild[];
 extern const u8 gText_lu_CGOptionHelp_MoneyLossWild[];
 
+//
+
+#if 1 // Catching
+   extern const u8 gText_lu_CGOptionCategoryName_Catching[];
+
+   extern const u8 gText_lu_CGOptionName_CatchEXP[];
+   extern const u8 gText_lu_CGOptionHelp_CatchEXP[];
+
+   extern const u8 gText_lu_CGOptionName_CatchRateBase[];
+   extern const u8 gText_lu_CGOptionHelp_CatchRateBase[];
+
+   extern const u8 gText_lu_CGOptionName_CatchRateScale[];
+   extern const u8 gText_lu_CGOptionHelp_CatchRateScale[];
+#endif
+
 #endif

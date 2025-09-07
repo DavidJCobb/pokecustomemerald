@@ -54,16 +54,9 @@ const u8 gText_lu_CGOptionName_AllowRunningIndoors[] = _("Allow running indoors"
 
 const u8 gText_lu_CGOptionName_AllowBikingIndoors[] = _("Allow biking indoors");
 
-const u8 gText_lu_CGOptionCategoryName_Catching[] = _("Pokémon catching options");
+const u8 gText_lu_CGOptionName_InfiniteUseTMs[] = _("Infinite-use TMs");
+const u8 gText_lu_CGOptionHelp_InfiniteUseTMs[] = _("In the original Pokémon Emerald, TMs can only be used once, and are destroyed afterward. In newer games, TMs can be used an unlimited number of times. This option can enable the latter behavior.");
 
-const u8 gText_lu_CGOptionName_CatchEXP[] = _("Catch EXP");
-const u8 gText_lu_CGOptionHelp_CatchEXP[] = _("Control whether the player's Pokémon earn EXP when the player catches a Wild Pokémon. EXP earnings are the same as if the Wild Pokémon were defeated in battle.\n\nDefault: Disabled.");
-
-const u8 gText_lu_CGOptionName_CatchRateBase[] = _("Catch rate increase");
-const u8 gText_lu_CGOptionHelp_CatchRateBase[] = _("Apply a flat increase to all computed catch rates. Setting this value to 100%, for example, would guarantee catch odds of 100%.\n\nDefault: 0%: catch rates do not receive a flat increase.");
-
-const u8 gText_lu_CGOptionName_CatchRateScale[] = _("Catch rate scale");
-const u8 gText_lu_CGOptionHelp_CatchRateScale[] = _("Multiply the computed catch chance when throwing any Poké Ball. This multiplier is applied after all catch calculations are complete.\n\nDefault: 100%.");
 
 //
 

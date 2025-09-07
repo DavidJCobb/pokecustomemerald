@@ -1100,9 +1100,9 @@
             <integer value="y" type="s16" bitcount="16" />
          </instructions>
       </struct>
-      <struct tag="CustomGameOptionsSet" c-alignment="4" c-sizeof="92">
+      <struct tag="CustomGameOptionsSet" c-alignment="4" c-sizeof="96">
          <stats>
-            <bitcounts total-unpacked="736" total-packed="313" />
+            <bitcounts total-unpacked="768" total-packed="314" />
             <counts total="1">
                <in-sector index="0" count="1" />
                <in-top-level-value name="gCustomGameOptions" count="1" />
@@ -1208,6 +1208,7 @@
                   <integer name="scale_encounter_rate" type="CustomGameScalePct" />
                </members>
             </struct>
+            <boolean name="infinite_use_tms" type="bool8" />
          </members>
          <instructions>
             <boolean value="start_with_running_shoes" type="bool8" />
@@ -1249,6 +1250,7 @@
             <integer value="starters.force_gender" type="CGO_StarterPokemonGender" bitcount="2" min="0" max="2" default-value="0" />
             <integer value="starters.level" type="PokemonLevel" bitcount="7" min="0" max="100" default-value="5" />
             <integer value="wild_encounters.scale_encounter_rate" type="CustomGameScalePct" bitcount="13" min="0" max="5000" />
+            <boolean value="infinite_use_tms" type="bool8" />
          </instructions>
       </struct>
       <struct tag="CustomGameSavestate" c-alignment="4">
@@ -4189,7 +4191,7 @@
    <sectors>
       <sector>
          <stats>
-            <bitcounts total-packed="27326" />
+            <bitcounts total-packed="27327" />
          </stats>
          <instructions>
             <struct value="(*gSaveBlock2Ptr)" type="SaveBlock2" />

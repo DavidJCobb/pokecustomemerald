@@ -37,7 +37,7 @@
 
 #define MENU_ITEM_HALFWAY_ROW (MAX_MENU_ITEMS_VISIBLE_AT_ONCE / 2)
 
-#include "lu/custom_game_options_menu.h"
+#include "menus/custom_game_options/menu.h"
 
 enum {
    WIN_HEADER,
