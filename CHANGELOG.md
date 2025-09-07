@@ -9,10 +9,15 @@
 
 * Added **Custom Game Options**, to alter the game experience in unusual ways.
 
+  * Infinite-use TMs
   * Battle
     * Accuracy scaling
     * Damage scaling
     * EXP scaling
+    * Catching Pokémon
+      * Catch rate flat increase
+      * Catch rate scaling
+      * Catch EXP toggle
     * Item use by player
       * Vanilla
       * No backfield healing, except revives
@@ -21,14 +26,11 @@
     * Wager options
       * Scale money gain on victory
       * Alter money loss on defeat (classic/modern)
+      * Disable money loss when defeated by a Wild Pokémon
     * Rematch options
       * Minimum badges before trainers start becoming available
       * Interval at which trainers are re-checked
       * Chance of each trainer becoming available
-  * Catching Pokémon
-    * Catch rate flat increase
-    * Catch rate scaling
-    * Catch EXP toggle
   * Daycare and eggs
     * Daycare can teach new moves (enabled/disabled)
     * Scale daycare cost
@@ -91,6 +93,10 @@
 * Substantially reduced the delay before Professor Birch appears in the New Game intro.
 
 * Changed the pacing of the Pokémon Center healing animation. The nurse takes Poke Balls from the player and inserts them into the machine two at a time.
+
+* Sped up the intro and outro fades on several menus.
+
+  * Reduced startup delay for the Trainer Card screen.
 
 #### Battles
 
@@ -162,3 +168,5 @@
 * Minor, as-yet-untested bugfixes.
 
   * The party menu underflow that allows "glitzer popping" should no longer be possible.
+
+* Fixed visible level boundaries in Terra Cave 1F.
