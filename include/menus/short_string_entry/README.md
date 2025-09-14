@@ -25,11 +25,12 @@ So I've been trying to...
 
   * The "custom keyboard" widget has a built-in cursor. We can't influence its appearance or palette from outside, which is perhaps an issue.
   
+    * Maybe we should just try red as the cursor color elsewhere and see how it looks.
+  
   * Charset button cursors appear behind the charset buttons.
   
-  * We want particle-effect animations on the cursors.
-    
-    * I have a cursor design that has a simple animation, but I think it'd be easier to implement a static cursor sprite first. Then, we could implement the animation using "particle" sprites -- either statically designed animations that we attach as secondary sprites, or one `Sprite` per particle with affine transforms to shrink them as they drift away from their emitters.
+  * Improve the particle effect on cursors, and add a spike to the charset button cursor 
+    from which the particles emit.
     
 * The short-string-entry menu has a solid-color green background. I think it'd be neat if we...
 

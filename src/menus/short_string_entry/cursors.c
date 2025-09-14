@@ -333,19 +333,25 @@ enum {
 
 #define sType        data[0]
 #define sTimer       data[1]
-#define sVelocityX   data[2] // 256ths of a pixel per frame
+#define sVelocityX   data[2] // 256ths of a pixel per frame (see PARTICLE_FRACTIONAL_BITS)
 #define sVelocityY   data[3] // 256ths of a pixel per frame
 #define sSubpixelX   data[4] // 256ths of a pixel
 #define sSubpixelY   data[5] // 256ths of a pixel
 #define sForceReset  data[6]
 
-#define PARTICLE_SPEED    2
-#define PARTICLE_LIFESPAN 21
+//
+// Some advice: if you decrease the particle speed, you'll want to increase 
+// the particle lifespan. This is because if the particles move slowly but 
+// die quickly, then they won't travel very far before respawning, and this 
+// actually makes it look like they're moving much faster.
+//
+#define PARTICLE_SPEED    2 / 5
+#define PARTICLE_LIFESPAN 45
 
 #include "random.h"
 #include "trig.h"
 
-#define TRIG_FRACTIONAL_BITS     14
+#define TRIG_FRACTIONAL_BITS     12 // Sin2/Cos2 results use 4 integral bits and 12 fractional bits
 #define PARTICLE_FRACTIONAL_BITS  8
 
 static void CursorParticleSpriteCB(struct Sprite* sprite);
@@ -403,12 +409,27 @@ static void CursorParticleSpriteCB(struct Sprite* sprite) {
       if (variance) {
          angle += (Random() % (variance * 2)) - variance;
       }
-      sprite->sVelocityX = (Cos2(angle) * PARTICLE_SPEED) >> (TRIG_FRACTIONAL_BITS - PARTICLE_FRACTIONAL_BITS);
-      sprite->sVelocityY = (Sin2(angle) * PARTICLE_SPEED) >> (TRIG_FRACTIONAL_BITS - PARTICLE_FRACTIONAL_BITS);
+      sprite->sVelocityX = Cos2(angle) >> (TRIG_FRACTIONAL_BITS - PARTICLE_FRACTIONAL_BITS);
+      sprite->sVelocityY = Sin2(angle) >> (TRIG_FRACTIONAL_BITS - PARTICLE_FRACTIONAL_BITS);
+      //
+      // We want to convert from trig precision (4 integral bits; 12 fractional 
+      // bits) to particle precision (currently 8 integral bits and 8 fractional 
+      // bits, though we could change that if we wanted) before we apply any 
+      // speed calculations. Applying those calcs directly to the Q4.12 number 
+      // risks overflow.
+      //
+      // The next two lines deliberately avoid the += operator so that the speed 
+      // macro can be an expression such as `2 / 5` or `8 / 5`. If we used the += 
+      // operator, then the fraction would be computed first (rounding to an int) 
+      // rather than all operators running from left to right.
+      //
+      sprite->sVelocityX = sprite->sVelocityX * PARTICLE_SPEED;
+      sprite->sVelocityY = sprite->sVelocityY * PARTICLE_SPEED;
       
       // For charset buttons, try and have particles come from the "corners" of 
       // the buttons' diagonal spikes/sparks, if possible.
       const int MENUBUTTON_DISPLACE_THRESHOLD = 10;
+      //
       if (sprite->sType == PARTICLE_TYPE_MENUBUTTON_UPPER) {
          if (variance < -MENUBUTTON_DISPLACE_THRESHOLD) {
             sprite->x2 = 2;
