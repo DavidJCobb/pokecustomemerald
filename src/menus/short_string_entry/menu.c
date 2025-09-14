@@ -532,6 +532,7 @@ static void Task_OnFrame(u8 task_id) {
       VUICustomKeyboard_NextCharset(keyboard);
       OnCharsetChanged();
    } else {
+      auto prior_focus = MENU_STATE->vui.context.focused;
       VUIContext_HandleInput(&MENU_STATE->vui.context);
       if (!MENU_STATE || MENU_STATE->task_id == TASK_NONE) {
          //
@@ -539,7 +540,9 @@ static void Task_OnFrame(u8 task_id) {
          //
          return;
       }
-      ShortStringEntryMenu_UpdateCursors(MENU_STATE);
+      if (MENU_STATE->vui.context.focused != prior_focus) {
+         ShortStringEntryMenu_UpdateCursors(MENU_STATE);
+      }
       //
       // Each harset button has a background and outline color done 
       // up in its own color within the palette. We set all such 

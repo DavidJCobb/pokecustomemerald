@@ -33,11 +33,12 @@ struct ShortStringEntryMenuState {
    } vui;
    
    union {
-      u8 all[7];
+      u8 all[13];
       struct {
          u8 icon;
          u8 cursor_menu_button;
          u8 cursor_charset_button_sprites[5]; // one for each button
+         u8 cursor_particles[6];
       };
    } sprite_ids;
    union {
