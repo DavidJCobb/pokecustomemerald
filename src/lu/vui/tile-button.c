@@ -21,11 +21,14 @@ static const struct VTable_VUIWidget sVTable = {
 
 static void Repaint(VUITileButton*, bool8 is_focused);
 
-extern void VUITileButton_Construct(VUITileButton* this, const VUITileButton_InitParams* params) {
-   this->window_id = WINDOW_NONE;
-   
+extern void VUITileButton_Construct(VUITileButton* this) {
    VUIWidget_Construct(&this->base);
    this->base.functions = &sVTable;
+   
+   this->window_id = WINDOW_NONE;
+   
+}
+extern void VUITileButton_Initialize(VUITileButton* this, const VUITileButton_InitParams* params) {
    this->base.focusable = TRUE;
    VUIWidget_SetGridMetrics(this, params->grid.pos.x, params->grid.pos.y, params->grid.size.w, params->grid.size.h);
    

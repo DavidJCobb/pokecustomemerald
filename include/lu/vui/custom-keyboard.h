@@ -49,8 +49,10 @@ typedef struct VUICustomKeyboard {
    u8 window_id;
 } VUICustomKeyboard;
 
+NON_NULL_PARAMS(1)
+extern void VUICustomKeyboard_Construct(VUICustomKeyboard*);
 NON_NULL_PARAMS(1,2)
-extern void VUICustomKeyboard_Construct(VUICustomKeyboard*, const VUICustomKeyboard_InitParams*);
+extern void VUICustomKeyboard_Initialize(VUICustomKeyboard*, const VUICustomKeyboard_InitParams*);
 NON_NULL_PARAMS(1)
 extern void VUICustomKeyboard_Backspace(VUICustomKeyboard*);
 NON_NULL_PARAMS(1)

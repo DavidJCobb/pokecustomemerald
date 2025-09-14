@@ -15,15 +15,20 @@ static const struct VTable_VUIWidget sVTable = {
    VFunc_OnFocusChange,
 };
 
-extern void VUISpriteButton_Construct(VUISpriteButton* this, const VUISpriteButton_InitParams* params) {
+
+extern void VUISpriteButton_Construct(VUISpriteButton* this) {
    VUIWidget_Construct(&this->base);
-   this->base.functions   = &sVTable;
-   this->base.focusable   = TRUE;
-   VUIWidget_SetGridMetrics(this, params->grid.pos.x, params->grid.pos.y, params->grid.size.w, params->grid.size.h);
+   this->base.functions = &sVTable;
    
-   this->callbacks        = params->callbacks;
    this->sprite_id        = SPRITE_NONE;
    this->state_data_index = 7;
+}
+extern void VUISpriteButton_Initialize(VUISpriteButton* this, const VUISpriteButton_InitParams* params) {
+   AGB_ASSERT(this->base.functions == &sVTable);
+   this->base.focusable = TRUE;
+   VUIWidget_SetGridMetrics(this, params->grid.pos.x, params->grid.pos.y, params->grid.size.w, params->grid.size.h);
+   
+   this->callbacks = params->callbacks;
 }
 extern void VUISpriteButton_TakeSprite(VUISpriteButton* this, u8 sprite_id) {
    if (this->sprite_id != SPRITE_NONE) {

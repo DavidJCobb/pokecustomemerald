@@ -35,8 +35,10 @@ typedef struct VUIKeyboardValue {
    u8 underscore_sprite_ids[VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE];
 } VUIKeyboardValue;
 
+NON_NULL_PARAMS(1)
+extern void VUIKeyboardValue_Construct(VUIKeyboardValue*);
 NON_NULL_PARAMS(1,2)
-extern void VUIKeyboardValue_Construct(VUIKeyboardValue*, const VUIKeyboardValue_InitParams*);
+extern void VUIKeyboardValue_Initialize(VUIKeyboardValue*, const VUIKeyboardValue_InitParams*);
 NON_NULL_PARAMS(1)
 extern void VUIKeyboardValue_SetUnderscoreVisibility(VUIKeyboardValue*, bool8);
 NON_NULL_PARAMS(1)

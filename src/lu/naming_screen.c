@@ -693,7 +693,8 @@ static void InitState(const struct LuNamingScreenParams* params) {
          .first_tile_id = V_TILE_ID(keyboard_value),
          .max_length    = max_length
       };
-      VUIKeyboardValue_Construct(widget, &params);
+      VUIKeyboardValue_Construct(widget);
+      VUIKeyboardValue_Initialize(widget, &params);
    }
    {  // keyboard
       VUICustomKeyboard* widget = &sMenuState->vui.widgets.keyboard;
@@ -720,7 +721,8 @@ static void InitState(const struct LuNamingScreenParams* params) {
          .tile_y        = KEYBOARD_TILE_Y,
          .first_tile_id = V_TILE_ID(keyboard_body),
       };
-      VUICustomKeyboard_Construct(widget, &params);
+      VUICustomKeyboard_Construct(widget);
+      VUICustomKeyboard_Initialize(widget, &params);
    }
    {
       const struct VUITileButton_GraphicsParams gfx = {
@@ -751,7 +753,8 @@ static void InitState(const struct LuNamingScreenParams* params) {
             .first_window_tile_id = V_TILE_ID(windows.button_ok),
          };
          auto widget = &sMenuState->vui.widgets.button_ok;
-         VUITileButton_Construct(widget, &params);
+         VUITileButton_Construct(widget);
+         VUITileButton_Initialize(widget, &params);
       }
       {
          const struct VUITileButton_InitParams params = {
@@ -774,7 +777,8 @@ static void InitState(const struct LuNamingScreenParams* params) {
             .first_window_tile_id = V_TILE_ID(windows.button_backspace),
          };
          auto widget = &sMenuState->vui.widgets.button_backspace;
-         VUITileButton_Construct(widget, &params);
+         VUITileButton_Construct(widget);
+         VUITileButton_Initialize(widget, &params);
       }
    }
    SetUpCharsetLabels();
@@ -1341,7 +1345,8 @@ static void SetUpCharsetLabels(void) {
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_UPPER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_Upper;
-      VUISpriteButton_Construct(widget, &widget_init_params);
+      VUISpriteButton_Construct(widget);
+      VUISpriteButton_Initialize(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, id);
    }
    {  // Charset button: Lower
@@ -1352,7 +1357,8 @@ static void SetUpCharsetLabels(void) {
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_LOWER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_Lower;
-      VUISpriteButton_Construct(widget, &widget_init_params);
+      VUISpriteButton_Construct(widget);
+      VUISpriteButton_Initialize(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, id);
    }
    {  // Charset button: Symbol
@@ -1363,7 +1369,8 @@ static void SetUpCharsetLabels(void) {
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_SYMBOL_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_Symbol;
-      VUISpriteButton_Construct(widget, &widget_init_params);
+      VUISpriteButton_Construct(widget);
+      VUISpriteButton_Initialize(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, id);
    }
    {  // Charset button: Accented Upper
@@ -1374,7 +1381,8 @@ static void SetUpCharsetLabels(void) {
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_ACCENTUPPER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_AccentUpper;
-      VUISpriteButton_Construct(widget, &widget_init_params);
+      VUISpriteButton_Construct(widget);
+      VUISpriteButton_Initialize(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, id);
    }
    {  // Charset button: Accented Lower
@@ -1385,7 +1393,8 @@ static void SetUpCharsetLabels(void) {
       
       widget_init_params.grid.pos.x = CTXGRID_CHARSETBUTTON_ACCENTLOWER_X;
       widget_init_params.callbacks.on_press = OnButtonCharset_AccentLower;
-      VUISpriteButton_Construct(widget, &widget_init_params);
+      VUISpriteButton_Construct(widget);
+      VUISpriteButton_Initialize(widget, &widget_init_params);
       VUISpriteButton_TakeSprite(widget, id);
    }
    

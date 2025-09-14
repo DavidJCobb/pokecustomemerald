@@ -26,14 +26,17 @@ static const struct SpriteSheet sSpriteSheets[];
 static const struct SpriteTemplate sSpriteTemplate_Underscore;
 static void SpriteCB_Underscore(struct Sprite*);
 
-extern void VUIKeyboardValue_Construct(VUIKeyboardValue* this, const VUIKeyboardValue_InitParams* params) {
+extern void VUIKeyboardValue_Construct(VUIKeyboardValue* this) {
    VUIWidget_Construct(&this->base);
    this->base.functions = &sVTable;
    
-   for(u8 i = 0; i < 10; ++i) {
+   this->max_length = 0;
+   this->rendering.window_id = WINDOW_NONE;
+   for(u8 i = 0; i < VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE; ++i) {
       this->underscore_sprite_ids[i] = SPRITE_NONE;
    }
-   
+}
+extern void VUIKeyboardValue_Initialize(VUIKeyboardValue* this, const VUIKeyboardValue_InitParams* params) {
    this->colors     = params->colors;
    this->max_length = params->max_length;
    

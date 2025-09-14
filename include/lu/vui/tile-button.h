@@ -41,7 +41,8 @@ typedef struct VUITileButton {
    u8     window_id;
 } VUITileButton;
 
-NON_NULL_PARAMS(1,2) extern void VUITileButton_Construct(VUITileButton*, const VUITileButton_InitParams*);
+NON_NULL_PARAMS(1) extern void VUITileButton_Construct(VUITileButton*);
+NON_NULL_PARAMS(1,2) extern void VUITileButton_Initialize(VUITileButton*, const VUITileButton_InitParams*);
 NON_NULL_PARAMS(1) extern void VUITileButton_Repaint(VUITileButton*, bool8 is_focused);
 
 #include "lu/c-attr.undef.h"

@@ -1,0 +1,8 @@
+#ifndef GUARD_MENU_SHORTSTRINGENTRY_WIDGET_GRID
+#define GUARD_MENU_SHORTSTRINGENTRY_WIDGET_GRID
+
+struct ShortStringEntryMenuState;
+
+extern void ShortStringEntryMenu_SetUpWidgetGrid(struct ShortStringEntryMenuState*);
+
+#endif

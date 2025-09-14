@@ -101,15 +101,27 @@ static void SpriteCB_Cursor(struct Sprite*);
 
 // --------------------------------------------------------------------------------
 
-extern void VUICustomKeyboard_Construct(
+extern void VUICustomKeyboard_Construct(VUICustomKeyboard* this) {
+   VUIWidget_Construct(&this->base);
+   this->base.functions   = &sVTable;
+   this->base.has_subgrid = TRUE;
+   this->base.context_controls_subgrid_focus = TRUE;
+   
+   this->charsets_count = 0;
+   this->charset = 0;
+   this->value.data = NULL;
+   this->value.size = 0;
+   this->cursor_sprite_id = SPRITE_NONE;
+   this->window_id = WINDOW_NONE;
+   
+   this->callbacks.on_text_changed      = NULL;
+   this->callbacks.on_text_at_maxlength = NULL;
+}
+extern void VUICustomKeyboard_Initialize(
    VUICustomKeyboard* this,
    const VUICustomKeyboard_InitParams* params
 ) {
-   VUIWidget_Construct(&this->base);
-   this->base.functions   = &sVTable;
-   this->base.focusable   = TRUE;
-   this->base.has_subgrid = TRUE;
-   this->base.context_controls_subgrid_focus = TRUE;
+   this->base.focusable = TRUE;
    VUIWidget_SetGridMetrics(this, params->grid.pos.x, params->grid.pos.y, params->grid.size.w, params->grid.size.h);
    
    this->value          = params->buffer;
@@ -125,11 +137,6 @@ extern void VUICustomKeyboard_Construct(
          AGB_WARNING(this->charsets[i].col_gaps.count < sizeof(this->charsets[i].col_gaps.positions));
       }
    #endif
-   
-   this->window_id = WINDOW_NONE;
-   
-   this->charset = 0;
-   this->cursor_sprite_id = SPRITE_NONE;
    
    this->colors = params->colors;
    this->rendering.bg_layer = params->bg_layer;

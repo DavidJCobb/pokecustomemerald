@@ -75,7 +75,7 @@ extern void SetCustomGameOptionsPerGeneration(struct CustomGameOptionsSet* dst, 
       gCustomGameOptions.overworld_poison.faint = FALSE;
       
       if (generation >= 5) {
-         gCustomGameOptinos.infinite_use_tms = TRUE;
+         gCustomGameOptions.infinite_use_tms = TRUE;
          gCustomGameOptions.overworld_poison.interval = 0;
          gCustomGameOptions.overworld_poison.damage   = 0;
          if (generation >= 6) {

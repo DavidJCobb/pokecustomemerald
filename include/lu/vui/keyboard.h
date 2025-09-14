@@ -71,8 +71,10 @@ typedef struct VUIKeyboard {
    u8 cursor_sprite_id;
 } VUIKeyboard;
 
+NON_NULL_PARAMS(1)
+extern void VUIKeyboard_Construct(VUIKeyboard*);
 NON_NULL_PARAMS(1,2)
-extern void VUIKeyboard_Construct(VUIKeyboard*, const VUIKeyboard_InitParams*);
+extern void VUIKeyboard_Initialize(VUIKeyboard*, const VUIKeyboard_InitParams*);
 NON_NULL_PARAMS(1) extern void VUIKeyboard_Backspace(VUIKeyboard*);
 NON_NULL_PARAMS(1) extern void VUIKeyboard_NextCharset(VUIKeyboard*);
 NON_NULL_PARAMS(1) extern void VUIKeyboard_SetCharset(VUIKeyboard*, enum VUIKeyboardCharsetID);

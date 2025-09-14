@@ -86,24 +86,28 @@ static void SpriteCB_Cursor(struct Sprite*);
 
 // --------------------------------------------------------------------------------
 
-extern void VUIKeyboard_Construct(
+extern void VUIKeyboard_Construct(VUIKeyboard* this) {
+   VUIWidget_Construct(&this->base);
+   this->base.functions   = &sVTable;
+   this->base.has_subgrid = TRUE;
+   this->rendering.window_id = WINDOW_NONE;
+   this->value.data = NULL;
+   this->value.size = 0;
+   this->charset    = 0;
+   this->cursor_sprite_id = SPRITE_NONE;
+}
+extern void VUIKeyboard_Initialize(
    VUIKeyboard* widget,
    const VUIKeyboard_InitParams* params
 ) {
-   VUIWidget_Construct(&widget->base);
-   widget->base.functions   = &sVTable;
-   widget->base.focusable   = TRUE;
-   widget->base.has_subgrid = TRUE;
+   widget->base.focusable = TRUE;
    VUIWidget_SetGridMetrics(widget, params->grid.pos.x, params->grid.pos.y, params->grid.size.w, params->grid.size.h);
    
    widget->value     = params->buffer;
    widget->callbacks = params->callbacks;
    AGB_WARNING(!VUIStringRef_IsNull(&widget->value));
    
-   widget->rendering.window_id = WINDOW_NONE;
-   
    widget->charset = 0;
-   widget->cursor_sprite_id = SPRITE_NONE;
    
    widget->colors = params->colors;
    widget->rendering.bg_layer = params->bg_layer;

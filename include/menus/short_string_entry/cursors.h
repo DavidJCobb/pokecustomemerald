@@ -1,0 +1,9 @@
+#ifndef GUARD_MENU_SHORTSTRINGENTRY_FRAGMENTS_CURSORS
+#define GUARD_MENU_SHORTSTRINGENTRY_FRAGMENTS_CURSORS
+
+struct ShortStringEntryMenuState;
+
+extern void ShortStringEntryMenu_SetUpCursors(struct ShortStringEntryMenuState*);
+extern void ShortStringEntryMenu_UpdateCursors(struct ShortStringEntryMenuState*);
+
+#endif
