@@ -17,10 +17,6 @@ struct ShortStringEntryMenuState {
    void(*callback)(const u8*);
    u8 buffer[VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE + 1];
    
-   u8 task_id;
-   u8 timer;
-   u8 gender;
-   u8 max_length;
    struct ShortStringEntryMenuIcon icon;
    const u8* title; // optional
    
@@ -37,7 +33,7 @@ struct ShortStringEntryMenuState {
    } vui;
    
    union {
-      u8 all[3];
+      u8 all[7];
       struct {
          u8 icon;
          u8 cursor_menu_button;
@@ -53,6 +49,11 @@ struct ShortStringEntryMenuState {
          u8 button_label_backspace;
       };
    } window_ids;
+   
+   u8 task_id;
+   u8 timer;
+   u8 gender;
+   u8 max_length;
    
    u8 tilemap_buffers[4][BG_SCREEN_SIZE];
 };

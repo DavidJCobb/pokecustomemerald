@@ -40,14 +40,14 @@
 //
 extern const u8 gSpeciesNames[][POKEMON_NAME_LENGTH + 1]; // from `data.h`
 
-static const u8  sBGTileGfx[] = INCBIN_U8("graphics/lu/short_string_entry_menu/bg-tiles.4bpp");
-static const u32 sBGTilemap[] = INCBIN_U32("graphics/lu/short_string_entry_menu/bg-tiles.bin");
-static const u16 sBGPalette[] = INCBIN_U16("graphics/lu/short_string_entry_menu/bg.gbapal");
+static const u8  sBGTileGfx[]   = INCBIN_U8("graphics/lu/short_string_entry_menu/bg-tiles.4bpp");
+static const u32 sBGTilemap[]   = INCBIN_U32("graphics/lu/short_string_entry_menu/bg-tiles.bin");
+static const u16 sBGPalette[16] = INCBIN_U16("graphics/lu/short_string_entry_menu/bg.gbapal");
 
 static const u8 sBGGenderTiles[] = INCBIN_U8("graphics/lu/short_string_entry_menu/bg-gender-icon-fragment.4bpp");
 
-static const u8 sMenuButtonFaceTiles[] = INCBIN_U8("graphics/lu/short_string_entry_menu/menu-button-face.4bpp");
-static const u16 sMenuButtonFacePalette[16] = INCBIN_U16("graphics/lu/short_string_entry_menu/menu-button-face.gbapal");
+static const u8  sMenuButtonFaceGfx[]   = INCBIN_U8("graphics/lu/short_string_entry_menu/menu-button-face-gfx.4bpp");
+static const u16 sMenuButtonFacePal[16] = INCBIN_U16("graphics/lu/short_string_entry_menu/menu-button-face-pal.gbapal");
 
 static const u8 sBlankBGTile[] = INCBIN_U8("graphics/lu/cgo_menu/bg-tile-blank.4bpp"); // color 1
 
@@ -59,6 +59,7 @@ enum {
 enum {
    PALETTE_ID_BACKDROP   =  0,
    PALETTE_ID_MENUBUTTON =  1,
+   PALETTE_ID_USER_BORDER = 2,
    PALETTE_ID_TEXT       = 15,
 };
 enum {
@@ -101,13 +102,13 @@ vram_bg_layout {
    vram_bg_tile blank_tile;
    vram_bg_tile backdrop_tiles[sizeof(sBGTileGfx) / TILE_SIZE_4BPP];
    vram_bg_tile backdrop_gender_tiles[sizeof(sBGGenderTiles) / TILE_SIZE_4BPP];
-   vram_bg_tile menu_button_tiles[sizeof(sMenuButtonFaceTiles) / TILE_SIZE_4BPP];
+   vram_bg_tile menu_button_tiles[sizeof(sMenuButtonFaceGfx) / TILE_SIZE_4BPP];
    vram_bg_tile keyboard_body[VUIKEYBOARD_WINDOW_TILE_COUNT];
    vram_bg_tile user_window_frame[9];
    vram_bg_tile keyboard_value[VUIKEYBOARDVALUE_WINDOW_TILE_COUNT];
    struct {
-      vram_bg_tile button_backspace[3*3];
-      vram_bg_tile button_ok[3*3];
+      vram_bg_tile button_backspace[3*4];
+      vram_bg_tile button_ok[3*4];
       vram_bg_tile gender[GENDER_WINDOW_TILE_COUNT];
       vram_bg_tile title[TITLE_WINDOW_TILE_COUNT];
    } windows;
@@ -158,6 +159,7 @@ static void Teardown(void);
 
 static bool8 IsNicknamingPokemon(void);
 
+static void OnCharsetChanged(void);
 static void OnTextEntryChanged(const u8*);
 static void OnTextEntryFull(void);
 static void OnButtonCharset_Upper(void);
@@ -195,14 +197,26 @@ extern void OpenShortStringEntryMenu(const struct ShortStringEntryMenuParams* pa
 
 static const VUITextColors sPlainTextColors = { 0, 2, 3 };
 
+static void ClearBGTilemap(u8 bg, u8 palette) {
+   FillBgTilemapBufferRect(
+      bg,
+      V_TILE_ID(blank_tile),
+      0, 0, 256/TILE_WIDTH, 256/TILE_HEIGHT,
+      palette
+   );
+}
+
 enum {
    INITSTATE_PREP_BACKGROUND_LAYERS = 0,
+   INITSTATE_CLEAR_TEXT_BG_LAYER,
    INITSTATE_DRAW_BACKGROUND_LAYERS,
    INITSTATE_LOAD_PLAYER_WINDOW_FRAME,
+   INITSTATE_PREP_MENU_BUTTONS,
    INITSTATE_PREP_CHARSET_BUTTONS,
    INITSTATE_CREATE_TASK,
    INITSTATE_INIT_WIDGETS,
-   INITSTATE_EVERYTHING_ELSE,
+   INITSTATE_TITLE_AND_ICONS,
+   INITSTATE_START_RUNNING_MENU,
 };
 static void InitCB2(void) {
    AGB_ASSERT(MENU_STATE != NULL);
@@ -214,9 +228,19 @@ static void InitCB2(void) {
          SetBgTilemapBuffer(BGLAYER_BACKDROP, MENU_STATE->tilemap_buffers[BGLAYER_BACKDROP]);
          SetBgTilemapBuffer(BGLAYER_BUTTONS,  MENU_STATE->tilemap_buffers[BGLAYER_BUTTONS]);
          SetBgTilemapBuffer(BGLAYER_TEXT,     MENU_STATE->tilemap_buffers[BGLAYER_TEXT]);
+         {
+            const struct WindowTemplate dummy[] = { DUMMY_WIN_TEMPLATE };
+            InitWindows(dummy);
+         }
          
          SetGpuRegBits(REG_OFFSET_DISPCNT, DISPCNT_OBJ_ON | DISPCNT_OBJ_1D_MAP);
          
+         gMain.state++;
+         break;
+      case INITSTATE_CLEAR_TEXT_BG_LAYER:
+         LoadPalette(GetTextWindowPalette(2), BG_PLTT_ID(PALETTE_ID_TEXT), PLTT_SIZE_4BPP);
+         ClearBGTilemap(BGLAYER_TEXT, PALETTE_ID_TEXT);
+         CopyBgTilemapBufferToVram(BGLAYER_TEXT);
          gMain.state++;
          break;
       case INITSTATE_DRAW_BACKGROUND_LAYERS:
@@ -244,166 +268,147 @@ static void InitCB2(void) {
          }
          CopyBgTilemapBufferToVram(BGLAYER_BACKDROP);
          
-         V_LOAD_TILES(BGLAYER_BUTTONS, menu_button_tiles, sMenuButtonFaceTiles);
-         LoadPalette(sMenuButtonFacePalette, BG_PLTT_ID(PALETTE_ID_MENUBUTTON), sizeof(sMenuButtonFacePalette));
+         gMain.state++;
+         break;
+      case INITSTATE_LOAD_PLAYER_WINDOW_FRAME:
+         LuUI_LoadPlayerWindowFrame(
+            BGLAYER_TEXT,
+            PALETTE_ID_USER_BORDER,
+            V_TILE_ID(user_window_frame)
+         );
+         gMain.state++;
+         break;
+      case INITSTATE_PREP_MENU_BUTTONS:
+         LoadPalette(sMenuButtonFacePal, BG_PLTT_ID(PALETTE_ID_MENUBUTTON), sizeof(sMenuButtonFacePal));
+         V_LOAD_TILES(BGLAYER_BUTTONS, menu_button_tiles, sMenuButtonFaceGfx);
+         ClearBGTilemap(BGLAYER_BUTTONS, PALETTE_ID_MENUBUTTON);
+         
+         ChangeBgY(BGLAYER_BUTTONS, -4 << 8, BG_COORD_SET);
          {  // Button face graphics
-            FillBgTilemapBufferRect(
-               BGLAYER_BUTTONS,
-               V_TILE_ID(blank_tile),
-               0, 0, DISPLAY_TILE_WIDTH, DISPLAY_TILE_HEIGHT,
-               PALETTE_ID_MENUBUTTON
-            );
-            
             const int size =  5; // 5x5-tile buttons
             const int x    = 23;
-            const int y1   =  6;
-            const int y2   = y1 + size;
-            
-            WriteSequenceToBgTilemapBuffer(
-               BGLAYER_BUTTONS,
-               V_TILE_ID(menu_button_tiles),
-               x,
-               y1,
-               size,
-               size,
-               PALETTE_ID_MENUBUTTON,
-               1
-            );
-            
-            WriteSequenceToBgTilemapBuffer(
-               BGLAYER_BUTTONS,
-               V_TILE_ID(menu_button_tiles),
-               x,
-               y2,
-               size,
-               size,
-               PALETTE_ID_MENUBUTTON,
-               1
-            );
+            const u8  y[2] = { 6, 6 + size };
+            //
+            for(int i = 0; i < 2; ++i) {
+               WriteSequenceToBgTilemapBuffer(
+                  BGLAYER_BUTTONS,
+                  V_TILE_ID(menu_button_tiles),
+                  x,
+                  y[i],
+                  size,
+                  size,
+                  PALETTE_ID_MENUBUTTON,
+                  1
+               );
+            }
          }
          {  // Button text
-            const VUITextColors text_colors = { 0, 2, 3 };
+            const VUITextColors text_colors = { 0, 13, 15 };
             const struct Bitmap src_bitmap  = {
                .pixels = sKeypadIconTiles,
                .width  = 128,
                .height =  32,
             };
             const u8 keypad_icon_remapping[16] = {
-               0,  // transparent
-               1, 2, 3, 4,
-               1,  // keypad button face
+                0, // transparent
+               13, // keypad button face
                15, // keypad button lettering + shadow
-               4,  // keypad button lettering anti-alias
-               8, 9, 10, 11, 12, 13, 14, 15
+                7, // keypad button lettering anti-alias
+                5, // keypad button D-Pad direction indicator
+               6, 7, 8, 9, 10, 11, 12, 13, 14, 15
             };
             
             {  // Button text: OK
                const struct WindowTemplate tmpl = {
                   .bg          = BGLAYER_TEXT,
-                  .tilemapLeft = WIN_BTN_OK_X / TILE_WIDTH  + 1,
-                  .tilemapTop  = WIN_BTN_OK_Y / TILE_HEIGHT + 1,
+                  .tilemapLeft = WIN_BTN_OK_X / TILE_WIDTH,
+                  .tilemapTop  = WIN_BTN_OK_Y / TILE_HEIGHT,
                   .width       = 3,
-                  .height      = 3,
+                  .height      = 4,
                   .paletteNum  = PALETTE_ID_MENUBUTTON,
                   .baseBlock   = V_TILE_ID(windows.button_ok)
                };
                u8 window_id = MENU_STATE->window_ids.button_label_ok = AddWindow(&tmpl);
-               if (window_id != WINDOW_NONE) {
-                  PutWindowTilemap(window_id);
-                  FillWindowPixelBuffer(window_id, PIXEL_FILL(0));
-                  
-                  AddTextPrinterParameterized3(
-                     window_id,
-                     FONT_NORMAL,
-                     6,
-                     2,
-                     text_colors.list,
-                     TEXT_SKIP_DRAW,
-                     sButtonLabel_OK
-                  );
-                  
-                  //
-                  // Draw the "Start" button.
-                  //
-                  struct Bitmap dst_bitmap = {
-                     .pixels = gWindows[window_id].tileData,
-                     .width  = WIN_BTN_OK_W,
-                     .height = WIN_BTN_OK_H,
-                  };
-                  BlitBitmapRect4BitRemapped(
-                     &src_bitmap,
-                     &dst_bitmap,
-                     57,  4, // XxY src
-                      1, 14, // XxY dst
-                     23,  8, // WxH
-                     keypad_icon_remapping
-                  );
-               }
+               AGB_ASSERT(window_id != WINDOW_NONE);
+               PutWindowTilemap(window_id);
+               FillWindowPixelBuffer(window_id, PIXEL_FILL(0));
+               
+               AddTextPrinterParameterized3(
+                  window_id,
+                  FONT_NORMAL,
+                  6,
+                  3,
+                  text_colors.list,
+                  TEXT_SKIP_DRAW,
+                  sButtonLabel_OK
+               );
+               
+               //
+               // Draw the "Start" button.
+               //
+               struct Bitmap dst_bitmap = {
+                  .pixels = gWindows[window_id].tileData,
+                  .width  = gWindows[window_id].window.width  * TILE_WIDTH,
+                  .height = gWindows[window_id].window.height * TILE_HEIGHT,
+               };
+               BlitBitmapRect4BitRemapped(
+                  &src_bitmap,
+                  &dst_bitmap,
+                  49,  4, // XxY src
+                   1, 17, // XxY dst
+                  23,  8, // WxH
+                  keypad_icon_remapping
+               );
+               
+               CopyWindowToVram(window_id, COPYWIN_FULL);
             }
             {  // Button text: Backspace
                const struct WindowTemplate tmpl = {
                   .bg          = BGLAYER_TEXT,
-                  .tilemapLeft = WIN_BTN_BKSP_X / TILE_WIDTH  + 1,
-                  .tilemapTop  = WIN_BTN_BKSP_Y / TILE_HEIGHT + 1,
+                  .tilemapLeft = WIN_BTN_BKSP_X / TILE_WIDTH,
+                  .tilemapTop  = WIN_BTN_BKSP_Y / TILE_HEIGHT,
                   .width       = 3,
-                  .height      = 3,
+                  .height      = 4,
                   .paletteNum  = PALETTE_ID_MENUBUTTON,
                   .baseBlock   = V_TILE_ID(windows.button_backspace)
                };
                u8 window_id = MENU_STATE->window_ids.button_label_backspace = AddWindow(&tmpl);
-               if (window_id != WINDOW_NONE) {
-                  PutWindowTilemap(window_id);
-                  FillWindowPixelBuffer(window_id, PIXEL_FILL(0));
-                  
-                  AddTextPrinterParameterized3(
-                     window_id,
-                     FONT_NORMAL,
-                     3,
-                     3,
-                     text_colors.list,
-                     TEXT_SKIP_DRAW,
-                     sButtonLabel_Backspace
-                  );
-                  
-                  //
-                  // Draw the "B" button.
-                  //
-                  struct Bitmap dst_bitmap = {
-                     .pixels = gWindows[window_id].tileData,
-                     .width  = WIN_BTN_BKSP_W,
-                     .height = WIN_BTN_BKSP_H,
-                  };
-                  BlitBitmapRect4BitRemapped(
-                     &src_bitmap,
-                     &dst_bitmap,
-                     8,  4, // XxY src
-                     8, 16, // XxY dst
-                     8,  8, // WxH
-                     keypad_icon_remapping
-                  );
-               }
+               AGB_ASSERT(window_id != WINDOW_NONE);
+               PutWindowTilemap(window_id);
+               FillWindowPixelBuffer(window_id, PIXEL_FILL(0));
+               
+               AddTextPrinterParameterized3(
+                  window_id,
+                  FONT_NORMAL,
+                  3,
+                  4,
+                  text_colors.list,
+                  TEXT_SKIP_DRAW,
+                  sButtonLabel_Backspace
+               );
+               
+               //
+               // Draw the "B" button.
+               //
+               struct Bitmap dst_bitmap = {
+                  .pixels = gWindows[window_id].tileData,
+                  .width  = gWindows[window_id].window.width  * TILE_WIDTH,
+                  .height = gWindows[window_id].window.height * TILE_HEIGHT,
+               };
+               BlitBitmapRect4BitRemapped(
+                  &src_bitmap,
+                  &dst_bitmap,
+                  8,  4, // XxY src
+                  8, 20, // XxY dst
+                  8,  8, // WxH
+                  keypad_icon_remapping
+               );
+               
+               CopyWindowToVram(window_id, COPYWIN_FULL);
             }
          }
          CopyBgTilemapBufferToVram(BGLAYER_BUTTONS);
          
-         FillBgTilemapBufferRect(
-            BGLAYER_TEXT,
-            V_TILE_ID(blank_tile),
-            0, 0, DISPLAY_TILE_WIDTH, DISPLAY_TILE_HEIGHT,
-            PALETTE_ID_TEXT
-         );
-         CopyBgTilemapBufferToVram(BGLAYER_TEXT);
-         
-         LoadPalette(GetTextWindowPalette(2), BG_PLTT_ID(PALETTE_ID_TEXT), PLTT_SIZE_4BPP);
-         
-         gMain.state++;
-         break;
-      case INITSTATE_LOAD_PLAYER_WINDOW_FRAME:
-         LuUI_LoadPlayerWindowFrame(
-            BGLAYER_TEXT, // BG layer
-            1,               // palette
-            V_TILE_ID(user_window_frame)
-         );
          gMain.state++;
          break;
       case INITSTATE_PREP_CHARSET_BUTTONS:
@@ -469,17 +474,28 @@ static void InitCB2(void) {
                VUIButton_Initialize(&MENU_STATE->vui.widgets.button_backspace, &params);
             }
          }
+         {  // charsets
+            auto buttons = &MENU_STATE->vui.widgets.charset_buttons;
+            buttons->upper.callbacks.on_press = OnButtonCharset_Upper;
+            buttons->lower.callbacks.on_press = OnButtonCharset_Lower;
+            buttons->symbol.callbacks.on_press = OnButtonCharset_Symbol;
+            buttons->accent_u.callbacks.on_press = OnButtonCharset_AccentUpper;
+            buttons->accent_l.callbacks.on_press = OnButtonCharset_AccentLower;
+         }
          ShortStringEntryMenu_SetUpWidgetGrid(MENU_STATE);
          gMain.state++;
          break;
-      case INITSTATE_EVERYTHING_ELSE:
-         BeginNormalPaletteFade(PALETTES_ALL, -1, 16, 0, RGB_BLACK);
+      case INITSTATE_TITLE_AND_ICONS:
          ShortStringEntryMenu_SetUpCursors(MENU_STATE);
-         SetVBlankCallback(VBlankCB);
-         SetMainCallback2(MainCB2);
          PaintTitleText();
          PaintGenderIcon();
          MENU_STATE->sprite_ids.icon = ShortStringEntryMenu_ConstructIcon(&MENU_STATE->icon);
+         gMain.state++;
+         break;
+      case INITSTATE_START_RUNNING_MENU:
+         BeginNormalPaletteFade(PALETTES_ALL, -1, 16, 0, RGB_BLACK);
+         SetVBlankCallback(VBlankCB);
+         SetMainCallback2(MainCB2);
          return;
    }
 }
@@ -511,8 +527,10 @@ static void Task_OnFrame(u8 task_id) {
          --charset;
       }
       VUICustomKeyboard_SetCharset(keyboard, charset);
+      OnCharsetChanged();
    } else if (JOY_NEW(R_BUTTON)) {
       VUICustomKeyboard_NextCharset(keyboard);
+      OnCharsetChanged();
    } else {
       VUIContext_HandleInput(&MENU_STATE->vui.context);
       if (!MENU_STATE || MENU_STATE->task_id == TASK_NONE) {
@@ -593,6 +611,12 @@ static bool8 IsNicknamingPokemon(void) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+static void OnCharsetChanged(void) {
+   ShortStringEntryMenu_UpdateSelectedCharsetButtonSprite(
+      &MENU_STATE->vui.widgets.charset_buttons,
+      MENU_STATE->vui.widgets.keyboard.charset
+   );
+}
 static void OnTextEntryChanged(const u8* value) {
    VUIKeyboardValue_ShowValue(&MENU_STATE->vui.widgets.value, value);
 }
@@ -601,18 +625,23 @@ static void OnTextEntryFull(void) {
 }
 static void OnButtonCharset_Upper(void) {
    VUICustomKeyboard_SetCharset(&MENU_STATE->vui.widgets.keyboard, 0);
+   OnCharsetChanged();
 }
 static void OnButtonCharset_Lower(void) {
    VUICustomKeyboard_SetCharset(&MENU_STATE->vui.widgets.keyboard, 1);
+   OnCharsetChanged();
 }
 static void OnButtonCharset_Symbol(void) {
    VUICustomKeyboard_SetCharset(&MENU_STATE->vui.widgets.keyboard, 2);
+   OnCharsetChanged();
 }
 static void OnButtonCharset_AccentUpper(void) {
    VUICustomKeyboard_SetCharset(&MENU_STATE->vui.widgets.keyboard, 3);
+   OnCharsetChanged();
 }
 static void OnButtonCharset_AccentLower(void) {
    VUICustomKeyboard_SetCharset(&MENU_STATE->vui.widgets.keyboard, 4);
+   OnCharsetChanged();
 }
 static void OnButtonOK(void) {
    //

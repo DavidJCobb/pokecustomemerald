@@ -44,12 +44,108 @@ void PutFirstMemBlockHeader(void *block, u32 size)
     PutMemBlockHeader(block, (struct MemBlock *)block, (struct MemBlock *)block, size - sizeof(struct MemBlock));
 }
 
+#ifndef NDEBUG
+   #include "gba/isagbprint.h"
+   
+   /*static u32 CountAvailableBytes(void) {
+      struct MemBlock* head = (struct MemBlock*) sHeapStart;
+      struct MemBlock* pos  = (struct MemBlock*) sHeapStart;
+      u32 size = 0;
+      while (TRUE) {
+         if (pos->flag) {
+            size += pos->size;
+         }
+
+         if (pos->next == head)
+            break;
+         pos = pos->next;
+      }
+      return HEAP_SIZE - size;
+   }*/
+   
+   static void ReportAllocationFailed(u32 size) {
+      u32 blocks_in_use = 0;
+      u32 bytes_in_use  = 0;
+      u32 block_count   = 0;
+      u32 largest_active_block  = 0;
+      u32 smallest_active_block = 0xFFFFFFFF;
+      u32 largest_free_block    = 0;
+      {
+         struct MemBlock* head = (struct MemBlock*) sHeapStart;
+         struct MemBlock* pos  = (struct MemBlock*) sHeapStart;
+         u32 size = 0;
+         while (TRUE) {
+            ++block_count;
+            if (pos->flag) {
+               ++blocks_in_use;
+               bytes_in_use += pos->size;
+               if (pos->size > largest_active_block)
+                  largest_active_block = pos->size;
+               if (pos->size < smallest_active_block)
+                  smallest_active_block = pos->size;
+            } else {
+               if (pos->size > largest_free_block)
+                  largest_free_block = pos->size;
+            }
+
+            if (pos->next == head)
+               break;
+            pos = pos->next;
+         }
+      }
+      u32 average_active_block = 0;
+      if (blocks_in_use > 0) {
+         average_active_block = bytes_in_use / blocks_in_use;
+      }
+      DebugPrintf(
+         "[malloc] Failed to allocate 0x%05X bytes.\n"
+         " - 0x%05X / 0x%05X bytes used.\n"
+         " - %u / %u blocks used.\n"
+         " - Used blocks' sizes range from 0x%05X to 0x%05X. Average is 0x%05X.\n"
+         " - Largest free block is 0x%05X bytes."
+         ,
+         size,
+         bytes_in_use, HEAP_SIZE,
+         blocks_in_use, block_count,
+         smallest_active_block, largest_active_block, average_active_block,
+         largest_free_block
+      );
+      DebugPrintf("[malloc][cont'd] Even if sufficient bytes are available, they may not be usable due to heap fragmentation.");
+      
+      DebugPrintf("[malloc][cont'd] Full block breakdown:");
+      {
+         struct MemBlock* head = (struct MemBlock*) sHeapStart;
+         struct MemBlock* pos  = (struct MemBlock*) sHeapStart;
+         u32 size = 0;
+         while (TRUE) {
+            ++block_count;
+            if (pos->flag == TRUE) {
+               DebugPrintf("0x%05X bytes in use", pos->size);
+            } else if (pos->flag == FALSE) {
+               DebugPrintf("0x%05X bytes free", pos->size);
+            } else {
+               DebugPrintf("Corrupted memory block! Claims to be 0x%05X bytes.", pos->size);
+            }
+
+            if (pos->next == head)
+               break;
+            pos = pos->next;
+         }
+      }
+   }
+#endif
+
 void *AllocInternal(void *heapStart, u32 size)
 {
     struct MemBlock *pos = (struct MemBlock *)heapStart;
     struct MemBlock *head = pos;
     struct MemBlock *splitBlock;
     u32 foundBlockSize;
+     
+    #ifndef NDEBUG
+        if (size > 0x10000)
+            DebugPrintf("WARNING: Unusually large allocation (0x%05X)!", size);
+    #endif
 
     // Alignment
     if (size & 3)
@@ -95,8 +191,12 @@ void *AllocInternal(void *heapStart, u32 size)
             }
         }
 
-        if (pos->next == head)
+        if (pos->next == head) {
+            #ifndef NDEBUG
+                ReportAllocationFailed(size);
+            #endif
             return NULL;
+        }
 
         pos = pos->next;
     }

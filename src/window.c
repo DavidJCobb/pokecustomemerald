@@ -3,6 +3,7 @@
 #include "malloc.h"
 #include "bg.h"
 #include "blit.h"
+#include "gba/isagbprint.h"
 
 // This global is set to 0 and never changed.
 COMMON_DATA u8 gTransparentTileNumber = 0;
@@ -53,8 +54,10 @@ bool16 InitWindows(const struct WindowTemplate *templates)
         if (gWindowTileAutoAllocEnabled == TRUE)
         {
             allocatedBaseBlock = BgTileAllocOp(bgLayer, 0, templates[i].width * templates[i].height, 0);
-            if (allocatedBaseBlock == -1)
+            if (allocatedBaseBlock == -1) {
+                DebugPrintf("[InitWindows] Failed to spawn window #%u. Dynamic tile allocation failed.", i);
                 return FALSE;
+            }
         }
 
         if (gWindowBgTilemapBuffers[bgLayer] == NULL)
@@ -67,6 +70,7 @@ bool16 InitWindows(const struct WindowTemplate *templates)
 
                 if (allocatedTilemapBuffer == NULL)
                 {
+                    DebugPrintf("[InitWindows] Failed to spawn window #%u on background layer %u. This background layer didn't already have a tilemap buffer, and we failed to allocate the 0x%04X bytes needed to allocate one for it.", i, bgLayer, attrib);
                     FreeAllWindowBuffers();
                     return FALSE;
                 }
@@ -83,6 +87,7 @@ bool16 InitWindows(const struct WindowTemplate *templates)
 
         if (allocatedTilemapBuffer == NULL)
         {
+            DebugPrintf("[InitWindows] Failed to spawn window #%u. Failed to allocate the 0x%04X bytes needed for the window's tilemap buffer.", i, (u16)(32 * (templates[i].width * templates[i].height)));
             if ((GetNumActiveWindowsOnBg(bgLayer) == 0) && (gWindowBgTilemapBuffers[bgLayer] != DummyWindowBgTilemap))
             {
                 Free(gWindowBgTilemapBuffers[bgLayer]);
@@ -121,8 +126,10 @@ u16 AddWindow(const struct WindowTemplate *template)
             break;
     }
 
-    if (win == WINDOWS_MAX)
+    if (win == WINDOWS_MAX) {
+        DebugPrintf("[AddWindow] Failed to spawn a %ux%u-tile window on background layer %u. All available window IDs are already in use.", template->width, template->height, bgLayer);
         return WINDOW_NONE;
+    }
 
     bgLayer = template->bg;
     allocatedBaseBlock = 0;
@@ -131,8 +138,10 @@ u16 AddWindow(const struct WindowTemplate *template)
     {
         allocatedBaseBlock = BgTileAllocOp(bgLayer, 0, template->width * template->height, 0);
 
-        if (allocatedBaseBlock == -1)
+        if (allocatedBaseBlock == -1) {
+            DebugPrintf("[AddWindow] Failed to spawn a %ux%u-tile window on background layer %u. Dynamic tile allocation failed.", template->width, template->height, bgLayer);
             return WINDOW_NONE;
+        }
     }
 
     if (gWindowBgTilemapBuffers[bgLayer] == NULL)
@@ -143,8 +152,10 @@ u16 AddWindow(const struct WindowTemplate *template)
         {
             allocatedTilemapBuffer = AllocZeroed(attrib);
 
-            if (allocatedTilemapBuffer == NULL)
+            if (allocatedTilemapBuffer == NULL) {
+                DebugPrintf("[AddWindow] Failed to spawn a %ux%u-tile window on background layer %u. This background layer didn't already have a tilemap buffer, and we failed to allocate the 0x%04X bytes needed to allocate one for it.", template->width, template->height, bgLayer, attrib);
                 return WINDOW_NONE;
+            }
 
             for (i = 0; i < attrib; ++i)
                 allocatedTilemapBuffer[i] = 0;
@@ -158,8 +169,14 @@ u16 AddWindow(const struct WindowTemplate *template)
 
     if (allocatedTilemapBuffer == NULL)
     {
+        DebugPrintf("[AddWindow] Failed to spawn a %ux%u-tile window on background layer %u. Failed to allocate the 0x%04X bytes needed for the window's tilemap buffer.", template->width, template->height, bgLayer, (u16)(32 * (template->width * template->height)));
         if ((GetNumActiveWindowsOnBg(bgLayer) == 0) && (gWindowBgTilemapBuffers[bgLayer] != DummyWindowBgTilemap))
         {
+            //
+            // If we own this background layer's tilemap buffer -- if we created that 
+            // buffer specifically to accommodate this window, which we have now failed 
+            // to finish spawning -- then delete said buffer.
+            //
             Free(gWindowBgTilemapBuffers[bgLayer]);
             gWindowBgTilemapBuffers[bgLayer] = allocatedTilemapBuffer;
         }

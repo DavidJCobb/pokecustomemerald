@@ -190,17 +190,28 @@ extern void BlitBitmapRect4BitRemapped(
    u16 height,
    const u8 color_mapping[]
 ) {
+   if (src_x >= src->width)
+      return;
+   if (src_x + width > src->width)
+      width = src->width - src_x;
+   if (dst_x >= dst->width)
+      return;
+   if (dst_x + width > dst->width)
+      width = dst->width - dst_x;
+   
+   if (src_y > src->height)
+      return;
+   if (src_y + height > src->height)
+      height = src->height - src_y;
+   if (dst_y >= dst->height)
+      return;
+   if (dst_y + height > dst->height)
+      height = dst->height - dst_y;
+   
    s32 src_x_end;
    s32 src_y_end;
-   if (dst->width - dst_x < width)
-      src_x_end = (dst->width - dst_x) + src_x;
-   else
-      src_x_end = src_x + width;
-   
-   if (dst->height - dst_y < height)
-      src_y_end = (dst->height - dst_y) + src_y;
-   else
-      src_y_end = height + src_y;
+   src_x_end = src_x + width;
+   src_y_end = height + src_y;
    
    //
    // A four-bits-per-pixel image stores two pixels per byte. The low nybble 

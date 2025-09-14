@@ -23,15 +23,21 @@ So I've been trying to...
 
 * Finish implementing menu cursors within the short string entry menu.
 
-  * The "custom keyboard" widget has a cursor built-in, though we can't influence its palette, which is perhaps an issue.
+  * The "custom keyboard" widget has a built-in cursor. We can't influence its appearance or palette from outside, which is perhaps an issue.
   
-  * We need to implement cursor sprites for each charset button (setting them to (in)visible as appropriate), and a cursor sprite for the menu buttons ("OK"/"Del").
+  * Charset button cursors appear behind the charset buttons, and don't use the right palette.
   
-    * Charset buttons all vary in width, which is why it's easiest to just give each its own cursor `Sprite` that we toggle on and off. Menu buttons are a consistent size, so we use just one `Sprite` for it and change that sprite's position as appropriate.
+  * Cursors for the menu buttons (OK/Del) are unimplemented.
+  
+  * We want particle-effect animations on the cursors.
     
-  * I have a cursor design that has a simple animation, but I think it'd be easier to implement a static cursor sprite first. Then, we could implement the animation using "particle" sprites -- either statically designed animations that we attach as secondary sprites, or one `Sprite` per particle with affine transforms to shrink them as they drift away from their emitters.
+    * I have a cursor design that has a simple animation, but I think it'd be easier to implement a static cursor sprite first. Then, we could implement the animation using "particle" sprites -- either statically designed animations that we attach as secondary sprites, or one `Sprite` per particle with affine transforms to shrink them as they drift away from their emitters.
+    
+* The short-string-entry menu has a solid-color green background. I think it'd be neat if we...
 
-* Update our field debug menu to open the short-string-entry menu instead of the lu-naming-screen menu, so we can test the new(est) menu.
+  * Split the "backdrop" BG layer into two BG layers, with the current graphics on the upper layer.
+  
+  * Made it so that the lower layer isn't just a solid color, but rather some sort of soft, animated texture. Take some inspiration from *Super Smash Bros. Melee*: have lines or shapes that are placed at an oblique angle, and that move along the same angle.
 
 * When the new(est) menu is confirmed to have feature parity with lu-naming-screen, make the "rename via party menu" feature use it, and wholly remove lu-naming-screen.
 
