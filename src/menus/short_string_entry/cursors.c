@@ -9,15 +9,29 @@
 
 static const struct OamData sOam_8x8;
 
-static const u32 sCharsetCursorGfx[] = INCBIN_U32("graphics/lu/short_string_entry_menu/charset-cursor-subsprites.4bpp.lz");
 static const u16 sCursorPal[] = INCBIN_U16("graphics/lu/short_string_entry_menu/cursors.gbapal");
+
+static const u32 sCharsetCursorGfx[] = INCBIN_U32("graphics/lu/short_string_entry_menu/charset-cursor-subsprites.4bpp.lz");
+enum {
+   CHARSETBUTTON_CURSOR_TILE_COUNT = 33,
+};
+
+static const u32 sMenuBtnCursorGfx[] = INCBIN_U32("graphics/lu/short_string_entry_menu/menu-button-cursor-gfx.4bpp.lz");
+enum {
+   MENUBUTTON_CURSOR_W = 48,
+   MENUBUTTON_CURSOR_H = 48,
+   MENUBUTTON_CURSOR_TILE_COUNT = (MENUBUTTON_CURSOR_W / TILE_WIDTH) * (MENUBUTTON_CURSOR_H / TILE_HEIGHT),
+};
 
 static const struct SpritePalette sSpritePalettes[] = {
     { sCursorPal, SPRITE_PAL_TAG_CURSORS },
     {}
 };
 static const struct CompressedSpriteSheet sCharsetCursorSpriteSheet = {
-   sCharsetCursorGfx, 33 * TILE_SIZE_4BPP, SPRITE_GFX_TAG_CHARSET_CURSORS
+   sCharsetCursorGfx, CHARSETBUTTON_CURSOR_TILE_COUNT * TILE_SIZE_4BPP, SPRITE_GFX_TAG_CHARSET_CURSORS
+};
+static const struct CompressedSpriteSheet sMenuBtnCursorSpriteSheet = {
+   sMenuBtnCursorGfx, MENUBUTTON_CURSOR_TILE_COUNT * TILE_SIZE_4BPP, SPRITE_GFX_TAG_MENU_BTN_CURSOR
 };
 
 // Helper for defining a rectangular button consisting of four subsprites:
@@ -111,8 +125,72 @@ static const struct OamData sOam_8x8 = {
    .paletteNum = 0,
 };
 
+static const struct Subsprite sSubsprites_MenuButtonCursor[] = {
+   {
+      .x          = 16,
+      .y          = 0,
+      .shape      = SPRITE_SHAPE(16x16),
+      .size       = SPRITE_SIZE(16x16),
+      .tileOffset = 0,
+      .priority   = 3,
+   },
+   {
+      .x          = 0,
+      .y          = 16,
+      .shape      = SPRITE_SHAPE(16x16),
+      .size       = SPRITE_SIZE(16x16),
+      .tileOffset = 4,
+      .priority   = 3,
+   },
+   {
+      .x          = 32,
+      .y          = 8,
+      .shape      = SPRITE_SHAPE(16x32),
+      .size       = SPRITE_SIZE(16x32),
+      .tileOffset = 8,
+      .priority   = 3,
+   },
+   {
+      .x          = 0,
+      .y          = 32,
+      .shape      = SPRITE_SHAPE(32x16),
+      .size       = SPRITE_SIZE(32x16),
+      .tileOffset = 16,
+      .priority   = 3,
+   },
+   {
+      .x          = 8,
+      .y          = 8,
+      .shape      = SPRITE_SHAPE(8x8),
+      .size       = SPRITE_SIZE(8x8),
+      .tileOffset = 24,
+      .priority   = 3,
+   },
+   {
+      .x          = 40,
+      .y          = 0,
+      .shape      = SPRITE_SHAPE(8x8),
+      .size       = SPRITE_SIZE(8x8),
+      .tileOffset = 25,
+      .priority   = 3,
+   },
+};
+static const struct SubspriteTable sSubspriteTable_MenuButtonCursor[] = {
+   {ARRAY_COUNT(sSubsprites_MenuButtonCursor), sSubsprites_MenuButtonCursor}
+};
+static const struct SpriteTemplate sMenuButtonCursorSpriteTemplate = {
+    .tileTag     = SPRITE_GFX_TAG_MENU_BTN_CURSOR,
+    .paletteTag  = SPRITE_PAL_TAG_CURSORS,
+    .oam         = &sOam_8x8,
+    .anims       = gDummySpriteAnimTable,
+    .images      = NULL,
+    .affineAnims = gDummySpriteAffineAnimTable,
+    .callback    = SpriteCallbackDummy
+};
+
 extern void ShortStringEntryMenu_SetUpCursors(struct ShortStringEntryMenuState* state) {
    LoadCompressedSpriteSheet(&sCharsetCursorSpriteSheet);
+   LoadCompressedSpriteSheet(&sMenuBtnCursorSpriteSheet);
    LoadSpritePalettes(sSpritePalettes);
    
    const u8 x_coords[5] = {
@@ -137,6 +215,14 @@ extern void ShortStringEntryMenu_SetUpCursors(struct ShortStringEntryMenuState* 
    MAKE_SPRITE(3, AccentUpper)
    MAKE_SPRITE(4, AccentLower)
    #undef MAKE_SPRITE
+   
+   {
+      u8 id = CreateSprite(&sMenuButtonCursorSpriteTemplate, 0, 0, 1);
+      state->sprite_ids.cursor_menu_button = id;
+      auto sprite = &gSprites[id];
+      sprite->invisible = TRUE;
+      SetSubspriteTables(sprite, sSubspriteTable_MenuButtonCursor);
+   }
 }
 
 static void HideCharsetCursors(struct ShortStringEntryMenuState* state) {
@@ -149,6 +235,8 @@ static void HideCharsetCursors(struct ShortStringEntryMenuState* state) {
 
 extern void ShortStringEntryMenu_UpdateCursors(struct ShortStringEntryMenuState* state) {
    struct Sprite* cursor_mb = NULL;
+   if (state->sprite_ids.cursor_menu_button != SPRITE_NONE)
+      cursor_mb = &gSprites[state->sprite_ids.cursor_menu_button];
    
    auto target = state->vui.context.focused;
    if (!target) {
@@ -164,15 +252,15 @@ extern void ShortStringEntryMenu_UpdateCursors(struct ShortStringEntryMenuState*
    } else if (target == (const VUIWidget*)&state->vui.widgets.button_ok) {
       if (cursor_mb) {
          cursor_mb->invisible = FALSE;
-         cursor_mb->x = 172;
-         cursor_mb->y =  40;
+         cursor_mb->x = 180;
+         cursor_mb->y =  48;
       }
       HideCharsetCursors(state);
    } else if (target == (const VUIWidget*)&state->vui.widgets.button_backspace) {
       if (cursor_mb) {
          cursor_mb->invisible = FALSE;
-         cursor_mb->x = 172;
-         cursor_mb->y =  80;
+         cursor_mb->x = 180;
+         cursor_mb->y =  88;
       }
       HideCharsetCursors(state);
    } else {

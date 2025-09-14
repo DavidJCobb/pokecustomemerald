@@ -25,9 +25,7 @@ So I've been trying to...
 
   * The "custom keyboard" widget has a built-in cursor. We can't influence its appearance or palette from outside, which is perhaps an issue.
   
-  * Charset button cursors appear behind the charset buttons, and don't use the right palette.
-  
-  * Cursors for the menu buttons (OK/Del) are unimplemented.
+  * Charset button cursors appear behind the charset buttons.
   
   * We want particle-effect animations on the cursors.
     
