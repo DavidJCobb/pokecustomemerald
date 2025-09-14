@@ -16,7 +16,7 @@ static const struct OamData sOam_8x8;
 //       we need. Subsprites work around that limitation.
 //
 
-static const u32 sSprite[] = INCBIN_U32("graphics/lu/short_string_entry_menu/charset-buttons.4bpp.lz");
+static const u8 sSprite[] = INCBIN_U8("graphics/lu/short_string_entry_menu/charset-buttons.4bpp");
 
 static const u16 sPaletteNormal[] = INCBIN_U16("graphics/lu/short_string_entry_menu/charset-button-normal.gbapal");
 static const u16 sPaletteActive[] = INCBIN_U16("graphics/lu/short_string_entry_menu/charset-button-active.gbapal");
@@ -81,10 +81,10 @@ static const struct Subsprite sSubsprites_CharsetLabel_Symbol[] = {
    SUBSPRITE_GROUP(80, 48)
 };
 static const struct Subsprite sSubsprites_CharsetLabel_AccentUpper[] = {
-   SUBSPRITE_GROUP(128, 48)
+   SUBSPRITE_GROUP(128, 40)
 };
 static const struct Subsprite sSubsprites_CharsetLabel_AccentLower[] = {
-   SUBSPRITE_GROUP(176, 40)
+   SUBSPRITE_GROUP(168, 38)
 };
 
 #undef SPRITE_TILE_WIDTH
@@ -136,6 +136,9 @@ void ShortStringEntryMenu_SetUpCharsetButtons(union ShortStringEntryMenuCharsetB
          .size = { 1, 1 },
       },
    };
+   
+   LoadSpriteSheets(sSpriteSheets);
+   LoadSpritePalettes(sSpritePalettes);
    
    {  // Charset button: Upper
       auto id     = CreateSprite(&sSpriteTemplate, CHARSET_BUTTON_POS_X, CHARSET_BUTTON_POS_Y, 0);

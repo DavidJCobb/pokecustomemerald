@@ -61,6 +61,9 @@
 #include "lu/gfx_test_screen.h"
 #include "lu/widgets/num_edit_modal.h"
 
+#include "menus/short_string_entry/menu.h"
+#define USE_SHORT_STRING_ENTRY_MENU
+
 EWRAM_DATA struct FieldDebugMenuState gFieldDebugMenuState = {0};
 
 static void TaskHandler(u8 taskId);
@@ -700,17 +703,31 @@ static void FieldDebugMenuActionHandler_TestVUINamingScreen_Callback(const u8* b
 static void FieldDebugMenuActionHandler_TestVUINamingScreen(u8 taskId) {
    DestroyFieldDebugMenu(taskId);
    
-   struct LuNamingScreenParams params = {
-      .callback      = FieldDebugMenuActionHandler_TestVUINamingScreen_Callback,
-      .initial_value = gSaveBlock2Ptr->playerName,
-      .max_length    = PLAYER_NAME_LENGTH,
-      //
-      .icon  = {
-         .type = LU_NAMINGSCREEN_ICONTYPE_PLAYER,
-      },
-      .title = sRenamePlayerNamingScreenTitle,
-   };
-   LuNamingScreen(&params);
+   #ifdef USE_SHORT_STRING_ENTRY_MENU
+      struct ShortStringEntryMenuParams params = {
+         .callback      = FieldDebugMenuActionHandler_TestVUINamingScreen_Callback,
+         .initial_value = gSaveBlock2Ptr->playerName,
+         .max_length    = PLAYER_NAME_LENGTH,
+         //
+         .icon  = {
+            .type = SHORTSTRINGENTRY_ICONTYPE_PLAYER,
+         },
+         .title = sRenamePlayerNamingScreenTitle,
+      };
+      OpenShortStringEntryMenu(&params);
+   #else
+      struct LuNamingScreenParams params = {
+         .callback      = FieldDebugMenuActionHandler_TestVUINamingScreen_Callback,
+         .initial_value = gSaveBlock2Ptr->playerName,
+         .max_length    = PLAYER_NAME_LENGTH,
+         //
+         .icon  = {
+            .type = LU_NAMINGSCREEN_ICONTYPE_PLAYER,
+         },
+         .title = sRenamePlayerNamingScreenTitle,
+      };
+      LuNamingScreen(&params);
+   #endif
 }
 
 static void FieldDebugMenuActionHandler_UseAnyBike(u8 taskId) {

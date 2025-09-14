@@ -60,6 +60,13 @@ NON_NULL_PARAMS(1,2,3) extern void BlitTile4BitRemapped(
    const u8 color_mapping[]
 );
 
+extern void PrepBgTilemap(
+   u8 bg,
+   const u16* tilemap_src,
+   const u16  tilemap_size,
+   u16 shift_tile_ids_by
+);
+
 #include "lu/c-attr.undef.h"
 
 #endif

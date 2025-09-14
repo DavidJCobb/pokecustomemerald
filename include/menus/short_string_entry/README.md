@@ -21,8 +21,6 @@ So I've been trying to...
 
 ## Remaining tasks
 
-* Get the game to a point where it can actually compile again.
-
 * Finish implementing menu cursors within the short string entry menu.
 
   * The "custom keyboard" widget has a cursor built-in, though we can't influence its palette, which is perhaps an issue.

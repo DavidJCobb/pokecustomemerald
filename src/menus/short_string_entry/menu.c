@@ -1,4 +1,5 @@
 #include "menus/short_string_entry/menu.h"
+#include "menus/short_string_entry/cursors.h"
 #include "menus/short_string_entry/icon.h"
 #include "menus/short_string_entry/state.h"
 #include "menus/short_string_entry/fragments/charset_buttons.h"
@@ -40,13 +41,13 @@
 extern const u8 gSpeciesNames[][POKEMON_NAME_LENGTH + 1]; // from `data.h`
 
 static const u8  sBGTileGfx[] = INCBIN_U8("graphics/lu/short_string_entry_menu/bg-tiles.4bpp");
-static const u32 sBGTilemap[] = INCBIN_U32("graphics/lu/short_string_entry_menu/bg-tiles.bin.lz");
+static const u32 sBGTilemap[] = INCBIN_U32("graphics/lu/short_string_entry_menu/bg-tiles.bin");
 static const u16 sBGPalette[] = INCBIN_U16("graphics/lu/short_string_entry_menu/bg.gbapal");
 
 static const u8 sBGGenderTiles[] = INCBIN_U8("graphics/lu/short_string_entry_menu/bg-gender-icon-fragment.4bpp");
 
 static const u8 sMenuButtonFaceTiles[] = INCBIN_U8("graphics/lu/short_string_entry_menu/menu-button-face.4bpp");
-static const u16 sMenuButtonFacePalette[] = INCBIN_U16("graphics/lu/short_string_entry_menu/menu-button-face.gbapal");
+static const u16 sMenuButtonFacePalette[16] = INCBIN_U16("graphics/lu/short_string_entry_menu/menu-button-face.gbapal");
 
 static const u8 sBlankBGTile[] = INCBIN_U8("graphics/lu/cgo_menu/bg-tile-blank.4bpp"); // color 1
 
@@ -105,8 +106,8 @@ vram_bg_layout {
    vram_bg_tile user_window_frame[9];
    vram_bg_tile keyboard_value[VUIKEYBOARDVALUE_WINDOW_TILE_COUNT];
    struct {
-      vram_bg_tile button_backspace[WIN_BTN_BKSP_TILE_COUNT];
-      vram_bg_tile button_ok[WIN_BTN_OK_TILE_COUNT];
+      vram_bg_tile button_backspace[3*3];
+      vram_bg_tile button_ok[3*3];
       vram_bg_tile gender[GENDER_WINDOW_TILE_COUNT];
       vram_bg_tile title[TITLE_WINDOW_TILE_COUNT];
    } windows;
@@ -222,10 +223,7 @@ static void InitCB2(void) {
          //ResetTasks(); // we're called from a task-based menu
          
          V_LOAD_TILES(BGLAYER_BACKDROP, backdrop_tiles,    sBGTileGfx);
-         {
-            LZDecompressWram(sBGTilemap, gDecompressionBuffer);
-            LoadBgTilemap(BGLAYER_BACKDROP, gDecompressionBuffer, BG_SCREEN_SIZE, V_TILE_ID(backdrop_tiles));
-         }
+         PrepBgTilemap(BGLAYER_BACKDROP, (u16*)sBGTilemap, sizeof(sBGTilemap), V_TILE_ID(backdrop_tiles));
          LoadPalette(sBGPalette, BG_PLTT_ID(PALETTE_ID_BACKDROP), sizeof(sBGPalette));
          //
          // If we're going to be drawing a gender symbol, then set up the alternate 
@@ -244,6 +242,7 @@ static void InitCB2(void) {
                1
             );
          }
+         CopyBgTilemapBufferToVram(BGLAYER_BACKDROP);
          
          V_LOAD_TILES(BGLAYER_BUTTONS, menu_button_tiles, sMenuButtonFaceTiles);
          LoadPalette(sMenuButtonFacePalette, BG_PLTT_ID(PALETTE_ID_MENUBUTTON), sizeof(sMenuButtonFacePalette));
@@ -270,6 +269,17 @@ static void InitCB2(void) {
                PALETTE_ID_MENUBUTTON,
                1
             );
+            
+            WriteSequenceToBgTilemapBuffer(
+               BGLAYER_BUTTONS,
+               V_TILE_ID(menu_button_tiles),
+               x,
+               y2,
+               size,
+               size,
+               PALETTE_ID_MENUBUTTON,
+               1
+            );
          }
          {  // Button text
             const VUITextColors text_colors = { 0, 2, 3 };
@@ -290,10 +300,10 @@ static void InitCB2(void) {
             {  // Button text: OK
                const struct WindowTemplate tmpl = {
                   .bg          = BGLAYER_TEXT,
-                  .tilemapLeft = WIN_BTN_OK_X / TILE_WIDTH,
-                  .tilemapTop  = WIN_BTN_OK_Y / TILE_HEIGHT,
-                  .width       = WIN_BTN_OK_W / TILE_WIDTH,
-                  .height      = WIN_BTN_OK_H / TILE_HEIGHT,
+                  .tilemapLeft = WIN_BTN_OK_X / TILE_WIDTH  + 1,
+                  .tilemapTop  = WIN_BTN_OK_Y / TILE_HEIGHT + 1,
+                  .width       = 3,
+                  .height      = 3,
                   .paletteNum  = PALETTE_ID_MENUBUTTON,
                   .baseBlock   = V_TILE_ID(windows.button_ok)
                };
@@ -306,7 +316,7 @@ static void InitCB2(void) {
                      window_id,
                      FONT_NORMAL,
                      6,
-                     6,
+                     2,
                      text_colors.list,
                      TEXT_SKIP_DRAW,
                      sButtonLabel_OK
@@ -324,7 +334,7 @@ static void InitCB2(void) {
                      &src_bitmap,
                      &dst_bitmap,
                      57,  4, // XxY src
-                      1, 18, // XxY dst
+                      1, 14, // XxY dst
                      23,  8, // WxH
                      keypad_icon_remapping
                   );
@@ -333,10 +343,10 @@ static void InitCB2(void) {
             {  // Button text: Backspace
                const struct WindowTemplate tmpl = {
                   .bg          = BGLAYER_TEXT,
-                  .tilemapLeft = WIN_BTN_BKSP_X / TILE_WIDTH,
-                  .tilemapTop  = WIN_BTN_BKSP_Y / TILE_HEIGHT,
-                  .width       = WIN_BTN_BKSP_W / TILE_WIDTH,
-                  .height      = WIN_BTN_BKSP_H / TILE_HEIGHT,
+                  .tilemapLeft = WIN_BTN_BKSP_X / TILE_WIDTH  + 1,
+                  .tilemapTop  = WIN_BTN_BKSP_Y / TILE_HEIGHT + 1,
+                  .width       = 3,
+                  .height      = 3,
                   .paletteNum  = PALETTE_ID_MENUBUTTON,
                   .baseBlock   = V_TILE_ID(windows.button_backspace)
                };
@@ -348,8 +358,8 @@ static void InitCB2(void) {
                   AddTextPrinterParameterized3(
                      window_id,
                      FONT_NORMAL,
-                     6,
-                     6,
+                     3,
+                     3,
                      text_colors.list,
                      TEXT_SKIP_DRAW,
                      sButtonLabel_Backspace
@@ -367,13 +377,22 @@ static void InitCB2(void) {
                      &src_bitmap,
                      &dst_bitmap,
                      8,  4, // XxY src
-                     8, 20, // XxY dst
+                     8, 16, // XxY dst
                      8,  8, // WxH
                      keypad_icon_remapping
                   );
                }
             }
          }
+         CopyBgTilemapBufferToVram(BGLAYER_BUTTONS);
+         
+         FillBgTilemapBufferRect(
+            BGLAYER_TEXT,
+            V_TILE_ID(blank_tile),
+            0, 0, DISPLAY_TILE_WIDTH, DISPLAY_TILE_HEIGHT,
+            PALETTE_ID_TEXT
+         );
+         CopyBgTilemapBufferToVram(BGLAYER_TEXT);
          
          LoadPalette(GetTextWindowPalette(2), BG_PLTT_ID(PALETTE_ID_TEXT), PLTT_SIZE_4BPP);
          
@@ -455,6 +474,7 @@ static void InitCB2(void) {
          break;
       case INITSTATE_EVERYTHING_ELSE:
          BeginNormalPaletteFade(PALETTES_ALL, -1, 16, 0, RGB_BLACK);
+         ShortStringEntryMenu_SetUpCursors(MENU_STATE);
          SetVBlankCallback(VBlankCB);
          SetMainCallback2(MainCB2);
          PaintTitleText();
@@ -501,6 +521,7 @@ static void Task_OnFrame(u8 task_id) {
          //
          return;
       }
+      ShortStringEntryMenu_UpdateCursors(MENU_STATE);
       //
       // Each harset button has a background and outline color done 
       // up in its own color within the palette. We set all such 
@@ -695,7 +716,7 @@ static void PaintTitleText(void) {
       PutWindowTilemap(window_id);
    }
    
-   FillWindowPixelBuffer(window_id, PIXEL_FILL(1));
+   FillWindowPixelBuffer(window_id, PIXEL_FILL(0));
    
    u8 buffer[32];
    const u8* text = MENU_STATE->title;
@@ -712,7 +733,7 @@ static void PaintTitleText(void) {
    AddTextPrinterParameterized3(
       window_id,
       FONT_BOLD,
-      4,
+      6,
       2,
       sPlainTextColors.list,
       TEXT_SKIP_DRAW,

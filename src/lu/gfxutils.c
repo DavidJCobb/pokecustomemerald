@@ -468,3 +468,34 @@ extern void BlitTile4BitRemapped(
       dst[i] = (color_r << 4) | (color_l & 15);
    }
 }
+
+extern void PrepBgTilemap(
+   u8 bg,
+   const u16* tilemap_src,
+   const u16  tilemap_size,
+   u16 shift_tile_ids_by
+) {
+   auto tilemap_dst = (u16*)GetBgTilemapBuffer(bg);
+   if (tilemap_dst == NULL)
+      return;
+   
+   //                                 PPPPVHIIIIIIIIII
+   const u16 MASK_STRIP_TILE_ID   = 0b1111110000000000;
+   const u16 MASK_KEEP_ONLY_FLIPS = 0b0000110000000000;
+   
+   #define STRICT 0
+   
+   for(u16 i = 0; i < tilemap_size; ++i, ++tilemap_src, ++tilemap_dst) {
+      u16 tile_item = *tilemap_src;
+      #if STRICT
+         u16 tile_id = (tile_item + shift_tile_ids_by) & ~MASK_STRIP_TILE_ID;
+         tile_item &= MASK_STRIP_TILE_ID;
+         tile_item |= tile_id;
+      #else
+         tile_item += shift_tile_ids_by;
+      #endif
+      *tilemap_dst = tile_item;
+   }
+   
+   #undef STRICT
+}

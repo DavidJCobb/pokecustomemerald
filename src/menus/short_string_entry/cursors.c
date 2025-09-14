@@ -3,106 +3,80 @@
 #include "menus/short_string_entry/state.h"
 #include "lu/c.h"
 #include "lu/macros/ARRAY_COUNT.h"
+#include "decompress.h"
 #include "sprite.h"
 #include "constants/rgb.h"
 
 static const struct OamData sOam_8x8;
 
-static const u32 sCharsetCursorGfx[] = INCBIN_U32("graphics/lu/short_string_entry_menu/charset-button-cursor-subsprites.4bpp.lz");
+static const u32 sCharsetCursorGfx[] = INCBIN_U32("graphics/lu/short_string_entry_menu/charset-cursor-subsprites.4bpp.lz");
 static const u16 sCursorPal[] = INCBIN_U16("graphics/lu/short_string_entry_menu/cursors.gbapal");
 
 static const struct SpritePalette sSpritePalettes[] = {
     { sCursorPal, SPRITE_PAL_TAG_CURSORS },
     {}
 };
-static const struct SpriteSheet sSpriteSheets[] = {
-   { sCharsetCursorGfx, sizeof(sCharsetCursorGfx), SPRITE_GFX_TAG_CHARSET_CURSORS },
-   {},
+static const struct CompressedSpriteSheet sCharsetCursorSpriteSheet = {
+   sCharsetCursorGfx, 33 * TILE_SIZE_4BPP, SPRITE_GFX_TAG_CHARSET_CURSORS
 };
 
 // Helper for defining a rectangular button consisting of four subsprites:
-//  - lefthand edge (32x32)
-//  - upper right   ( 8x16 or 16x16)
-//  - lower right   ( 8x 8 or 16x 8)
+//  - upper left  (32x16)
+//  - lower left  (32x 8)
+//  - upper right (16x16)
+//  - lower right (16x 8)
 
-#define SUBSPRITES_LEFTHAND \
-   {                                     \
-      .x          = 0,                   \
-      .y          = 0,                   \
-      .shape      = SPRITE_SHAPE(32x16), \
-      .size       = SPRITE_SIZE(32x16),  \
-      .tileOffset = 0,                   \
-      .priority   = 1,                   \
-   },                                    \
-   {                                     \
-      .x          =  0,                  \
-      .y          = 16,                  \
-      .shape      = SPRITE_SHAPE(32x8), \
-      .size       = SPRITE_SIZE(32x8),  \
-      .tileOffset = 8,                   \
-      .priority   = 1,                   \
-   }
-
-#define SUBSPRITES_WIDTH_8(_tile_offset) \
-   {                                     \
-      .x          = 32,                  \
-      .y          =  0,                  \
-      .shape      = SPRITE_SHAPE(8x16),  \
-      .size       = SPRITE_SIZE(8x16),   \
-      .tileOffset = _tile_offset,        \
-      .priority   = 1,                   \
-   },                                    \
-   {                                     \
-      .x          = 32,                  \
-      .y          = 16,                  \
-      .shape      = SPRITE_SHAPE(8x8),   \
-      .size       = SPRITE_SIZE(8x8),    \
-      .tileOffset = _tile_offset + 2,    \
-      .priority   = 1,                   \
-   },
-
-#define SUBSPRITES_WIDTH_16(_tile_offset) \
-   {                                     \
-      .x          = 32,                  \
-      .y          =  0,                  \
-      .shape      = SPRITE_SHAPE(16x16), \
-      .size       = SPRITE_SIZE(16x16),  \
-      .tileOffset = _tile_offset,        \
-      .priority   = 1,                   \
-   },                                    \
-   {                                     \
-      .x          = 32,                  \
-      .y          = 16,                  \
-      .shape      = SPRITE_SHAPE(16x8),  \
-      .size       = SPRITE_SIZE(16x8),   \
-      .tileOffset = _tile_offset + 4,    \
-      .priority   = 1,                   \
+#define CHARSET_CURSOR_SUBSPRITES(_width) \
+   {                                      \
+      .x          = 0,                    \
+      .y          = 0,                    \
+      .shape      = SPRITE_SHAPE(32x16),  \
+      .size       = SPRITE_SIZE(32x16),   \
+      .tileOffset = 0,                    \
+      .priority   = 3,                    \
+   },                                     \
+   {                                      \
+      .x          =  0,                   \
+      .y          = 16,                   \
+      .shape      = SPRITE_SHAPE(32x8),   \
+      .size       = SPRITE_SIZE(32x8),    \
+      .tileOffset = 8,                    \
+      .priority   = 3,                    \
+   },                                     \
+   {                                      \
+      .x          = ((_width) - 16),      \
+      .y          =  0,                   \
+      .shape      = SPRITE_SHAPE(16x16),  \
+      .size       = SPRITE_SIZE(16x16),   \
+      .tileOffset = 12,                   \
+      .priority   = 3,                    \
+   },                                     \
+   {                                      \
+      .x          = ((_width) - 16),      \
+      .y          = 16,                   \
+      .shape      = SPRITE_SHAPE(16x8),   \
+      .size       = SPRITE_SIZE(16x8),    \
+      .tileOffset = 16,                   \
+      .priority   = 3,                    \
    },
 
 static const struct Subsprite sSubsprites_CharsetCursor_Upper[] = {
-   SUBSPRITES_LEFTHAND,
-   SUBSPRITES_WIDTH_8(9)
+   CHARSET_CURSOR_SUBSPRITES(37)
 };
 static const struct Subsprite sSubsprites_CharsetCursor_Lower[] = {
-   SUBSPRITES_LEFTHAND,
-   SUBSPRITES_WIDTH_8(12)
+   CHARSET_CURSOR_SUBSPRITES(36)
 };
 static const struct Subsprite sSubsprites_CharsetCursor_Symbol[] = {
-   SUBSPRITES_LEFTHAND,
-   SUBSPRITES_WIDTH_16(15)
+   CHARSET_CURSOR_SUBSPRITES(43)
 };
 static const struct Subsprite sSubsprites_CharsetCursor_AccentUpper[] = {
-   SUBSPRITES_LEFTHAND,
-   SUBSPRITES_WIDTH_16(21)
+   CHARSET_CURSOR_SUBSPRITES(42)
 };
 static const struct Subsprite sSubsprites_CharsetCursor_AccentLower[] = {
-   SUBSPRITES_LEFTHAND,
-   SUBSPRITES_WIDTH_8(27)
+   CHARSET_CURSOR_SUBSPRITES(40)
 };
 
-#undef SUBSPRITES_LEFTHAND
-#undef SUBSPRITES_WIDTH_8
-#undef SUBSPRITES_WIDTH_16
+#undef CHARSET_CURSOR_SUBSPRITES
 
 #define MAKE_SUBSPRITE_TABLE(Name) \
    static const struct SubspriteTable sSubspriteTable_CharsetCursor_##Name[] = {       \
@@ -138,9 +112,20 @@ static const struct OamData sOam_8x8 = {
 };
 
 extern void ShortStringEntryMenu_SetUpCursors(struct ShortStringEntryMenuState* state) {
+   LoadCompressedSpriteSheet(&sCharsetCursorSpriteSheet);
+   LoadSpritePalettes(sSpritePalettes);
+   
+   const u8 x_coords[5] = {
+       19,
+       57,
+       94,
+      138,
+      181,
+   };
+   
    #define MAKE_SPRITE(_index, _name) \
       { \
-         u8 id = CreateSprite(&sCharsetCursorSpriteTemplate, 37, 17, 0); \
+         u8 id = CreateSprite(&sCharsetCursorSpriteTemplate, x_coords[_index], 141, 1); \
          state->sprite_ids.cursor_charset_button_sprites[_index] = id; \
          auto sprite = &gSprites[id]; \
          sprite->invisible = TRUE; \
