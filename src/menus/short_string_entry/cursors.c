@@ -333,16 +333,20 @@ enum {
 
 #define sType        data[0]
 #define sTimer       data[1]
-#define sVelocityX   data[2] // 256ths of a pixel
-#define sVelocityY   data[3] // 256ths of a pixel
-#define sSubpixelPos data[4] // low byte X, high byte Y; both signed
-#define sForceReset  data[5]
+#define sVelocityX   data[2] // 256ths of a pixel per frame
+#define sVelocityY   data[3] // 256ths of a pixel per frame
+#define sSubpixelX   data[4] // 256ths of a pixel
+#define sSubpixelY   data[5] // 256ths of a pixel
+#define sForceReset  data[6]
 
-#define PARTICLE_SPEED_SCALE 2
-#define PARTICLE_LIFESPAN    7
+#define PARTICLE_SPEED    2
+#define PARTICLE_LIFESPAN 21
 
 #include "random.h"
 #include "trig.h"
+
+#define TRIG_FRACTIONAL_BITS     14
+#define PARTICLE_FRACTIONAL_BITS  8
 
 static void CursorParticleSpriteCB(struct Sprite* sprite);
 static const struct OamData sParticleOam = {
@@ -374,53 +378,61 @@ static void CursorParticleSpriteCB(struct Sprite* sprite) {
    if (sprite->sTimer > PARTICLE_LIFESPAN || sprite->sForceReset) {
       sprite->x2 = 0;
       sprite->y2 = 0;
+      sprite->sSubpixelX = 0;
+      sprite->sSubpixelY = 0;
       SetOamMatrixRotationScaling(sprite->oam.matrixNum, 256 / 4, 256 / 4, 0);
       
-      // Reset particle velocity.
-      u16 variance   = Random();
-      u8  variance_x = variance;
-      u8  variance_y = variance >> 8;
+      // Reset particle velocity. The trig code uses counterclockwise 
+      // angles.
+      u16 angle    = 0;
+      u16 variance = 0;
       switch (sprite->sType) {
          case PARTICLE_TYPE_CHARSET:
-            sprite->sVelocityX =  2 << PARTICLE_SPEED_SCALE;
-            sprite->sVelocityY = -4 << PARTICLE_SPEED_SCALE;
-            variance_x = (variance_x % 32) - 16;
-            variance_y = (variance_y % 64) - 32;
+            angle    = 285;
+            variance = 20;
             break;
          case PARTICLE_TYPE_MENUBUTTON_UPPER:
-            sprite->sVelocityX =  3 << PARTICLE_SPEED_SCALE;
-            sprite->sVelocityY = -3 << PARTICLE_SPEED_SCALE;
-            variance_x = (variance_x % 48) - 24;
-            variance_y = (variance_y % 48) - 24;
+            angle    = 315;
+            variance = 60;
             break;
          case PARTICLE_TYPE_MENUBUTTON_LOWER:
-            sprite->sVelocityX = -3 << PARTICLE_SPEED_SCALE;
-            sprite->sVelocityY =  3 << PARTICLE_SPEED_SCALE;
-            variance_x = (variance_x % 48) - 24;
-            variance_y = (variance_y % 48) - 24;
+            angle    = 135;
+            variance =  60;
             break;
       }
-      sprite->sVelocityX += variance_x;
-      sprite->sVelocityY += variance_y;
+      if (variance) {
+         angle += (Random() % (variance * 2)) - variance;
+      }
+      sprite->sVelocityX = (Cos2(angle) * PARTICLE_SPEED) >> (TRIG_FRACTIONAL_BITS - PARTICLE_FRACTIONAL_BITS);
+      sprite->sVelocityY = (Sin2(angle) * PARTICLE_SPEED) >> (TRIG_FRACTIONAL_BITS - PARTICLE_FRACTIONAL_BITS);
       
+      // For charset buttons, try and have particles come from the "corners" of 
+      // the buttons' diagonal spikes/sparks, if possible.
+      const int MENUBUTTON_DISPLACE_THRESHOLD = 10;
       if (sprite->sType == PARTICLE_TYPE_MENUBUTTON_UPPER) {
-         if (variance_x > variance_y) {
+         if (variance < -MENUBUTTON_DISPLACE_THRESHOLD) {
+            sprite->x2 = 2;
+         } else if (variance > MENUBUTTON_DISPLACE_THRESHOLD) {
+            sprite->y2 = -2;
          }
       } else if (sprite->sType == PARTICLE_TYPE_MENUBUTTON_LOWER) {
-         
+         if (angle > MENUBUTTON_DISPLACE_THRESHOLD) {
+            sprite->y2 = 2;
+         } else if (angle < -MENUBUTTON_DISPLACE_THRESHOLD) {
+            sprite->x2 = -2;
+         }
       }
       
       if (sprite->sForceReset) {
          //
          // Simulate sprite forward per sTimer, and then exit.
          //
-         s16 subpx_x = (s8)(sprite->sSubpixelPos & 0xFF);
-         s16 subpx_y = (s8)(sprite->sSubpixelPos >> 8);
-         subpx_x += sprite->sVelocityX * (sprite->sTimer - 1);
-         subpx_y += sprite->sVelocityY * (sprite->sTimer - 1);
-         sprite->x2 += subpx_x >> 8;
-         sprite->y2 += subpx_y >> 8;
-         sprite->sSubpixelPos = (s8)subpx_x | ((u8)subpx_y << 8);
+         sprite->sSubpixelX += (s16)sprite->sVelocityX * (sprite->sTimer - 1);
+         sprite->sSubpixelY += (s16)sprite->sVelocityY * (sprite->sTimer - 1);
+         sprite->x2 += (s16)sprite->sSubpixelX >> PARTICLE_FRACTIONAL_BITS;
+         sprite->y2 += (s16)sprite->sSubpixelY >> PARTICLE_FRACTIONAL_BITS;
+         sprite->sSubpixelX &= ((1 << PARTICLE_FRACTIONAL_BITS) - 1);
+         sprite->sSubpixelY &= ((1 << PARTICLE_FRACTIONAL_BITS) - 1);
       } else {
          sprite->sTimer = 0;
       }
@@ -436,13 +448,12 @@ static void CursorParticleSpriteCB(struct Sprite* sprite) {
    //
    // Animate forward by one frame.
    //
-   s16 subpx_x = (s8)(sprite->sSubpixelPos & 0xFF);
-   s16 subpx_y = (s8)(sprite->sSubpixelPos >> 8);
-   subpx_x += sprite->sVelocityX;
-   subpx_y += sprite->sVelocityY;
-   sprite->x2 += subpx_x >> 8;
-   sprite->y2 += subpx_y >> 8;
-   sprite->sSubpixelPos = (s8)subpx_x | ((u8)subpx_y << 8);
+   sprite->sSubpixelX += (s16)sprite->sVelocityX;
+   sprite->sSubpixelY += (s16)sprite->sVelocityY;
+   sprite->x2 += (s16)sprite->sSubpixelX >> PARTICLE_FRACTIONAL_BITS;
+   sprite->y2 += (s16)sprite->sSubpixelY >> PARTICLE_FRACTIONAL_BITS;
+   sprite->sSubpixelX &= ((1 << PARTICLE_FRACTIONAL_BITS) - 1);
+   sprite->sSubpixelY &= ((1 << PARTICLE_FRACTIONAL_BITS) - 1);
 }
 
 #define PARTICLE_COUNT     6
@@ -477,16 +488,15 @@ static void UpdateCursorParticles(
          sprite->invisible = FALSE;
          if (i < PARTICLES_PER_SIDE) {
             sprite->sType = PARTICLE_TYPE_MENUBUTTON_UPPER;
-            sprite->x     = parent_x + 37;
-            sprite->y     = parent_y + 10;
+            sprite->x     = parent_x + 38;
+            sprite->y     = parent_y + 12;
          } else {
             sprite->sType = PARTICLE_TYPE_MENUBUTTON_LOWER;
-            sprite->x     = parent_x + 10;
+            sprite->x     = parent_x + 11;
             sprite->y     = parent_y + 37;
          }
-         sprite->sTimer       = ((i % PARTICLES_PER_SIDE) == 1) ? 3 : 0;
+         sprite->sTimer       = (i % PARTICLES_PER_SIDE) * (PARTICLE_LIFESPAN / PARTICLES_PER_SIDE);
          sprite->sForceReset  = TRUE;
-         sprite->sSubpixelPos = 0;
       }
    } else {
       u16 parent_x = gSprites[parent_sprite_id].x;
@@ -498,9 +508,8 @@ static void UpdateCursorParticles(
          auto sprite = &gSprites[id];
          sprite->invisible = FALSE;
          sprite->sType        = PARTICLE_TYPE_CHARSET;
-         sprite->sTimer       = (i == 1) ? 3 : 0;
+         sprite->sTimer       = (i % PARTICLES_PER_SIDE) * (PARTICLE_LIFESPAN / PARTICLES_PER_SIDE);
          sprite->sForceReset  = TRUE;
-         sprite->sSubpixelPos = 0;
          
          sprite->x = parent_x + 20;
          sprite->y = parent_y;
