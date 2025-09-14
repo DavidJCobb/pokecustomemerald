@@ -28,6 +28,7 @@
 #include "task.h"
 #include "text.h"
 #include "text_window.h" // GetTextWindowPalette
+#include "util.h" // BlendPalette
 #include "window.h"
 #include "constants/characters.h"
 #include "constants/pokemon.h" // MON_MALE, MON_FEMALE, MON_GENDERLESS
@@ -46,20 +47,25 @@ static const u16 sBGPalette[16] = INCBIN_U16("graphics/lu/short_string_entry_men
 
 static const u8 sBGGenderTiles[] = INCBIN_U8("graphics/lu/short_string_entry_menu/bg-gender-icon-fragment.4bpp");
 
+static const u8 sBGDistantTileGfx[] = INCBIN_U8("graphics/lu/short_string_entry_menu/bg-distant-gfx.4bpp");
+static const u32 sBGDistantTilemap[] = INCBIN_U32("graphics/lu/short_string_entry_menu/bg-distant-gfx.bin");
+
 static const u8  sMenuButtonFaceGfx[]   = INCBIN_U8("graphics/lu/short_string_entry_menu/menu-button-face-gfx.4bpp");
 static const u16 sMenuButtonFacePal[16] = INCBIN_U16("graphics/lu/short_string_entry_menu/menu-button-face-pal.gbapal");
 
 static const u8 sBlankBGTile[] = INCBIN_U8("graphics/lu/cgo_menu/bg-tile-blank.4bpp"); // color 1
 
 enum {
-   BGLAYER_BACKDROP = 0,
-   BGLAYER_BUTTONS  = 1,
-   BGLAYER_TEXT     = 2,
+   BGLAYER_BACKDROP_DISTANT = 0,
+   BGLAYER_BACKDROP,
+   BGLAYER_BUTTONS,
+   BGLAYER_TEXT,
 };
 enum {
    PALETTE_ID_BACKDROP   =  0,
    PALETTE_ID_MENUBUTTON =  1,
    PALETTE_ID_USER_BORDER = 2,
+   PALETTE_ID_BACKDROP_DISTANT = 3,
    PALETTE_ID_TEXT       = 15,
 };
 enum {
@@ -102,6 +108,7 @@ vram_bg_layout {
    vram_bg_tile blank_tile;
    vram_bg_tile backdrop_tiles[sizeof(sBGTileGfx) / TILE_SIZE_4BPP];
    vram_bg_tile backdrop_gender_tiles[sizeof(sBGGenderTiles) / TILE_SIZE_4BPP];
+   vram_bg_tile backdrop_distant_tiles[sizeof(sBGDistantTileGfx) / TILE_SIZE_4BPP];
    vram_bg_tile menu_button_tiles[sizeof(sMenuButtonFaceGfx) / TILE_SIZE_4BPP];
    vram_bg_tile keyboard_body[VUIKEYBOARD_WINDOW_TILE_COUNT];
    vram_bg_tile user_window_frame[9];
@@ -122,6 +129,15 @@ static const struct BgTemplate sBgTemplates[] = {
       .mapBaseIndex  = V_MAP_BASE(tilemaps[BGLAYER_BACKDROP]),
       .screenSize    = 0,
       .paletteMode   = 0,
+      .priority      = 2,
+      .baseTile      = 0
+   },
+   {
+      .bg            = BGLAYER_BACKDROP_DISTANT,
+      .charBaseIndex = 0,
+      .mapBaseIndex  = V_MAP_BASE(tilemaps[BGLAYER_BACKDROP_DISTANT]),
+      .screenSize    = 0,
+      .paletteMode   = 0,
       .priority      = 3,
       .baseTile      = 0
    },
@@ -131,7 +147,7 @@ static const struct BgTemplate sBgTemplates[] = {
       .mapBaseIndex  = V_MAP_BASE(tilemaps[BGLAYER_BUTTONS]),
       .screenSize    = 0,
       .paletteMode   = 0,
-      .priority      = 2,
+      .priority      = 1,
       .baseTile      = 0
    },
    {
@@ -140,7 +156,7 @@ static const struct BgTemplate sBgTemplates[] = {
       .mapBaseIndex  = V_MAP_BASE(tilemaps[BGLAYER_TEXT]),
       .screenSize    = 0,
       .paletteMode   = 0,
-      .priority      = 1,
+      .priority      = 0,
       .baseTile      = 0
    },
 };
@@ -178,17 +194,12 @@ static void PaintGenderIcon(void);
 
 static void PaintTitleText(void);
 
+static void SetupDistantBackdrop(void);
+static void AnimateDistantBackdrop(void);
+
 // -----------------------------------------------------------------------
 
 extern void OpenShortStringEntryMenu(const struct ShortStringEntryMenuParams* params) {
-   SetVBlankCallback(NULL);
-   SetHBlankCallback(NULL);
-   LuUI_ResetBackgroundsAndVRAM();
-   LuUI_ResetSpritesAndEffects();
-   FreeAllWindowBuffers();
-   InitBgsFromTemplates(0, sBgTemplates, ARRAY_COUNT(sBgTemplates));
-   DeactivateAllTextPrinters();
-   
    ShortStringEntryMenu_CreateState();
    ShortStringEntryMenu_InitState(params);
    SetMainCallback2(InitCB2);
@@ -207,7 +218,8 @@ static void ClearBGTilemap(u8 bg, u8 palette) {
 }
 
 enum {
-   INITSTATE_PREP_BACKGROUND_LAYERS = 0,
+   INITSTATE_BEGIN = 0,
+   INITSTATE_PREP_BACKGROUND_LAYERS,
    INITSTATE_CLEAR_TEXT_BG_LAYER,
    INITSTATE_DRAW_BACKGROUND_LAYERS,
    INITSTATE_LOAD_PLAYER_WINDOW_FRAME,
@@ -221,10 +233,22 @@ enum {
 static void InitCB2(void) {
    AGB_ASSERT(MENU_STATE != NULL);
    switch (gMain.state) {
+      case INITSTATE_BEGIN:
+         SetVBlankCallback(NULL);
+         SetHBlankCallback(NULL);
+         LuUI_ResetBackgroundsAndVRAM();
+         LuUI_ResetSpritesAndEffects();
+         FreeAllWindowBuffers();
+         DeactivateAllTextPrinters();
+         gMain.state++;
+         break;
       case INITSTATE_PREP_BACKGROUND_LAYERS:
+         InitBgsFromTemplates(0, sBgTemplates, ARRAY_COUNT(sBgTemplates));
+         ShowBg(BGLAYER_BACKDROP_DISTANT);
          ShowBg(BGLAYER_BACKDROP);
          ShowBg(BGLAYER_BUTTONS);
          ShowBg(BGLAYER_TEXT);
+         SetBgTilemapBuffer(BGLAYER_BACKDROP_DISTANT, MENU_STATE->tilemap_buffers[BGLAYER_BACKDROP_DISTANT]);
          SetBgTilemapBuffer(BGLAYER_BACKDROP, MENU_STATE->tilemap_buffers[BGLAYER_BACKDROP]);
          SetBgTilemapBuffer(BGLAYER_BUTTONS,  MENU_STATE->tilemap_buffers[BGLAYER_BUTTONS]);
          SetBgTilemapBuffer(BGLAYER_TEXT,     MENU_STATE->tilemap_buffers[BGLAYER_TEXT]);
@@ -267,6 +291,8 @@ static void InitCB2(void) {
             );
          }
          CopyBgTilemapBufferToVram(BGLAYER_BACKDROP);
+         
+         SetupDistantBackdrop();
          
          gMain.state++;
          break;
@@ -503,6 +529,8 @@ static void InitCB2(void) {
 // -----------------------------------------------------------------------
 
 static void Task_WaitFadeIn(u8 task_id) {
+   AnimateDistantBackdrop();
+   
    if (!gPaletteFade.active) {
       VUIKeyboardValue* widget = &MENU_STATE->vui.widgets.value;
       VUIKeyboardValue_SetUnderscoreVisibility(widget, TRUE);
@@ -512,6 +540,8 @@ static void Task_WaitFadeIn(u8 task_id) {
    }
 }
 static void Task_OnFrame(u8 task_id) {
+   AnimateDistantBackdrop();
+   
    VUICustomKeyboard* keyboard = &MENU_STATE->vui.widgets.keyboard;
    if (JOY_NEW(START_BUTTON)) {
       VUIContext_FocusWidget(&MENU_STATE->vui.context, (VUIWidget*)&MENU_STATE->vui.widgets.button_ok);
@@ -543,38 +573,6 @@ static void Task_OnFrame(u8 task_id) {
       if (MENU_STATE->vui.context.focused != prior_focus) {
          ShortStringEntryMenu_UpdateCursors(MENU_STATE);
       }
-      //
-      // Each harset button has a background and outline color done 
-      // up in its own color within the palette. We set all such 
-      // colors to white by default, and this means we can show an 
-      // outline around the button the cursor is over, or shade in 
-      // the currently active button, by just messing with the 
-      // palette.
-      //
-      {
-         const u16 SELECTED_BACK = ( 0 << 10) | (20 << 5) | 31; // BGR colors
-         
-         /*//
-         u8 palette_id = IndexOfSpritePaletteTag(SPRITE_PAL_TAG_CHARSET_LABEL);
-         if (palette_id != 0xFF) {
-            const u16 base_bgcolor = OBJ_PLTT_ID(palette_id) + 8;
-            const u16 base_fgcolor = OBJ_PLTT_ID(palette_id) + 2;
-            for(u8 i = 0; i < 5; ++i) {
-               VUIWidget* button = (VUIWidget*)&MENU_STATE->vui.widgets.charset_buttons.list[i];
-               if (keyboard->charset == i) {
-                  gPlttBufferFaded[base_bgcolor + i] = SELECTED_BACK;
-               } else {
-                  gPlttBufferFaded[base_bgcolor + i] = RGB_WHITE;
-               }
-               if (MENU_STATE->vui.context.focused == (VUIWidget*)button) {
-                  gPlttBufferFaded[base_fgcolor + i] = RGB_RED;
-               } else {
-                  gPlttBufferFaded[base_fgcolor + i] = gPlttBufferFaded[base_bgcolor + i];
-               }
-            }
-         }
-         //*/
-      }
    }
 }
 static void Task_BeginExit(u8 task_id) {
@@ -586,6 +584,7 @@ static void Task_BeginExit(u8 task_id) {
    gTasks[MENU_STATE->task_id].func = Task_WaitFadeOut;
 }
 static void Task_WaitFadeOut(u8 task_id) {
+   AnimateDistantBackdrop();
    if (gPaletteFade.active) {
       return;
    }
@@ -773,4 +772,94 @@ static void PaintTitleText(void) {
    );
    
    CopyWindowToVram(window_id, COPYWIN_FULL);
+}
+
+static const u16 sDistantBackdropBaseColor = RGB(14,22,12);
+
+// BG base: RGB(14,22,12)
+static const u16 sDistantBackdropBaseColors[] = {
+   RGB(31, 0,31),
+   
+   // stripes A
+   sDistantBackdropBaseColor,
+   sDistantBackdropBaseColor,
+   sDistantBackdropBaseColor,
+   
+   // stripes B
+   sDistantBackdropBaseColor,
+   sDistantBackdropBaseColor,
+};
+static void SetupDistantBackdrop(void) {
+   V_LOAD_TILES(BGLAYER_BACKDROP_DISTANT, backdrop_distant_tiles, sBGDistantTileGfx);
+   PrepBgTilemapWithPalettes(
+      BGLAYER_BACKDROP_DISTANT,
+      (u16*)sBGDistantTilemap,
+      sizeof(sBGDistantTilemap),
+      V_TILE_ID(backdrop_distant_tiles),
+      PALETTE_ID_BACKDROP_DISTANT
+   );
+   CopyBgTilemapBufferToVram(BGLAYER_BACKDROP_DISTANT);
+   LoadPalette(sDistantBackdropBaseColors, BG_PLTT_ID(PALETTE_ID_BACKDROP_DISTANT), sizeof(sDistantBackdropBaseColors));
+}
+static void AnimateDistantBackdrop(void) {
+   enum { // config
+      FADE_IN_STEP_COUNT     = 16,
+      FADE_IN_STEP_DURATION  = 18, // frames
+      MAX_OPACITY_HANG_TIME  = 40, // frames
+      FADE_OUT_STEP_COUNT    = 16,
+      FADE_OUT_STEP_DURATION = 24, // frames
+      INVISIBLE_HANG_TIME    = 32, // frames
+   };
+   
+   enum { // computed
+      FADE_IN_TOTAL_FRAMES  = FADE_IN_STEP_COUNT  * FADE_IN_STEP_DURATION,
+      FADE_OUT_TOTAL_FRAMES = FADE_OUT_STEP_COUNT * FADE_OUT_STEP_DURATION,
+      
+      FRAMES_PER_CYCLE = FADE_IN_TOTAL_FRAMES + MAX_OPACITY_HANG_TIME + FADE_OUT_TOTAL_FRAMES + INVISIBLE_HANG_TIME,
+      
+      MAX_COEFFICIENT = 16,
+   };
+   
+   auto timer = MENU_STATE->timer;
+   void _blend_colors(u8 first, u8 count, u16 color) {
+      u8 coeff = 0;
+      {
+         u16 frame      = timer % FRAMES_PER_CYCLE;
+         u8  step       = 0;
+         u8  step_count = 0;
+         if (frame < FADE_IN_TOTAL_FRAMES) {
+            step       = frame / FADE_IN_STEP_DURATION;
+            step_count = FADE_IN_STEP_COUNT;
+         } else {
+            frame -= FADE_IN_TOTAL_FRAMES;
+            if (frame < MAX_OPACITY_HANG_TIME) {
+               coeff = MAX_COEFFICIENT;
+            } else {
+               frame -= MAX_OPACITY_HANG_TIME;
+               if (frame < FADE_OUT_TOTAL_FRAMES) {
+                  step       = FADE_OUT_STEP_COUNT - (frame / FADE_OUT_STEP_DURATION);
+                  step_count = FADE_OUT_STEP_COUNT;
+               } else {
+                  coeff = 0;
+               }
+            }
+         }
+         if (step_count) {
+            coeff = (u16)step * MAX_COEFFICIENT / step_count;
+         }
+      }
+      const u16 color_offset = BG_PLTT_ID(PALETTE_ID_BACKDROP_DISTANT) + first;
+      for(u8 i = 0; i < count; ++i) {
+         BlendPalette(color_offset + i, 1, coeff, color);
+         if (coeff > 0)
+            --coeff;
+      }
+   }
+   
+   _blend_colors(1, 3, RGB(18,24,16));
+   
+   timer += (FADE_IN_TOTAL_FRAMES + MAX_OPACITY_HANG_TIME) / 3;
+   _blend_colors(4, 2, RGB(17,23,14));
+   
+   MENU_STATE->timer = (MENU_STATE->timer + 1) % FRAMES_PER_CYCLE;
 }

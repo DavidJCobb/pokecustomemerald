@@ -483,7 +483,7 @@ extern void BlitTile4BitRemapped(
 extern void PrepBgTilemap(
    u8 bg,
    const u16* tilemap_src,
-   const u16  tilemap_size,
+   u16 tilemap_size,
    u16 shift_tile_ids_by
 ) {
    auto tilemap_dst = (u16*)GetBgTilemapBuffer(bg);
@@ -496,6 +496,7 @@ extern void PrepBgTilemap(
    
    #define STRICT 0
    
+   tilemap_size /= sizeof(u16);
    for(u16 i = 0; i < tilemap_size; ++i, ++tilemap_src, ++tilemap_dst) {
       u16 tile_item = *tilemap_src;
       #if STRICT
@@ -509,4 +510,26 @@ extern void PrepBgTilemap(
    }
    
    #undef STRICT
+}
+extern void PrepBgTilemapWithPalettes(
+   u8 bg,
+   const u16* tilemap_src,
+   u16 tilemap_size,
+   u16 shift_tile_ids_by,
+   u8  shift_palette_ids_by
+) {
+   auto tilemap_dst = (u16*)GetBgTilemapBuffer(bg);
+   if (tilemap_dst == NULL)
+      return;
+   
+   tilemap_size /= sizeof(u16);
+   for(u16 i = 0; i < tilemap_size; ++i, ++tilemap_src, ++tilemap_dst) {
+      u16 tile_item  = *tilemap_src;
+      u8  palette_id = tile_item >> 12;
+      palette_id += shift_palette_ids_by;
+      tile_item += shift_tile_ids_by;
+      tile_item &= ~(1 << 12);
+      tile_item |= palette_id << 12;
+      *tilemap_dst = tile_item;
+   }
 }

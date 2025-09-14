@@ -32,6 +32,7 @@ struct ShortStringEntryMenuState {
       VUIWidget* widget_list[9];
    } vui;
    
+   u16 timer;
    union {
       u8 all[13];
       struct {
@@ -52,7 +53,6 @@ struct ShortStringEntryMenuState {
    } window_ids;
    
    u8 task_id;
-   u8 timer;
    u8 gender;
    u8 max_length;
    
