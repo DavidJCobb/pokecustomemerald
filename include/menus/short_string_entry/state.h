@@ -56,7 +56,7 @@ struct ShortStringEntryMenuState {
    u8 gender;
    u8 max_length;
    
-   u8 tilemap_buffers[4][BG_SCREEN_SIZE];
+   ALIGNED(2) u8 tilemap_buffers[4][BG_SCREEN_SIZE];
 };
 
 extern struct ShortStringEntryMenuState* gShortStringEntryMenuState;

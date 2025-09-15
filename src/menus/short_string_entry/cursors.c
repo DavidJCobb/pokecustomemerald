@@ -45,6 +45,8 @@ static const struct SpriteTemplate sMenuButtonCursorSpriteTemplate;
 static const struct SpriteTemplate sParticleSpriteTemplate;
 
 #if 1 // Charset cursor subsprites and sprite template
+   #define CHARSET_BUTTON_CURSOR_PRIORITY 0
+   
    // Helper for defining a rectangular button consisting of four subsprites:
    //  - upper left  (32x16)
    //  - lower left  (32x 8)
@@ -58,7 +60,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(32x16),  \
          .size       = SPRITE_SIZE(32x16),   \
          .tileOffset = 0,                    \
-         .priority   = 3,                    \
+         .priority   = CHARSET_BUTTON_CURSOR_PRIORITY, \
       },                                     \
       {                                      \
          .x          =  0,                   \
@@ -66,7 +68,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(32x8),   \
          .size       = SPRITE_SIZE(32x8),    \
          .tileOffset = 8,                    \
-         .priority   = 3,                    \
+         .priority   = CHARSET_BUTTON_CURSOR_PRIORITY, \
       },                                     \
       {                                      \
          .x          = ((_width) - 16),      \
@@ -74,7 +76,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(16x16),  \
          .size       = SPRITE_SIZE(16x16),   \
          .tileOffset = 12,                   \
-         .priority   = 3,                    \
+         .priority   = CHARSET_BUTTON_CURSOR_PRIORITY, \
       },                                     \
       {                                      \
          .x          = ((_width) - 16),      \
@@ -82,7 +84,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(16x8),   \
          .size       = SPRITE_SIZE(16x8),    \
          .tileOffset = 16,                   \
-         .priority   = 3,                    \
+         .priority   = CHARSET_BUTTON_CURSOR_PRIORITY, \
       },
 
    static const struct Subsprite sSubsprites_CharsetCursor_Upper[] = {
@@ -126,6 +128,8 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
 #endif
 
 #if 1 // Menu-button cursor subsprites and template
+   #define MENU_BUTTON_CURSOR_PRIORITY 0
+
    static const struct Subsprite sSubsprites_MenuButtonCursor[] = {
       {
          .x          = 16,
@@ -133,7 +137,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(16x16),
          .size       = SPRITE_SIZE(16x16),
          .tileOffset = 0,
-         .priority   = 3,
+         .priority   = MENU_BUTTON_CURSOR_PRIORITY,
       },
       {
          .x          = 0,
@@ -141,7 +145,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(16x16),
          .size       = SPRITE_SIZE(16x16),
          .tileOffset = 4,
-         .priority   = 3,
+         .priority   = MENU_BUTTON_CURSOR_PRIORITY,
       },
       {
          .x          = 32,
@@ -149,7 +153,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(16x32),
          .size       = SPRITE_SIZE(16x32),
          .tileOffset = 8,
-         .priority   = 3,
+         .priority   = MENU_BUTTON_CURSOR_PRIORITY,
       },
       {
          .x          = 0,
@@ -157,7 +161,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(32x16),
          .size       = SPRITE_SIZE(32x16),
          .tileOffset = 16,
-         .priority   = 3,
+         .priority   = MENU_BUTTON_CURSOR_PRIORITY,
       },
       {
          .x          = 8,
@@ -165,7 +169,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(8x8),
          .size       = SPRITE_SIZE(8x8),
          .tileOffset = 24,
-         .priority   = 3,
+         .priority   = MENU_BUTTON_CURSOR_PRIORITY,
       },
       {
          .x          = 40,
@@ -173,7 +177,7 @@ static const struct SpriteTemplate sParticleSpriteTemplate;
          .shape      = SPRITE_SHAPE(8x8),
          .size       = SPRITE_SIZE(8x8),
          .tileOffset = 25,
-         .priority   = 3,
+         .priority   = MENU_BUTTON_CURSOR_PRIORITY,
       },
    };
    static const struct SubspriteTable sSubspriteTable_MenuButtonCursor[] = {
@@ -206,7 +210,7 @@ extern void ShortStringEntryMenu_SetUpCursors(struct ShortStringEntryMenuState* 
    
    #define MAKE_SPRITE(_index, _name) \
       { \
-         u8 id = CreateSprite(&sCharsetCursorSpriteTemplate, x_coords[_index], 141, 1); \
+         u8 id = CreateSprite(&sCharsetCursorSpriteTemplate, x_coords[_index], 141, CHARSET_BUTTON_CURSOR_PRIORITY); \
          state->sprite_ids.cursor_charset_button_sprites[_index] = id; \
          auto sprite = &gSprites[id]; \
          sprite->invisible = TRUE; \
@@ -220,7 +224,7 @@ extern void ShortStringEntryMenu_SetUpCursors(struct ShortStringEntryMenuState* 
    #undef MAKE_SPRITE
    
    {
-      u8 id = CreateSprite(&sMenuButtonCursorSpriteTemplate, 0, 0, 1);
+      u8 id = CreateSprite(&sMenuButtonCursorSpriteTemplate, 0, 0, MENU_BUTTON_CURSOR_PRIORITY);
       state->sprite_ids.cursor_menu_button = id;
       auto sprite = &gSprites[id];
       sprite->invisible = TRUE;
@@ -228,7 +232,7 @@ extern void ShortStringEntryMenu_SetUpCursors(struct ShortStringEntryMenuState* 
    }
    
    for(int i = 0; i < ARRAY_COUNT(state->sprite_ids.cursor_particles); ++i) {
-      u8 id = CreateSprite(&sParticleSpriteTemplate, 0, 0, 1);
+      u8 id = CreateSprite(&sParticleSpriteTemplate, 0, 0, MENU_BUTTON_CURSOR_PRIORITY);
       state->sprite_ids.cursor_particles[i] = id;
       if (id == SPRITE_NONE)
          continue;

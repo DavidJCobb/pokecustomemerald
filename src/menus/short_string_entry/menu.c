@@ -48,7 +48,7 @@ static const u16 sBGPalette[16] = INCBIN_U16("graphics/lu/short_string_entry_men
 static const u8 sBGGenderTiles[] = INCBIN_U8("graphics/lu/short_string_entry_menu/bg-gender-icon-fragment.4bpp");
 
 static const u8 sBGDistantTileGfx[] = INCBIN_U8("graphics/lu/short_string_entry_menu/bg-distant-gfx.4bpp");
-static const u32 sBGDistantTilemap[] = INCBIN_U32("graphics/lu/short_string_entry_menu/bg-distant-gfx.bin");
+static const u16 sBGDistantTilemap[BG_SCREEN_SIZE / sizeof(u16)] = INCBIN_U16("graphics/lu/short_string_entry_menu/bg-distant-gfx.bin");
 
 static const u8  sMenuButtonFaceGfx[]   = INCBIN_U8("graphics/lu/short_string_entry_menu/menu-button-face-gfx.4bpp");
 static const u16 sMenuButtonFacePal[16] = INCBIN_U16("graphics/lu/short_string_entry_menu/menu-button-face-pal.gbapal");
@@ -529,8 +529,6 @@ static void InitCB2(void) {
 // -----------------------------------------------------------------------
 
 static void Task_WaitFadeIn(u8 task_id) {
-   AnimateDistantBackdrop();
-   
    if (!gPaletteFade.active) {
       VUIKeyboardValue* widget = &MENU_STATE->vui.widgets.value;
       VUIKeyboardValue_SetUnderscoreVisibility(widget, TRUE);
@@ -584,7 +582,6 @@ static void Task_BeginExit(u8 task_id) {
    gTasks[MENU_STATE->task_id].func = Task_WaitFadeOut;
 }
 static void Task_WaitFadeOut(u8 task_id) {
-   AnimateDistantBackdrop();
    if (gPaletteFade.active) {
       return;
    }
@@ -775,40 +772,29 @@ static void PaintTitleText(void) {
 }
 
 static const u16 sDistantBackdropBaseColor = RGB(14,22,12);
-
-// BG base: RGB(14,22,12)
-static const u16 sDistantBackdropBaseColors[] = {
-   RGB(31, 0,31),
-   
-   // stripes A
-   sDistantBackdropBaseColor,
-   sDistantBackdropBaseColor,
-   sDistantBackdropBaseColor,
-   
-   // stripes B
-   sDistantBackdropBaseColor,
-   sDistantBackdropBaseColor,
-};
+//
 static void SetupDistantBackdrop(void) {
    V_LOAD_TILES(BGLAYER_BACKDROP_DISTANT, backdrop_distant_tiles, sBGDistantTileGfx);
    PrepBgTilemapWithPalettes(
       BGLAYER_BACKDROP_DISTANT,
-      (u16*)sBGDistantTilemap,
+      (const u16*)sBGDistantTilemap,
       sizeof(sBGDistantTilemap),
       V_TILE_ID(backdrop_distant_tiles),
       PALETTE_ID_BACKDROP_DISTANT
    );
    CopyBgTilemapBufferToVram(BGLAYER_BACKDROP_DISTANT);
-   LoadPalette(sDistantBackdropBaseColors, BG_PLTT_ID(PALETTE_ID_BACKDROP_DISTANT), sizeof(sDistantBackdropBaseColors));
+   FillPalette(RGB(31, 0,31), BG_PLTT_ID(PALETTE_ID_BACKDROP_DISTANT), sizeof(u16));
+   FillPalette(sDistantBackdropBaseColor, BG_PLTT_ID(PALETTE_ID_BACKDROP_DISTANT) + 1, sizeof(u16) * 15);
 }
 static void AnimateDistantBackdrop(void) {
    enum { // config
-      FADE_IN_STEP_COUNT     = 16,
-      FADE_IN_STEP_DURATION  = 18, // frames
-      MAX_OPACITY_HANG_TIME  = 40, // frames
-      FADE_OUT_STEP_COUNT    = 16,
-      FADE_OUT_STEP_DURATION = 24, // frames
-      INVISIBLE_HANG_TIME    = 32, // frames
+      FADE_IN_STEP_COUNT     =  16,
+      FADE_IN_STEP_DURATION  =   7, // frames
+      MAX_OPACITY_HANG_TIME  = 360, // frames
+      FADE_OUT_STEP_COUNT    =  16,
+      FADE_OUT_STEP_DURATION =   9, // frames
+      INVISIBLE_HANG_TIME    = 140, // frames
+      LIGHTRAY_STAGGER_TIME  = 400,
    };
    
    enum { // computed
@@ -856,10 +842,10 @@ static void AnimateDistantBackdrop(void) {
       }
    }
    
-   _blend_colors(1, 3, RGB(18,24,16));
+   _blend_colors(1, 7, RGB(18,24,16));
    
-   timer += (FADE_IN_TOTAL_FRAMES + MAX_OPACITY_HANG_TIME) / 3;
-   _blend_colors(4, 2, RGB(17,23,14));
+   timer += LIGHTRAY_STAGGER_TIME;
+   _blend_colors(9, 6, RGB(17,23,14));
    
    MENU_STATE->timer = (MENU_STATE->timer + 1) % FRAMES_PER_CYCLE;
 }

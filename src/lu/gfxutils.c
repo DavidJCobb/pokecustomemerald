@@ -528,8 +528,8 @@ extern void PrepBgTilemapWithPalettes(
       u8  palette_id = tile_item >> 12;
       palette_id += shift_palette_ids_by;
       tile_item += shift_tile_ids_by;
-      tile_item &= ~(1 << 12);
-      tile_item |= palette_id << 12;
+      tile_item &= ~(15 << 12);
+      tile_item |= (u16)palette_id << 12;
       *tilemap_dst = tile_item;
    }
 }
