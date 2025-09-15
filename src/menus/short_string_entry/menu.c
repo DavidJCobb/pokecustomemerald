@@ -71,6 +71,7 @@ enum {
 enum {
    VALUE_TILE_X = 8,
    VALUE_TILE_Y = 3,
+   VALUE_TILE_X_LONG = 6,
    
    WIN_BTN_OK_X = 192,
    WIN_BTN_OK_Y =  56,
@@ -200,8 +201,11 @@ static void AnimateDistantBackdrop(void);
 // -----------------------------------------------------------------------
 
 extern void OpenShortStringEntryMenu(const struct ShortStringEntryMenuParams* params) {
+   DebugPrintf("[%s] Creating state...", __func__);
    ShortStringEntryMenu_CreateState();
+   DebugPrintf("[%s] Initializing state...", __func__);
    ShortStringEntryMenu_InitState(params);
+   DebugPrintf("[%s] Proceeding to CB2.", __func__);
    SetMainCallback2(InitCB2);
    gMain.state = 0;
 }
@@ -234,6 +238,7 @@ static void InitCB2(void) {
    AGB_ASSERT(MENU_STATE != NULL);
    switch (gMain.state) {
       case INITSTATE_BEGIN:
+DebugPrintf("[%s] Beginning...", __func__);
          SetVBlankCallback(NULL);
          SetHBlankCallback(NULL);
          LuUI_ResetBackgroundsAndVRAM();
@@ -243,6 +248,7 @@ static void InitCB2(void) {
          gMain.state++;
          break;
       case INITSTATE_PREP_BACKGROUND_LAYERS:
+DebugPrintf("[%s] Prepping BG layers...", __func__);
          InitBgsFromTemplates(0, sBgTemplates, ARRAY_COUNT(sBgTemplates));
          ShowBg(BGLAYER_BACKDROP_DISTANT);
          ShowBg(BGLAYER_BACKDROP);
@@ -262,12 +268,14 @@ static void InitCB2(void) {
          gMain.state++;
          break;
       case INITSTATE_CLEAR_TEXT_BG_LAYER:
+DebugPrintf("[%s] Clearing text layer...", __func__);
          LoadPalette(GetTextWindowPalette(2), BG_PLTT_ID(PALETTE_ID_TEXT), PLTT_SIZE_4BPP);
          ClearBGTilemap(BGLAYER_TEXT, PALETTE_ID_TEXT);
          CopyBgTilemapBufferToVram(BGLAYER_TEXT);
          gMain.state++;
          break;
       case INITSTATE_DRAW_BACKGROUND_LAYERS:
+DebugPrintf("[%s] Drawing backdrop...", __func__);
          //ResetTasks(); // we're called from a task-based menu
          
          V_LOAD_TILES(BGLAYER_BACKDROP, backdrop_tiles,    sBGTileGfx);
@@ -292,11 +300,13 @@ static void InitCB2(void) {
          }
          CopyBgTilemapBufferToVram(BGLAYER_BACKDROP);
          
+DebugPrintf("[%s] Drawing distant backdrop...", __func__);
          SetupDistantBackdrop();
          
          gMain.state++;
          break;
       case INITSTATE_LOAD_PLAYER_WINDOW_FRAME:
+DebugPrintf("[%s] Loading player window frame...", __func__);
          LuUI_LoadPlayerWindowFrame(
             BGLAYER_TEXT,
             PALETTE_ID_USER_BORDER,
@@ -305,6 +315,7 @@ static void InitCB2(void) {
          gMain.state++;
          break;
       case INITSTATE_PREP_MENU_BUTTONS:
+DebugPrintf("[%s] Prepping menu buttons...", __func__);
          LoadPalette(sMenuButtonFacePal, BG_PLTT_ID(PALETTE_ID_MENUBUTTON), sizeof(sMenuButtonFacePal));
          V_LOAD_TILES(BGLAYER_BUTTONS, menu_button_tiles, sMenuButtonFaceGfx);
          ClearBGTilemap(BGLAYER_BUTTONS, PALETTE_ID_MENUBUTTON);
@@ -438,17 +449,20 @@ static void InitCB2(void) {
          gMain.state++;
          break;
       case INITSTATE_PREP_CHARSET_BUTTONS:
+DebugPrintf("[%s] Prepping charset buttons...", __func__);
          ShortStringEntryMenu_SetUpCharsetButtons(&MENU_STATE->vui.widgets.charset_buttons);
          ShortStringEntryMenu_UpdateSelectedCharsetButtonSprite(&MENU_STATE->vui.widgets.charset_buttons, SHORTSTRINGENTRY_CHARSET_UPPER);
          gMain.state++;
          break;
       case INITSTATE_CREATE_TASK:
+DebugPrintf("[%s] Creating task...", __func__);
          MENU_STATE->task_id = CreateTask(Task_WaitFadeIn, 0);
          gMain.state++;
          break;
       case INITSTATE_INIT_WIDGETS:
+DebugPrintf("[%s] Initializing widgets...", __func__);
          {  // keyboard value
-            const struct VUIKeyboardValue_InitParams params = {
+            struct VUIKeyboardValue_InitParams params = {
                .bg_layer      = BGLAYER_TEXT,
                .palette       = PALETTE_ID_TEXT,
                .colors        = sPlainTextColors,
@@ -458,6 +472,11 @@ static void InitCB2(void) {
                .first_tile_id = V_TILE_ID(keyboard_value),
                .max_length    = MENU_STATE->max_length
             };
+            if (MENU_STATE->max_length > 10) {
+               // HACK. We should be measuring the text size instead, and centering 
+               // the value.
+               params.tile_x = VALUE_TILE_X_LONG;
+            }
             VUIKeyboardValue_Initialize(&MENU_STATE->vui.widgets.value, &params);
          }
          {  // keyboard
@@ -509,12 +528,16 @@ static void InitCB2(void) {
             buttons->accent_l.callbacks.on_press = OnButtonCharset_AccentLower;
          }
          ShortStringEntryMenu_SetUpWidgetGrid(MENU_STATE);
+DebugPrintf("[%s] Widgets initialized.", __func__);
          gMain.state++;
          break;
       case INITSTATE_TITLE_AND_ICONS:
+DebugPrintf("[%s] Setting up cursors...", __func__);
          ShortStringEntryMenu_SetUpCursors(MENU_STATE);
+DebugPrintf("[%s] Painting title and gender...", __func__);
          PaintTitleText();
          PaintGenderIcon();
+DebugPrintf("[%s] Spawning icon...", __func__);
          MENU_STATE->sprite_ids.icon = ShortStringEntryMenu_ConstructIcon(&MENU_STATE->icon);
          gMain.state++;
          break;
@@ -522,6 +545,7 @@ static void InitCB2(void) {
          BeginNormalPaletteFade(PALETTES_ALL, -1, 16, 0, RGB_BLACK);
          SetVBlankCallback(VBlankCB);
          SetMainCallback2(MainCB2);
+DebugPrintf("[%s] Proceeding to CB2...", __func__);
          return;
    }
 }
@@ -530,6 +554,7 @@ static void InitCB2(void) {
 
 static void Task_WaitFadeIn(u8 task_id) {
    if (!gPaletteFade.active) {
+DebugPrintf("[%s] Done waiting.", __func__);
       VUIKeyboardValue* widget = &MENU_STATE->vui.widgets.value;
       VUIKeyboardValue_SetUnderscoreVisibility(widget, TRUE);
       VUIKeyboardValue_ShowValue              (widget, MENU_STATE->buffer);
@@ -542,9 +567,14 @@ static void Task_OnFrame(u8 task_id) {
    
    VUICustomKeyboard* keyboard = &MENU_STATE->vui.widgets.keyboard;
    if (JOY_NEW(START_BUTTON)) {
-      VUIContext_FocusWidget(&MENU_STATE->vui.context, (VUIWidget*)&MENU_STATE->vui.widgets.button_ok);
+      auto ok_button = (VUIWidget*)&MENU_STATE->vui.widgets.button_ok;
+      if (MENU_STATE->vui.context.focused != ok_button) {
+         VUIContext_FocusWidget(&MENU_STATE->vui.context, ok_button);
+         ShortStringEntryMenu_UpdateCursors(MENU_STATE);
+      }
    } else if (JOY_NEW(SELECT_BUTTON)) {
       VUICustomKeyboard_NextCharset(keyboard);
+      OnCharsetChanged();
    } else if (JOY_NEW(B_BUTTON)) {
       VUICustomKeyboard_Backspace(keyboard);
    } else if (JOY_NEW(L_BUTTON)) {

@@ -27,16 +27,15 @@ So I've been trying to...
   
     * Maybe we should just try red as the cursor color elsewhere and see how it looks.
   
-  * Charset button cursors appear behind the charset buttons.
-  
-  * Improve the particle effect on cursors, and add a spike to the charset button cursor 
-    from which the particles emit.
-    
-* The short-string-entry menu has a solid-color green background. I think it'd be neat if we...
+  * Charset button cursor needs a little spike on the top that the sparks come from.
 
-  * Split the "backdrop" BG layer into two BG layers, with the current graphics on the upper layer.
-  
-  * Made it so that the lower layer isn't just a solid color, but rather some sort of soft, animated texture. Take some inspiration from *Super Smash Bros. Melee*: have lines or shapes that are placed at an oblique angle, and that move along the same angle.
+* Improve the rays-of-light effect in the menu backdrop, or replace it with something else.
+
+  * It occurs to me that we could have particle sprites drifting softly in the background, behind the white-shaded background layer.
+
+* Add a way to control which charsets are enabled. Walda's Password should only accept normal Latin symbols. (Low-priority.)
+
+  * This would require changing which charsets we give to the custom keyboard, and writing logic to lay out the charset buttons (centering, spacing, VUI context grid, etc.) based on which ones ought to be visible.
 
 * When the new(est) menu is confirmed to have feature parity with lu-naming-screen, make the "rename via party menu" feature use it, and wholly remove lu-naming-screen.
 

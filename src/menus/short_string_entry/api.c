@@ -1,13 +1,16 @@
 #include "menus/short_string_entry/api.h"
+#include "menus/short_string_entry/menu.h"
+#include "menus/short_string_entry/params.h"
 #include "gba/defines.h" // EWRAM_DATA
-#include "lu/naming_screen.h"
 #include "main.h" // SetMainCallback2
 #include "global.h" // dependency of pokemon.h
 #include "pokemon.h" // dependency of pokemon_storage_system.h
 #include "pokemon_storage_system.h" // BOX_NAME_LENGTH
 #include "string_util.h" // StringCopy
 #include "strings.h"
+#include "walda_phrase.h" // WALDA_PHRASE_LENGTH
 #include "constants/characters.h" // EOS
+#include "constants/event_objects.h" // OBJ_EVENT_GFX_MAN_1
 #include "constants/global.h" // PLAYER_NAME_LENGTH
 
 static EWRAM_DATA struct {
@@ -27,36 +30,56 @@ static void CommonCallback(const u8* buffer) {
 
 //
 
-extern void RenamePCBox(MainCallback cb2, u8* boxName) {
+extern void ShortStringEntryMenu_RenamePCBox(MainCallback cb2, u8* boxName) {
    sNamingScreenFollowup.main_callback_2 = cb2;
    sNamingScreenFollowup.destination     = boxName;
    
-   struct LuNamingScreenParams params = {
+   struct ShortStringEntryMenuParams params = {
       .callback      = CommonCallback,
       .initial_value = boxName,
       .max_length    = BOX_NAME_LENGTH,
       //
       .icon  = {
-         .type = LU_NAMINGSCREEN_ICONTYPE_PC,
+         .type = SHORTSTRINGENTRY_ICONTYPE_PC,
       },
       .title = gText_BoxName,
    };
-   LuNamingScreen(&params);
+   OpenShortStringEntryMenu(&params);
 }
 
-extern void RequestPlayerName(MainCallback cb2) {
+extern void ShortStringEntryMenu_RenamePlayer(MainCallback cb2) {
    sNamingScreenFollowup.main_callback_2 = cb2;
    sNamingScreenFollowup.destination     = gSaveBlock2Ptr->playerName;
    
-   struct LuNamingScreenParams params = {
+   struct ShortStringEntryMenuParams params = {
       .callback      = CommonCallback,
       .initial_value = gSaveBlock2Ptr->playerName,
       .max_length    = PLAYER_NAME_LENGTH,
       //
       .icon  = {
-         .type = LU_NAMINGSCREEN_ICONTYPE_PLAYER,
+         .type = SHORTSTRINGENTRY_ICONTYPE_PLAYER,
       },
       .title = gText_YourName,
    };
-   LuNamingScreen(&params);
+   OpenShortStringEntryMenu(&params);
+}
+
+extern void ShortStringEntryMenu_WaldasPassword(MainCallback cb2, u8* string) {
+   sNamingScreenFollowup.main_callback_2 = cb2;
+   sNamingScreenFollowup.destination     = string;
+   
+   struct ShortStringEntryMenuParams params = {
+      .callback      = CommonCallback,
+      .initial_value = string,
+      .max_length    = WALDA_PHRASE_LENGTH,
+      //
+      .icon  = {
+         .type      = SHORTSTRINGENTRY_ICONTYPE_OVERWORLD,
+         .overworld = {
+            .id = OBJ_EVENT_GFX_MAN_1,
+         },
+      },
+      .title = gText_TellHimTheWords,
+   };
+   OpenShortStringEntryMenu(&params);
 }

@@ -2,13 +2,13 @@
 #include "walda_phrase.h"
 #include "string_util.h"
 #include "event_data.h"
-#include "naming_screen.h"
 #include "main.h"
 #include "text.h"
 #include "new_game.h"
 #include "overworld.h"
 #include "pokemon_storage_system.h"
 #include "field_screen_effect.h"
+#include "menus/short_string_entry/api.h"
 
 extern const u8 gText_Peekaboo[];
 
@@ -50,7 +50,7 @@ u16 TryBufferWaldaPhrase(void)
 void DoWaldaNamingScreen(void)
 {
     StringCopy(gStringVar2, GetWaldaPhrasePtr());
-    DoNamingScreen(NAMING_SCREEN_WALDA, gStringVar2, 0, 0, 0, CB2_HandleGivenWaldaPhrase);
+    ShortStringEntryMenu_WaldasPassword(CB2_HandleGivenWaldaPhrase, gStringVar2);
 }
 
 static void CB2_HandleGivenWaldaPhrase(void)

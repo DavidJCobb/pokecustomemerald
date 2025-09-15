@@ -19,7 +19,6 @@
 #include "main.h"
 #include "menu.h"
 #include "mon_markings.h"
-#include "naming_screen.h"
 #include "overworld.h"
 #include "palette.h"
 #include "pc_screen_effect.h"
@@ -41,6 +40,7 @@
 #include "constants/rgb.h"
 #include "constants/songs.h"
 #include "constants/pokemon_icon.h"
+#include "menus/short_string_entry/api.h"
 
 /*
     NOTE: This file is large. Some general groups of functions have
@@ -3759,7 +3759,7 @@ static void Task_ChangeScreen(u8 taskId)
         break;
     case SCREEN_CHANGE_NAME_BOX:
         FreePokeStorageData();
-        DoNamingScreen(NAMING_SCREEN_BOX, GetBoxNamePtr(StorageGetCurrentBox()), 0, 0, 0, CB2_ReturnToPokeStorage);
+        ShortStringEntryMenu_RenamePCBox(CB2_ReturnToPokeStorage, GetBoxNamePtr(StorageGetCurrentBox()));
         break;
     case SCREEN_CHANGE_ITEM_FROM_BAG:
         FreePokeStorageData();
@@ -3792,6 +3792,9 @@ static void FreePokeStorageData(void)
     MultiMove_Free();
     FREE_AND_SET_NULL(sStorage);
     FreeAllWindowBuffers();
+    
+    // The PC's VBLANK callback refers to sStorage.
+    SetVBlankCallback(NULL);
 }
 
 

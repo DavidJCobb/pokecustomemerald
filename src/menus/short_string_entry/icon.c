@@ -40,7 +40,7 @@ u8 ShortStringEntryMenu_ConstructIcon(struct ShortStringEntryMenuIcon* icon) {
    switch (icon->type) { // Handle presets.
       case SHORTSTRINGENTRY_ICONTYPE_PC:
          icon->type = SHORTSTRINGENTRY_ICONTYPE_CUSTOM;
-         icon->custom.palette     = &sSpritePalette_PCIcon;
+         icon->custom.palette    = &sSpritePalette_PCIcon;
          icon->custom.template   = &sSpriteTemplate_PCIcon;
          icon->custom.subsprites = sSubspriteTable_PCIcon;
          icon->custom.offset_x   = 0;

@@ -16,7 +16,7 @@
 #include "menu.h" // CreateYesNoMenu; various menu internals, for the gender menu
 //#include "list_menu.h"
 //#include "mystery_event_menu.h"
-#include "naming_screen.h"
+//#include "naming_screen.h"
 //#include "option_menu.h"
 #include "overworld.h"
 #include "palette.h"
@@ -39,6 +39,7 @@
 //#include "mystery_gift_menu.h"
 //
 #include "lu/string_wrap.h"
+#include "menus/short_string_entry/api.h"
 
 static void Task_NewGameBirchSpeech_Init(u8);
 
@@ -691,7 +692,7 @@ static void Task_NewGameBirchSpeech_StartNamingScreen(u8 taskId)
         FreeAndDestroyMonPicSprite(gTasks[taskId].tLotadSpriteId);
         NewGameBirchSpeech_SetDefaultPlayerName(Random() % NUM_PRESET_NAMES);
         DestroyTask(taskId);
-        DoNamingScreen(NAMING_SCREEN_PLAYER, gSaveBlock2Ptr->playerName, gSaveBlock2Ptr->playerGender, 0, 0, CB2_NewGameBirchSpeech_ReturnFromNamingScreen);
+        ShortStringEntryMenu_RenamePlayer(CB2_NewGameBirchSpeech_ReturnFromNamingScreen);
     }
 }
 
