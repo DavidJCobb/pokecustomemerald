@@ -56,7 +56,6 @@
 #include "secret_base.h" // CheckPlayerHasSecretBase
 #include "string_util.h"
 #include "wallclock.h" // CB2_StartWallClock
-#include "lu/naming_screen.h"
 #include "lu/pick_species_menu.h"
 #include "lu/gfx_test_screen.h"
 #include "lu/widgets/num_edit_modal.h"

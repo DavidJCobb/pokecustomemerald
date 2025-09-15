@@ -38,5 +38,3 @@ So I've been trying to...
   * This would require changing which charsets we give to the custom keyboard, and writing logic to lay out the charset buttons (centering, spacing, VUI context grid, etc.) based on which ones ought to be visible.
 
 * Potential shutdown flow improvement described in code comments in `Task_ShowMessageOnExit`.
-
-* When the new(est) menu is confirmed to have feature parity with lu-naming-screen, wholly remove lu-naming-screen.
