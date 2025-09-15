@@ -5,7 +5,7 @@
 #include "./params.h"
 
 struct ShortStringEntryMenuParams {
-   void(*callback)(const u8*);
+   struct ShortStringEntryMenuCallbacks callbacks;
    const u8* initial_value;
    u8 max_length;
    

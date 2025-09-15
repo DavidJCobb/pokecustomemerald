@@ -12,7 +12,8 @@ extern void VUIWidget_Construct(VUIWidget* this) {
 extern void VUIWidget_Destroy(VUIWidget* this) {
    if (!this)
       return;
-   v_invoke(this, _impl_destroy)();
+   if (v_can_invoke(this, _impl_destroy))
+      v_invoke(this, _impl_destroy)();
    this->functions = &sNullVTable_Widget;
    this->disabled  = TRUE;
    this->focusable = TRUE;

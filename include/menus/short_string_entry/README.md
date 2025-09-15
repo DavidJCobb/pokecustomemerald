@@ -37,8 +37,6 @@ So I've been trying to...
 
   * This would require changing which charsets we give to the custom keyboard, and writing logic to lay out the charset buttons (centering, spacing, VUI context grid, etc.) based on which ones ought to be visible.
 
-* When the new(est) menu is confirmed to have feature parity with lu-naming-screen, make the "rename via party menu" feature use it, and wholly remove lu-naming-screen.
+* Potential shutdown flow improvement described in code comments in `Task_ShowMessageOnExit`.
 
-* Finish replacing the vanilla naming screen with the short-string-entry menu.
-
-  * When you rename a freshly caught Pokemon that's bound for the PC, you're shown a message box telling you what box it'll end up in. This box displays while still on the vanilla naming screen. We need to update our short string entry menu to support this, i.e. to have an "on before exit" callback that takes over the menu task and is capable of showing message boxes. This also means we should avoid using, in VRAM, the same palette indices and tile IDs as the vanilla message boxes and dialog frames.
+* When the new(est) menu is confirmed to have feature parity with lu-naming-screen, wholly remove lu-naming-screen.

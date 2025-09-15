@@ -705,7 +705,10 @@ static void FieldDebugMenuActionHandler_TestVUINamingScreen(u8 taskId) {
    
    #ifdef USE_SHORT_STRING_ENTRY_MENU
       struct ShortStringEntryMenuParams params = {
-         .callback      = FieldDebugMenuActionHandler_TestVUINamingScreen_Callback,
+         .callbacks     = {
+            .show_message_before_menu_exit = NULL,
+            .on_menu_exit = FieldDebugMenuActionHandler_TestVUINamingScreen_Callback,
+         },
          .initial_value = gSaveBlock2Ptr->playerName,
          .max_length    = PLAYER_NAME_LENGTH,
          //

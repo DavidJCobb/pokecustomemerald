@@ -6,6 +6,11 @@ struct SpritePalette;
 struct SpriteTemplate;
 struct SubspriteTable;
 
+struct ShortStringEntryMenuCallbacks {
+   const u8* (*show_message_before_menu_exit)(const u8* string);
+   void(*on_menu_exit)(const u8* string);
+};
+
 enum __attribute__((__packed__)) ShortStringEntryMenuIconType {
    SHORTSTRINGENTRY_ICONTYPE_NONE = 0,
    SHORTSTRINGENTRY_ICONTYPE_OVERWORLD,

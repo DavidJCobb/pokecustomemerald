@@ -2864,51 +2864,18 @@ static void CursorCb_Rename(u8 taskId) {
    Task_ClosePartyMenu(taskId);
 }
 
-#define USE_LU_NAMING_SCREEN 1
-
-#if USE_LU_NAMING_SCREEN
-   #include "lu/naming_screen.h"
-   static void OnRenameScreenDone(const u8* name) {
-      StringCopy(gStringVar2, name);
-      SetMainCallback2(CB2_ReturnToPartyMenuFromRenameScreen);
-   }
-   static void CB2_ShowPokemonRenameScreen(void) {
-      struct Pokemon* subject = &gPlayerParty[gPartyMenu.slotId];
-      GetMonData(subject, MON_DATA_NICKNAME, gStringVar2);
-      
-      struct LuNamingScreenParams params = {
-         .callback      = OnRenameScreenDone,
-         .initial_value = gStringVar2,
-         .max_length    = POKEMON_NAME_LENGTH,
-         .has_gender    = TRUE,
-         .gender        = GetMonGender(subject),
-         .icon = {
-            .type    = LU_NAMINGSCREEN_ICONTYPE_POKEMON,
-            .pokemon = {
-               .species     = GetMonData(subject, MON_DATA_SPECIES, NULL),
-               .personality = GetMonData(subject, MON_DATA_PERSONALITY, NULL),
-            },
-         },
-      };
-      ResetTasks();
-      LuNamingScreen(&params);
-   }
-#else
-   #include "naming_screen.h"
-   static void CB2_ShowPokemonRenameScreen(void) {
-      struct Pokemon* subject = &gPlayerParty[gPartyMenu.slotId];
-      GetMonData(subject, MON_DATA_NICKNAME, gStringVar2);
-      DoNamingScreen(
-         NAMING_SCREEN_NICKNAME,
-         gStringVar2,
-         GetMonData(subject, MON_DATA_SPECIES, NULL),
-         GetMonGender(subject),
-         GetMonData(subject, MON_DATA_PERSONALITY, NULL),
-         CB2_ReturnToPartyMenuFromRenameScreen
-      );
-   }
-#endif
-
+#include "menus/short_string_entry/api.h"
+static void CB2_ShowPokemonRenameScreen(void) {
+   struct Pokemon* subject = &gPlayerParty[gPartyMenu.slotId];
+   GetMonData(subject, MON_DATA_NICKNAME, gStringVar2);
+   
+   ResetTasks();
+   ShortStringEntryMenu_RenamePokemon(
+      CB2_ReturnToPartyMenuFromRenameScreen,
+      subject,
+      gStringVar2
+   );
+}
 static void CB2_ReturnToPartyMenuFromRenameScreen(void) {
    gPaletteFade.bufferTransferDisabled = TRUE;
    struct Pokemon *mon = &gPlayerParty[gPartyMenu.slotId];

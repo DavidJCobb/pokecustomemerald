@@ -81,7 +81,7 @@ extern void ShortStringEntryMenu_InitState(const struct ShortStringEntryMenuPara
    }
    STATE->max_length = max_length;
    
-   STATE->callback = params->callback;
+   STATE->callbacks = params->callbacks;
    if (params->initial_value) {
       u8* end  = StringCopy(STATE->buffer, params->initial_value);
       u16 size = end - STATE->buffer;
@@ -89,22 +89,21 @@ extern void ShortStringEntryMenu_InitState(const struct ShortStringEntryMenuPara
    }
 }
 
-extern void ShortStringEntryMenu_DestroyState(void) {
+extern void ShortStringEntryMenu_TeardownGraphics(void) {
    if (!STATE)
       return;
    UnsetBgTilemapBuffer(0);
    UnsetBgTilemapBuffer(1);
    UnsetBgTilemapBuffer(2);
    UnsetBgTilemapBuffer(3);
-   
-   if (STATE->task_id != TASK_NONE)
-      DestroyTask(STATE->task_id);
-   
    vui_context_foreach(&STATE->vui.context, widget) {
+DebugPrintf("[%s] Tearing down a widget...", __func__);
+DebugPrintf("[%s] Widget is: %08X", __func__, widget);
+if (widget) DebugPrintf("[%s] Widget VTBL is: %08X", __func__, widget->functions);
+if (widget->functions) DebugPrintf("[%s] Widget destroy v-func is: %08X", __func__, widget->functions->_impl_destroy);
       if (widget)
          VUIWidget_Destroy(widget);
    }
-   
    for(u8 i = 0; i < ARRAY_COUNT(STATE->sprite_ids.all); ++i) {
       u8 id = STATE->sprite_ids.all[i];
       if (id != SPRITE_NONE) {
@@ -112,7 +111,6 @@ extern void ShortStringEntryMenu_DestroyState(void) {
          STATE->sprite_ids.all[i] = SPRITE_NONE;
       }
    }
-   
    for(u8 i = 0; i < ARRAY_COUNT(STATE->window_ids.all); ++i) {
       u8 id = STATE->window_ids.all[i];
       if (id != WINDOW_NONE) {
@@ -120,6 +118,16 @@ extern void ShortStringEntryMenu_DestroyState(void) {
          STATE->window_ids.all[i] = WINDOW_NONE;
       }
    }
+}
+
+extern void ShortStringEntryMenu_DestroyState(void) {
+   if (!STATE)
+      return;
+   
+   if (STATE->task_id != TASK_NONE)
+      DestroyTask(STATE->task_id);
+   
+   ShortStringEntryMenu_TeardownGraphics();
    
    Free(STATE);
    STATE = NULL;

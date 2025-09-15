@@ -14,7 +14,7 @@
 struct ShortStringEntryMenuParams;
 
 struct ShortStringEntryMenuState {
-   void(*callback)(const u8*);
+   struct ShortStringEntryMenuCallbacks callbacks;
    u8 buffer[VUIKEYBOARDVALUE_MAX_SUPPORTED_SIZE + 1];
    
    struct ShortStringEntryMenuIcon icon;
@@ -65,6 +65,8 @@ extern struct ShortStringEntryMenuState* gShortStringEntryMenuState;
 extern void ShortStringEntryMenu_CreateState(void);
 
 extern void ShortStringEntryMenu_InitState(const struct ShortStringEntryMenuParams*);
+
+extern void ShortStringEntryMenu_TeardownGraphics(void);
 
 extern void ShortStringEntryMenu_DestroyState(void);
 

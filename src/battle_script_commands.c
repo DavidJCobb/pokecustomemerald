@@ -27,7 +27,7 @@
 #include "event_data.h"
 #include "pokemon_storage_system.h"
 #include "task.h"
-#include "naming_screen.h"
+//#include "naming_screen.h"
 #include "battle_setup.h"
 #include "overworld.h"
 #include "party_menu.h"
@@ -56,6 +56,7 @@
 #include "custom_game_options/script_helpers.h"
 #include "custom_game_options/options.h"
 #include "battle_util/stat_change.h"
+#include "menus/short_string_entry/api.h"
 
 extern const u8 *const gBattleScriptsForMoveEffects[];
 
@@ -10335,11 +10336,11 @@ static void Cmd_trygivecaughtmonnick(void)
             GetMonData(&gEnemyParty[gBattlerPartyIndexes[BATTLE_OPPOSITE(gBattlerAttacker)]], MON_DATA_NICKNAME, gBattleStruct->caughtMonNick);
             FreeAllWindowBuffers();
 
-            DoNamingScreen(NAMING_SCREEN_CAUGHT_MON, gBattleStruct->caughtMonNick,
-                           GetMonData(&gEnemyParty[gBattlerPartyIndexes[BATTLE_OPPOSITE(gBattlerAttacker)]], MON_DATA_SPECIES),
-                           GetMonGender(&gEnemyParty[gBattlerPartyIndexes[BATTLE_OPPOSITE(gBattlerAttacker)]]),
-                           GetMonData(&gEnemyParty[gBattlerPartyIndexes[BATTLE_OPPOSITE(gBattlerAttacker)]], MON_DATA_PERSONALITY, NULL),
-                           BattleMainCB2);
+            ShortStringEntryMenu_FreshlyCaughtPokemon(
+               BattleMainCB2,
+               &gEnemyParty[gBattlerPartyIndexes[BATTLE_OPPOSITE(gBattlerAttacker)]],
+               gBattleStruct->caughtMonNick
+            );
 
             gBattleCommunication[MULTIUSE_STATE]++;
         }
