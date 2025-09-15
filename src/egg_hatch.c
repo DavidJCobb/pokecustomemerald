@@ -30,13 +30,14 @@
 #include "scanline_effect.h"
 #include "field_weather.h"
 #include "international_string_util.h"
-#include "naming_screen.h"
+//#include "naming_screen.h"
 #include "pokemon_storage_system.h"
 #include "field_screen_effect.h"
 #include "trade.h"
 #include "data.h"
 #include "battle.h" // to get rid of later
 #include "constants/rgb.h"
+#include "menus/short_string_entry/api.h"
 
 #define GFXTAG_EGG       12345
 #define GFXTAG_EGG_SHARD 23456
@@ -689,10 +690,17 @@ static void CB2_EggHatch(void)
         {
         case 0: // Yes
             GetMonNickname2(&gPlayerParty[sEggHatchData->eggPartyId], gStringVar3);
+            /*//
             species = GetMonData(&gPlayerParty[sEggHatchData->eggPartyId], MON_DATA_SPECIES);
             gender = GetMonGender(&gPlayerParty[sEggHatchData->eggPartyId]);
             personality = GetMonData(&gPlayerParty[sEggHatchData->eggPartyId], MON_DATA_PERSONALITY, 0);
             DoNamingScreen(NAMING_SCREEN_NICKNAME, gStringVar3, species, gender, personality, EggHatchSetMonNickname);
+            //*/
+            ShortStringEntryMenu_RenamePokemon(
+               EggHatchSetMonNickname,
+               &gPlayerParty[sEggHatchData->eggPartyId],
+               gStringVar3
+            );
             break;
         case 1: // No
         case MENU_B_PRESSED:

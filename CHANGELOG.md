@@ -63,6 +63,8 @@
 
 * You can now rename Pokémon via the party menu.
 
+* When naming the player-character or a Pokémon, you can now use accented letters. A new menu UI is used for entering short strings, making it possible to tab horizontally through keyboard pages using L and R, in addition to being able to advance through pages using Select as in vanilla.
+
 * When EXP is earned in battles and divided amongst the participants, Lv. 100 Pokemon no longer waste any of the EXP.
 
 * **Battle ambient weather:** In battles, while selecting an action, the animation for the current weather will play in a loop. Additionally, messages like "Rain continues to fall" no longer display, improving pacing.

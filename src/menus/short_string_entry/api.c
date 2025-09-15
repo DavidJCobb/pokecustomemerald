@@ -163,10 +163,17 @@ extern void ShortStringEntryMenu_RenamePokemon(
    struct Pokemon* pokemon,
    u8*             dst_nickname
 ) {
+   ShortStringEntryMenu_RenameBoxPokemon(cb2, &pokemon->box, dst_nickname);
+}
+extern void ShortStringEntryMenu_RenameBoxPokemon(
+   MainCallback       cb2,
+   struct BoxPokemon* pokemon,
+   u8*                dst_nickname
+) {
    sNamingScreenFollowup.main_callback_2 = cb2;
    sNamingScreenFollowup.destination     = dst_nickname;
    
-   u16 species = GetMonData(pokemon, MON_DATA_SPECIES);
+   u16 species = GetBoxMonData(pokemon, MON_DATA_SPECIES);
    
    StringCopy(gStringVar1, gSpeciesNames[species]);
    StringExpandPlaceholders(gStringVar4, gText_PkmnsNickname);
@@ -180,12 +187,12 @@ extern void ShortStringEntryMenu_RenamePokemon(
       .max_length    = POKEMON_NAME_LENGTH,
       //
       .has_gender = TRUE,
-      .gender     = GetMonGender(pokemon),
+      .gender     = GetBoxMonGender(pokemon),
       .icon       = {
          .type    = SHORTSTRINGENTRY_ICONTYPE_POKEMON,
          .pokemon = {
             .species     = species,
-            .personality = GetMonData(pokemon, MON_DATA_PERSONALITY, NULL)
+            .personality = GetBoxMonData(pokemon, MON_DATA_PERSONALITY, NULL)
          },
       },
       .title = gStringVar4,

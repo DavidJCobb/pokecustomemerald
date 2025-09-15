@@ -26,7 +26,7 @@
 #include "event_object_movement.h"
 #include "text.h"
 #include "script_menu.h"
-#include "naming_screen.h"
+//#include "naming_screen.h"
 #include "malloc.h"
 #include "region_map.h"
 #include "decoration.h"
@@ -45,6 +45,7 @@
 #include "constants/metatile_labels.h"
 #include "constants/moves.h"
 #include "constants/region_map_sections.h"
+#include "menus/short_string_entry/api.h"
 
 #define LAST_TVSHOW_IDX (TV_SHOWS_COUNT - 1)
 
@@ -3295,7 +3296,14 @@ void ChangePokemonNickname(void)
 
     GetMonData(&gPlayerParty[gSpecialVar_0x8004], MON_DATA_NICKNAME, gStringVar3);
     GetMonData(&gPlayerParty[gSpecialVar_0x8004], MON_DATA_NICKNAME, gStringVar2);
+    /*//
     DoNamingScreen(NAMING_SCREEN_NICKNAME, gStringVar2, GetMonData(&gPlayerParty[gSpecialVar_0x8004], MON_DATA_SPECIES, NULL), GetMonGender(&gPlayerParty[gSpecialVar_0x8004]), GetMonData(&gPlayerParty[gSpecialVar_0x8004], MON_DATA_PERSONALITY, NULL), ChangePokemonNickname_CB);
+    //*/
+    ShortStringEntryMenu_RenameBoxPokemon(
+      ChangePokemonNickname_CB,
+      &gPlayerParty[gSpecialVar_0x8004].box,
+      gStringVar2
+    );
 }
 
 void ChangePokemonNickname_CB(void)
@@ -3311,7 +3319,14 @@ void ChangeBoxPokemonNickname(void)
     boxMon = GetBoxedMonPtr(gSpecialVar_MonBoxId, gSpecialVar_MonBoxPos);
     GetBoxMonData(boxMon, MON_DATA_NICKNAME, gStringVar3);
     GetBoxMonData(boxMon, MON_DATA_NICKNAME, gStringVar2);
+    /*//
     DoNamingScreen(NAMING_SCREEN_NICKNAME, gStringVar2, GetBoxMonData(boxMon, MON_DATA_SPECIES, NULL), GetBoxMonGender(boxMon), GetBoxMonData(boxMon, MON_DATA_PERSONALITY, NULL), ChangeBoxPokemonNickname_CB);
+    //*/
+    ShortStringEntryMenu_RenameBoxPokemon(
+      ChangeBoxPokemonNickname_CB,
+      boxMon,
+      gStringVar2
+    );
 }
 
 static void ChangeBoxPokemonNickname_CB(void)
