@@ -58,6 +58,8 @@ Add new options:
       * Next Gym Leader: "The player cannot train any Pokemon beyond the level of the strongest Pokemon on the next Gym Leader's team. Once all Gym Leaders are defeated, Rival and Champion battles determine the cap."
   * Cap player party size
     * *If capped to size 1, we have to allow the player to always enter Double Battles, so that Tate & Liza isn't a softlock.*
+    * *If the player changes this option during play, setting it to a lower number than the number of Pokemon in their party, then we must either automatically send their surplus party members to the PC, or refuse to let them lower the value if insufficient space remains in the PC.*
+    * *If capped to size 1, eggs must be considered an exception to the limit, and must be redirected to the PC upon hatching. Hatching must be blocked if insufficient space remains in the PC. If we don't do things this way, then hatching eggs will be literally impossible.*
   * Double Battles (Normal/Permissive/Forced/Disabled)
     * Normal: "You can enter Double Battles if you have at least two Pokemon, or if other options have limited your party size to one Pokemon."
       * *We have to let the player enter Double Battles if they cap their party size to 1, so that Tate & Liza isn't a softlock.*
@@ -191,9 +193,6 @@ Add new options:
 * Physical/special split
 
 ### Cheat/debug menus
-* Field Debug Menu
-  * Use any field move
-    * Implement Secret Power.
 * Battles
   * ...
 * Utility
