@@ -23,10 +23,7 @@
    lsl  r0, r0, #BITSHIFT_PER_PALETTE
    add  r0, r5
    push {r1,r2,r4,r5}
-   push {lr}
    cpufastset
-   pop  {r1}
-   mov  lr, r1
    pop  {r1,r2,r4,r5}
 HiColor_HBlank_Asm_lAfterCopy\index_a :
    add  r1, #PLTT_SIZE_4BPP
