@@ -23,6 +23,20 @@
 
 #define USE_ASM_FOR_HICOLOR_HBLANK   1
 
+// Control whether we copy the HiColor h-blank ASM handler into IWRAM when we initialize 
+// HiColor. This would, theoretically, allow the subroutine to run faster (read: with 
+// fewer clock cycles) than if it were executed from ROM.
+//
+// If you enable this setting, you MUST make sure that the "size in bytes" macro has the 
+// correct value. Check the *.map file output by the build process to see the size of 
+// the HiColor_HBlank_Asm subroutine. (Our current implementation works by copying the 
+// assembled function into a buffer in IWRAM. We could look into setting up a unified 
+// macro somewhere, to be included both here and by the assembly, that actually places 
+// the original assembly function in the COMMON section and avoids the need for the 
+// copy operation.)
+#define RUN_HICOLOR_ASM_FROM_IWRAM   0
+#define HICOLOR_ASM_SUBROUTINE_SIZE_IN_BYTES 0x164
+
 // Control whether and how we check for "zombie" sprites during our CB2 handler, i.e. 
 // sprites that were destroyed without being unregistered first. "Eager" detection 
 // means that we check for them while mapping HiColor palettes to VRAM, potentially 
@@ -92,6 +106,23 @@ struct HiColorSpriteState;
    static void ComputeSpriteBounds(struct HiColorSpriteState*, bool8 force);
    
    static void UpdateHiColorSpriteStates(void);
+#endif
+#if USE_ASM_FOR_HICOLOR_HBLANK
+   extern void HiColor_HBlank_Asm(const void*, const void*) GNU_ATTR(naked);
+   #if RUN_HICOLOR_ASM_FROM_IWRAM
+      //
+      // THUMB can't jump directly from code that lives in ROM to code 
+      // that lives in IWRAM. There's no equivalent to x86's `CALL EAX` 
+      // or `JMP EAX`. However, ARM has such a capability, so we have a 
+      // small ARM shim that takes a pointer to the target subroutine 
+      // as an additional argument, while forwarding the original args.
+      //
+      GNU_ATTR(target("arm")) extern void HiColor_HBlank_Asm_ViaArm(
+         const void* scanline,
+         void*       palettes,
+         void(*thumb_handler_in_iwram)(const void*, const void*)
+      ) GNU_ATTR(naked);
+   #endif
 #endif
 
 struct OamDimensions {
@@ -165,9 +196,25 @@ struct HiColorState {
 };
 
 ALIGNED(4) EWRAM_DATA static struct HiColorState sHiColorState = {0};
+#if USE_ASM_FOR_HICOLOR_HBLANK && RUN_HICOLOR_ASM_FROM_IWRAM
+   //
+   // The IWRAM_DATA macro puts things in wherever .bss is. The COMMON_DATA 
+   // macro puts things in IWRAM.
+   //
+   ALIGNED(4) COMMON_DATA static u8 sHiColorIWRAMAssemblyBuffer[
+      HICOLOR_ASM_SUBROUTINE_SIZE_IN_BYTES + ((HICOLOR_ASM_SUBROUTINE_SIZE_IN_BYTES % 4) ? 4 - (HICOLOR_ASM_SUBROUTINE_SIZE_IN_BYTES % 4) : 0)
+   ];
+#endif
 
 extern void HiColor_Init(void) {
    HiColor_Reset();
+   #if RUN_HICOLOR_ASM_FROM_IWRAM
+      CpuFastSet(
+         (const void*)HiColor_HBlank_Asm,
+         sHiColorIWRAMAssemblyBuffer,
+         sizeof(sHiColorIWRAMAssemblyBuffer) / sizeof(u32)
+      );
+   #endif
 }
 extern void HiColor_Reset(void) {
    sHiColorState.available_vram_palettes          = 0;
@@ -577,18 +624,24 @@ extern void HiColor_VBlank(void) {
    DebugPrintf("[HiColor_VBlank] Switched live buffer to #%d.", sHiColorState.hblank_state.live_buffer_index);
 }
 
-#if USE_ASM_FOR_HICOLOR_HBLANK
-   extern void HiColor_HBlank_Asm(const void*, void*) GNU_ATTR(naked);
-#endif
 extern void HiColor_HBlank(void) GNU_ATTR(optimize(3)) {
    uint_fast8_t vcount = REG_VCOUNT;
    if (vcount >= DISPLAY_HEIGHT)
       return;
    
    #if USE_ASM_FOR_HICOLOR_HBLANK
-      const u8* scanline = sHiColorState.hblank_state.hicolor_palettes_per_scanline[sHiColorState.hblank_state.live_buffer_index][vcount];
-      auto      blending = sHiColorState.palettes.blending;
-      HiColor_HBlank_Asm(scanline, blending);
+      const u8*  scanline = sHiColorState.hblank_state.hicolor_palettes_per_scanline[sHiColorState.hblank_state.live_buffer_index][vcount];
+      const auto blending = sHiColorState.palettes.blending;
+         typedef void(*HBlankHandler)(const void*, const void*);
+      #if RUN_HICOLOR_ASM_FROM_IWRAM
+         HiColor_HBlank_Asm_ViaArm(
+            scanline,
+            blending,
+            (HBlankHandler)sHiColorIWRAMAssemblyBuffer
+         );
+      #else
+         HiColor_HBlank_Asm(scanline, blending);
+      #endif
    #else
       const u8* scanline = sHiColorState.hblank_state.hicolor_palettes_per_scanline[sHiColorState.hblank_state.live_buffer_index][vcount];
       uint_fast8_t pal;

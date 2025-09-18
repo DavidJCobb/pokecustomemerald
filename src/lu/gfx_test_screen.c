@@ -176,7 +176,7 @@ static void CB2_Init(void) {
       // graphics resources.
       //
       case 1:
-         HiColor_Reset();
+         HiColor_Init();
          HiColor_SetAvailableVRAMPalettes(0xFFFC);
          InitBgsFromTemplates(0, sBgTemplates, ARRAY_COUNT(sBgTemplates));
          for(u8 i = 0; i < ARRAY_COUNT(sBgTemplates); ++i) {

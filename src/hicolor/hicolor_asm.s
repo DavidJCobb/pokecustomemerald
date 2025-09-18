@@ -3,6 +3,8 @@
 .set PLTT_SIZE_4BPP,     0x20
 .set COLORS_PER_PALETTE, 16
 
+.set FACILITATE_RUNNING_FROM_IWRAM, 0
+
 @ 16 colors * 2 bytes per color = 32 bytes == 1 << 5
 .set BITSHIFT_PER_PALETTE, 5
 
@@ -154,3 +156,22 @@ HiColor_HBlank_Asm:
    mov  r11, r5
    pop  {r4-r7,pc}
 .size HiColor_HBlank_Asm, .-HiColor_HBlank_Asm
+
+.if FACILITATE_RUNNING_FROM_IWRAM
+@
+@ THUMB can't jump directly from code that lives in ROM to code 
+@ that lives in IWRAM. There's no equivalent to x86's `CALL EAX` 
+@ or `JMP EAX`. However, ARM has such a capability, so we have a 
+@ small ARM shim that takes a pointer to the target subroutine 
+@ as an additional argument, while forwarding the original args.
+@
+.align 4, 0
+.global HiColor_HBlank_Asm_ViaArm
+.arch armv4t
+.arm
+.type HiColor_HBlank_Asm_ViaArm, %function
+HiColor_HBlank_Asm_ViaArm:
+   orr r2, r2, #1 @ Set THUMB flag.
+   bx  r2
+.size HiColor_HBlank_Asm_ViaArm, .-HiColor_HBlank_Asm_ViaArm
+.endif
