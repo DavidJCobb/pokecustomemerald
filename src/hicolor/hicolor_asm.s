@@ -1,7 +1,7 @@
-@.include "./../../asm/macros/function.inc"
 
-.set OBJ_PLTT,       0x05000200
-.set PLTT_SIZE_4BPP, 0x20
+.set OBJ_PLTT,           0x05000200
+.set PLTT_SIZE_4BPP,     0x20
+.set COLORS_PER_PALETTE, 16
 
 @ 16 colors * 2 bytes per color = 32 bytes == 1 << 5
 .set BITSHIFT_PER_PALETTE, 5
@@ -48,17 +48,23 @@
 @
 
 .macro loop_body index_a:req
+.set IS_NOT_LAST_ITERATION, (\index_a - COLORS_PER_PALETTE)
+   @
    ldrb r0, [r4, #\index_a]
    cmp  r0, #255
    beq  HiColor_HBlank_Asm_lAfterCopy\index_a
    lsl  r0, r0, #BITSHIFT_PER_PALETTE
    add  r0, r10
    @
+   @ Where r0 was previously a HiColor palette index P, it is now 
+   @ a pointer to sHiColorState.palettes.blending[P].
+   @
    @ r2 will be clobbered by CpuFastSet, but we only use it for 
    @ CpuFastSet, so we should just set it immediately prior to 
    @ each CpuFastSet call.
    @
    mov  r2, #(PLTT_SIZE_4BPP / 4)
+   cpufastset
    @
    @ We have to protect registers r1 and r4 from being altered or 
    @ clobbered by CpuFastSet. The intuitively obvious way to do 
@@ -73,23 +79,23 @@
    @    that a jump is 2S+1N, whereas the redundant SUB/ADD totals 
    @    up to 2S, which is cheaper.)
    @ 
-   @  - r4 can be backed up in a register, and restored via a move. 
-   @    If we back it up at the start of our subroutine, then this 
-   @    incurs just the 1S from restoring it, per loop.
+   @  - r4 can be backed up in a high register (r11), and restored 
+   @    via a move. If we back it up at the start of our subroutine, 
+   @    then this incurs just the 1S from restoring it, per loop.
    @
-   @ This is ultimately preferable to PUSHing and POPping all three 
-   @ of the registers ((1S+2N+1I) * 2). The totals are 2S per loop 
-   @ for this version, versus 2S+4N+2I if we used the stack.
+   @ This is ultimately preferable to PUSHing and POPping both of 
+   @ the registers ((1S+2N+1I) * 2). The totals are 2S per loop 
+   @ for this version, versus 2S+4N+2I if we used the stack for r1 
+   @ and r4.
    @
-   @ Additionally, by setting r2 near the start of this macro, we 
-   @ skip the need to initialize it, and we avoid restoring it at 
-   @ the very end of the function, when we no longer need it.
-   @
-   cpufastset
-   mov  r4, r11
-   sub  r1, #PLTT_SIZE_4BPP
+   .if IS_NOT_LAST_ITERATION
+      mov  r4, r11
+      sub  r1, #PLTT_SIZE_4BPP
+   .endif
 HiColor_HBlank_Asm_lAfterCopy\index_a :
-   add  r1, #PLTT_SIZE_4BPP
+   .if IS_NOT_LAST_ITERATION
+      add  r1, #PLTT_SIZE_4BPP
+   .endif
 .endm
 
 .align 2, 0
@@ -98,10 +104,25 @@ HiColor_HBlank_Asm_lAfterCopy\index_a :
 .thumb_func
 .type HiColor_HBlank_Asm, %function
 HiColor_HBlank_Asm:
-   push {r2,r4,lr}
-   mov  r2, r10
-   mov  r4, r11 @ TODO: does devkitARM have an ABI that considers upper registers temporary?
-   push {r2,r4} @       if so, we can skip the overhead of pushing and popping them
+   @
+   @ Prologue. ARM EABI considers r0-r3 as scratch registers. Only 
+   @ low registers (r0-r7) and call-related registers (lr/pc) can 
+   @ be pushed/popped directly; high registers need to be copied  
+   @ into low registers and then pushed (and the same in reverse 
+   @ to pop).
+   @
+   @ Registers r2-r9 are clobbered by CpuFastSet, and we use some 
+   @ high registers to work around that (see above), so we pretty 
+   @ much have to protect all non-scratch, non-special registers.
+   @
+   push {r4-r7,lr}
+   mov  r2,  r8
+   mov  r3,  r9
+   mov  r4,  r10
+   mov  r5,  r11
+   push {r2,r3,r4,r5}
+   @
+   @ Body.
    @
    mov  r4,  r0
    mov  r10, r1
@@ -124,8 +145,12 @@ HiColor_HBlank_Asm:
    loop_body 14
    loop_body 15
    @
-   pop  {r2,r4}
-   mov  r10, r2
-   mov  r11, r4
-   pop  {r2,r4,pc}
+   @ Epilogue.
+   @
+   pop  {r2,r3,r4,r5}
+   mov  r8,  r2
+   mov  r9,  r3
+   mov  r10, r4
+   mov  r11, r5
+   pop  {r4-r7,pc}
 .size HiColor_HBlank_Asm, .-HiColor_HBlank_Asm
