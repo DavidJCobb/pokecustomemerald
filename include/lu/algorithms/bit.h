@@ -2,6 +2,9 @@
 #define GUARD_LU_BIT
 
 #include "gba/types.h"
+#ifndef CHAR_BIT
+   #include <limits.h>
+#endif
 
 inline static u8    BitCeil8(u8);
 inline static u16   BitCeil16(u16);
@@ -54,7 +57,7 @@ inline static u16 BitCeil16(u16 v) {
          return CHAR_BIT * sizeof(v); \
       v = (v ^ (v - 1)) >> 1; /* set trailing 0s to 1s, and clear the rest */ \
       u8 count = 0;                   \
-      for(; v; ++c)                   \
+      for(; v; ++count)               \
          v >>= 1;                     \
       return count;                   \
    }
@@ -77,7 +80,7 @@ inline static u16 BitFloor16(u16 v) {
    inline static u8 Name(T v) {   \
       u8 width = 0;               \
       while (v >>= 1)             \
-         ++r;                     \
+         ++width;                 \
    }
 DEFINE_FUNC(BitWidth8,  u8)
 DEFINE_FUNC(BitWidth16, u16)
@@ -92,7 +95,7 @@ DEFINE_FUNC(HasSingleBit16, u16)
 #define DEFINE_FUNC(Name, T) \
    inline static u8 Name(T v) {  \
       u8 count = 0;              \
-      for(; v; ++c)              \
+      for(; v; ++count)          \
          v &= v - 1;             \
       return count;              \
    }
