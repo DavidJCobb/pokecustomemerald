@@ -35,6 +35,11 @@
 // into VRAM as if the sprite stretched N pixels further up than it really does). Use 
 // this to account for the fact that even with the fastest possible copies during the 
 // h-blank interrupt, we may still be a scanline late.
+//
+// Our h-blank interrupt seems to always be a scanline late, so this has to be at least 
+// 1. The sheer amount of data we're copying means that we don't finish during the 
+// h-blank time window -- pixels are already being set, right-to-left, by the time 
+// we're done -- so this has to be 2+ at least for the right third or so of the screen.
 #define PALETTES_EARLY_BY_SCANLINES  2
 
 // Any sprites with a Y-coordinate below this value will be treated as if they extend 
@@ -466,7 +471,7 @@ extern void HiColor_OverwritePaletteByTag(HiColorPaletteTag tag, const u16 color
    
    static void UpdateHiColorSpriteStates(void) {
       sHiColorState.hblank_state.staging_in_progress = TRUE;
-      u8 which_is_staging = sHiColorState.hblank_state.live_buffer_index ^ 1;
+      uint_fast8_t which_is_staging = sHiColorState.hblank_state.live_buffer_index ^ 1;
       #if SKIP_UPDATES_IF_ONLY_BARELY_STALE
          if (
             sHiColorState.hblank_state.last_updated_buffer == which_is_staging
@@ -483,9 +488,9 @@ DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", which_is_stagi
       ScanlineData* scanline_list = &sHiColorState.hblank_state.hicolor_palettes_per_scanline[which_is_staging][0];
       CpuFill32(0xFFFFFFFF, scanline_list, sizeof(ScanlineData) * DISPLAY_HEIGHT);
       
-      u8 first_permitted_palette_index = BitCountRZero16(sHiColorState.available_vram_palettes);
+      uint_fast8_t first_permitted_palette_index = BitCountRZero16(sHiColorState.available_vram_palettes);
       
-      for(u8 i = 0; i < HICOLOR_MAX_SPRITES; ++i) {
+      for(uint_fast8_t i = 0; i < HICOLOR_MAX_SPRITES; ++i) {
          auto state = &sHiColorState.sprite_state[i];
          if (!state->sprite)
             continue;
@@ -501,14 +506,14 @@ DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", which_is_stagi
          ComputeSpriteBounds(state, FALSE);
          if (state->screen_bounds.top == state->screen_bounds.bottom)
             continue;
-         const u8 hicolor_index = state->hicolor_palette_index;
+         const uint_fast8_t hicolor_index = state->hicolor_palette_index;
          #if HICOLOR_PALETTE_COUNT < HICOLOR_MAX_SPRITES
             if (hicolor_index >= HICOLOR_PALETTE_COUNT)
                continue;
          #endif
          
-         u8 vram_index = 0xFF;
-         u8 y          = state->screen_bounds.top;
+         uint_fast8_t vram_index = 0xFF;
+         uint_fast8_t y          = state->screen_bounds.top;
          if (y < LOST_CAUSE_SCANLINES)
             y = 0;
          else if (y >= PALETTES_EARLY_BY_SCANLINES)
@@ -516,8 +521,8 @@ DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", which_is_stagi
          {
             u8* scanline = scanline_list[y];
             
-            u8  j   = first_permitted_palette_index;
-            u16 bit = 1 << j;
+            uint_fast8_t  j   = first_permitted_palette_index;
+            uint_fast16_t bit = 1 << j;
             for(; j < VRAM_PALETTE_COUNT; ++j, bit <<= 1) {
                if (scanline[j] != 0xFF)
                   continue;

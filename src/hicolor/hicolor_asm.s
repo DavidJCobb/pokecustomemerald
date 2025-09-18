@@ -100,8 +100,8 @@ HiColor_HBlank_Asm_lAfterCopy\index_a :
 HiColor_HBlank_Asm:
    push {r2,r4,lr}
    mov  r2, r10
-   mov  r4, r11
-   push {r2,r4}
+   mov  r4, r11 @ TODO: does devkitARM have an ABI that considers upper registers temporary?
+   push {r2,r4} @       if so, we can skip the overhead of pushing and popping them
    @
    mov  r4,  r0
    mov  r10, r1
