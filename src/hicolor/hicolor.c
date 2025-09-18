@@ -35,7 +35,7 @@
 // into VRAM as if the sprite stretched N pixels further up than it really does). Use 
 // this to account for the fact that even with the fastest possible copies during the 
 // h-blank interrupt, we may still be a scanline late.
-#define PALETTES_EARLY_BY_SCANLINES  0
+#define PALETTES_EARLY_BY_SCANLINES  2
 
 // Any sprites with a Y-coordinate below this value will be treated as if they extend 
 // to the top of the screen, i.e. h-blank will set up their palettes as early as it 
