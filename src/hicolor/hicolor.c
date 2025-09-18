@@ -25,7 +25,7 @@
 // means that we check for them while mapping HiColor palettes to VRAM, potentially 
 // slowing that operation down; "non-eager" detection means we check for them after 
 // HiColor-to-VRAM mappings are built.
-#define GUARD_AGAINST_ZOMBIE_SPRITES 1 // Check for zombie sprites during our CB2 handler.
+#define GUARD_AGAINST_ZOMBIE_SPRITES 0 // Check for zombie sprites during our CB2 handler.
 #define EAGER_DETECT_ZOMBIE_SPRITES  0 // Check for zombie sprites early.
 
 // Set up each sprite's palette N scanlines early (i.e. allocate palettes for copying 
@@ -36,13 +36,16 @@
 
 // Any sprites with a Y-coordinate below this value will be treated as if they extend 
 // to the top of the screen, i.e. h-blank will set up their palettes as early as it 
-// possibly can.
-#define LOST_CAUSE_SCANLINES 8
+// possibly can. As of this writing, this doesn't seem to be needed in tests, but it's 
+// been left here in case anything is slow enough that we can't properly handle the 
+// topmost scanlines on-screen. That was happening in early development, and I can't 
+// say I'm altogether sure how (and therefore whether) I (truly) fixed it.
+#define LOST_CAUSE_SCANLINES 0
 
 // Control whether we re-check sprites' sizes per frame. As of this writing, what we 
 // check is, specifically, whether the sprite's affine transform mode or subsprite 
 // table index have changed.
-#define RECHECK_SPRITE_SIZES_PER_FRAME 1
+#define RECHECK_SPRITE_SIZES_PER_FRAME 0
 
 //
 // End of configuration.
@@ -222,8 +225,8 @@ static void DestroySpriteState(struct HiColorSpriteState* state) {
 }
 //
 extern bool8 HiColor_RegisterSprite(struct Sprite* sprite, HiColorPaletteTag hicolor_palette_tag, bool8 palette_already_loaded) {
-   AGB_ASSERT(sprite != NULL && "Don't register a null sprite pointer!");
-   AGB_ASSERT(sprite->inUse && "Don't register sprites with HiColor if the sprites don't exist!");
+   AGB_ASSERT(sprite != NULL && "[HiColor_RegisterSprite] Don't register a null sprite pointer!");
+   AGB_ASSERT(sprite->inUse && "[HiColor_RegisterSprite] Don't register sprites with HiColor if the sprites don't exist!");
    bool8 assigned = FALSE;
    u8    i        = 0;
    for(; i < HICOLOR_MAX_SPRITES; ++i) {
@@ -234,7 +237,11 @@ extern bool8 HiColor_RegisterSprite(struct Sprite* sprite, HiColorPaletteTag hic
          state->hicolor_palette_index = AllocateHiColorPalette(hicolor_palette_tag, palette_already_loaded ? sprite->oam.paletteNum : 0xFF);
          #ifndef NDEBUG
             if (state->hicolor_palette_index == INVALID_HICOLOR_PALETTE_INDEX) {
-               DebugPrintf("[HiColor_RegisterSprite] WARNING: Failed to allocate a HiColor palette for sprite ID %u. This shouldn't be possible, as we currently always have the same number of HiColor palettes and registerable sprites. Nonetheless, the sprite has been registered.", (u32)sprite / sizeof(struct Sprite));
+               #if HICOLOR_PALETTE_COUNT < HICOLOR_MAX_SPRITES
+                  DebugPrintf("[HiColor_RegisterSprite] WARNING: Failed to allocate a HiColor palette for sprite ID %u. Nonetheless, the sprite has been registered.", (u32)sprite / sizeof(struct Sprite));
+               #else
+                  AGB_ASSERT(FALSE && "[HiColor_RegisterSprite] Somehow we were able to register a sprite, but unable to allocate a palette for it. We have room for exactly as many palettes as the number of sprites that can be registered, so this can only happen if our internal systems fail to free palettes when they're no longer in use.");
+               #endif
             }
          #endif
          RecalcSpriteSize(state, TRUE);
@@ -242,13 +249,13 @@ extern bool8 HiColor_RegisterSprite(struct Sprite* sprite, HiColorPaletteTag hic
          assigned = TRUE;
          break;
       }
-      AGB_ASSERT(state->sprite != sprite && "Don't register a sprite with HiColor multiple times!");
+      AGB_ASSERT(state->sprite != sprite && "[HiColor_RegisterSprite] Don't register a sprite with HiColor multiple times!");
    }
    #ifndef NDEBUG
       if (assigned) {
          for(++i; i < HICOLOR_MAX_SPRITES; ++i) {
             auto state = &sHiColorState.sprite_state[i];
-            AGB_ASSERT(state->sprite != sprite && "Don't register a sprite with HiColor multiple times!");
+            AGB_ASSERT(state->sprite != sprite && "[HiColor_RegisterSprite] Don't register a sprite with HiColor multiple times!");
          }
       }
    #endif
@@ -261,6 +268,7 @@ extern void HiColor_UnregisterSprite(struct Sprite* sprite) {
       if (state->sprite != sprite)
          continue;
       DestroySpriteState(state);
+      return;
    }
 }
 
@@ -546,6 +554,8 @@ DebugPrintf("[HiColor_VBlank] Switched staging buffer to #%d.", sHiColorState.hb
 extern void HiColor_HBlank(void) {
    u8 live_buffer = sHiColorState.hblank_state.which_is_staging ^ 1;
    u8 vcount      = REG_VCOUNT;
+   if (vcount >= DISPLAY_HEIGHT)
+      return;
    const u8* scanline = sHiColorState.hblank_state.hicolor_palettes_per_scanline[live_buffer][vcount];
    
    u8 pal;
