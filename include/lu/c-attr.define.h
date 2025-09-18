@@ -43,3 +43,14 @@
       #define FALLTHROUGH
    #endif
 #endif
+
+
+#if __STDC_VERSION__ >= 202311L
+   #define GNU_ATTR(content) [[gnu::content]]
+#else
+   #if __GNU_C__
+      #define GNU_ATTR(content) __attribute__((content))
+   #else
+      #define GNU_ATTR(content)
+   #endif
+#endif

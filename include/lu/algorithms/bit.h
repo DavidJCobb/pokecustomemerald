@@ -6,18 +6,20 @@
    #include <limits.h>
 #endif
 
-inline static u8    BitCeil8(u8);
-inline static u16   BitCeil16(u16);
-inline static u8    BitCountRZero8(u8);   // Count number of zeroed least-significant bits
-inline static u8    BitCountRZero16(u16); //
-inline static u8    BitFloor8(u8);
-inline static u16   BitFloor16(u16);
-inline static u8    BitWidth8(u8);
-inline static u8    BitWidth16(u16);
-inline static bool8 HasSingleBit8(u8);
-inline static bool8 HasSingleBit16(u16);
-inline static u8    Popcount8(u8);
-inline static u8    Popcount16(u16);
+#include "lu/c-attr.define.h"
+
+inline static u8    BitCeil8(u8)         GNU_ATTR(const);
+inline static u16   BitCeil16(u16)       GNU_ATTR(const);
+inline static u8    BitCountRZero8(u8)   GNU_ATTR(const); // Count zeroed least-significant bits
+inline static u8    BitCountRZero16(u16) GNU_ATTR(const); //
+inline static u8    BitFloor8(u8)        GNU_ATTR(const);
+inline static u16   BitFloor16(u16)      GNU_ATTR(const);
+inline static u8    BitWidth8(u8)        GNU_ATTR(const);
+inline static u8    BitWidth16(u16)      GNU_ATTR(const);
+inline static bool8 HasSingleBit8(u8)    GNU_ATTR(const);
+inline static bool8 HasSingleBit16(u16)  GNU_ATTR(const);
+inline static u8    Popcount8(u8)        GNU_ATTR(const);
+inline static u8    Popcount16(u16)      GNU_ATTR(const);
 
 //
 // Definitions below.
@@ -65,12 +67,12 @@ DEFINE_FUNC(BitCountRZero8,  u8);
 DEFINE_FUNC(BitCountRZero16, u16);
 #undef DEFINE_FUNC
 
-inline static u8 BitFloor8(u8 v) {
+inline static u8 BitFloor8(u8 v) GNU_ATTR(flatten) {
    if (v)
       return (u8)1 << (BitWidth8(v) - 1);
    return 0;
 }
-inline static u16 BitFloor16(u16 v) {
+inline static u16 BitFloor16(u16 v) GNU_ATTR(flatten) {
    if (v)
       return (u16)1 << (BitWidth16(v) - 1);
    return 0;
@@ -104,3 +106,5 @@ DEFINE_FUNC(Popcount16, u16)
 #undef DEFINE_FUNC
 
 #endif
+
+#include "lu/c-attr.undef.h"

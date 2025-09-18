@@ -3,3 +3,4 @@
 #undef RETURNS_NON_NULL
 #undef NODISCARD
 #undef FALLTHROUGH
+#undef GNU_ATTR

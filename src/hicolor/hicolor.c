@@ -10,6 +10,7 @@
 #include "global.h" // for transitive include of <string.h>
 #include "palette.h"
 #include "sprite.h"
+#include "lu/c-attr.define.h"
 
 //
 // Configuration:
@@ -19,6 +20,8 @@
 // VRAM during the h-blank interrupt. The former would make us incompatible with the 
 // Game Freak "scanline effect" system.
 #define USE_DMA_FOR_HICOLOR_HBLANK   0
+
+#define USE_ASM_FOR_HICOLOR_HBLANK   1
 
 // Control whether and how we check for "zombie" sprites during our CB2 handler, i.e. 
 // sprites that were destroyed without being unregistered first. "Eager" detection 
@@ -32,7 +35,7 @@
 // into VRAM as if the sprite stretched N pixels further up than it really does). Use 
 // this to account for the fact that even with the fastest possible copies during the 
 // h-blank interrupt, we may still be a scanline late.
-#define PALETTES_EARLY_BY_SCANLINES  2
+#define PALETTES_EARLY_BY_SCANLINES  0
 
 // Any sprites with a Y-coordinate below this value will be treated as if they extend 
 // to the top of the screen, i.e. h-blank will set up their palettes as early as it 
@@ -46,6 +49,12 @@
 // check is, specifically, whether the sprite's affine transform mode or subsprite 
 // table index have changed.
 #define RECHECK_SPRITE_SIZES_PER_FRAME 0
+
+// As of this writing, we don't quite manage to run once per frame. Close, but not 
+// quite. If this setting is non-zero, and the update function is called for the same 
+// buffer twice in a row, it skips the second update. If this setting is zero, then 
+// we skip the (minor) overhead of even checking that.
+#define SKIP_UPDATES_IF_ONLY_BARELY_STALE 0
 
 //
 // End of configuration.
@@ -124,10 +133,12 @@ struct HiColorSpriteState {
 
 ALIGNED(4) typedef HiColorPaletteIndex HiColorPaletteIndicesPerScanline [VRAM_PALETTE_COUNT];
 struct HiColorPrecomputedHBlankData {
-   bool8 which_is_staging;
+   bool8 live_buffer_index;
    bool8 staging_in_progress;
+   #if SKIP_UPDATES_IF_ONLY_BARELY_STALE
    u8    last_updated_buffer;
    u8    frames_presented_since_last_staging;
+   #endif
    ALIGNED(4) HiColorPaletteIndicesPerScanline hicolor_palettes_per_scanline[2][DISPLAY_HEIGHT];
 };
 
@@ -155,8 +166,10 @@ extern void HiColor_Init(void) {
 }
 extern void HiColor_Reset(void) {
    sHiColorState.available_vram_palettes          = 0;
-   sHiColorState.hblank_state.which_is_staging    = 0;
+   sHiColorState.hblank_state.live_buffer_index   = 1;
+   #if SKIP_UPDATES_IF_ONLY_BARELY_STALE
    sHiColorState.hblank_state.last_updated_buffer = 1;
+   #endif
    
    memset(
       sHiColorState.palettes.refcounts,
@@ -317,12 +330,9 @@ extern void HiColor_OverwritePaletteByTag_4ByteAlignedSrc(HiColorPaletteTag tag,
       PLTT_SIZE_4BPP / sizeof(u32)
    );
    DebugPrintf(
-      "[HiColor_OverwritePaletteByTag_4ByteAlignedSrc] Overwrote palette with tag 0x%04X (HiColor palette ID %u). Colors 0, 7, and 15 are: 0x%04X 0x%04X 0x%04X.",
+      "[HiColor_OverwritePaletteByTag_4ByteAlignedSrc] Overwrote palette with tag 0x%04X (HiColor palette ID %u)",
       tag,
-      hicolor_id,
-      sHiColorState.palettes.blending[hicolor_id][0],
-      sHiColorState.palettes.blending[hicolor_id][7],
-      sHiColorState.palettes.blending[hicolor_id][15]
+      hicolor_id
    );
 }
 extern void HiColor_OverwritePaletteByTag(HiColorPaletteTag tag, const u16 colors[static COLORS_PER_PALETTE]) {
@@ -456,18 +466,21 @@ extern void HiColor_OverwritePaletteByTag(HiColorPaletteTag tag, const u16 color
    
    static void UpdateHiColorSpriteStates(void) {
       sHiColorState.hblank_state.staging_in_progress = TRUE;
-      if (
-         sHiColorState.hblank_state.last_updated_buffer == sHiColorState.hblank_state.which_is_staging
-      && sHiColorState.hblank_state.frames_presented_since_last_staging < 1
-      ) {
-         sHiColorState.hblank_state.staging_in_progress = FALSE;
-         return;
-      }
-DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", sHiColorState.hblank_state.which_is_staging);
+      u8 which_is_staging = sHiColorState.hblank_state.live_buffer_index ^ 1;
+      #if SKIP_UPDATES_IF_ONLY_BARELY_STALE
+         if (
+            sHiColorState.hblank_state.last_updated_buffer == which_is_staging
+         && sHiColorState.hblank_state.frames_presented_since_last_staging == 0
+         ) {
+            sHiColorState.hblank_state.staging_in_progress = FALSE;
+            return;
+         }
+      #endif
+DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", which_is_staging);
 
       typedef u8 ScanlineData[VRAM_PALETTE_COUNT];
 
-      ScanlineData* scanline_list = &sHiColorState.hblank_state.hicolor_palettes_per_scanline[sHiColorState.hblank_state.which_is_staging][0];
+      ScanlineData* scanline_list = &sHiColorState.hblank_state.hicolor_palettes_per_scanline[which_is_staging][0];
       CpuFill32(0xFFFFFFFF, scanline_list, sizeof(ScanlineData) * DISPLAY_HEIGHT);
       
       u8 first_permitted_palette_index = BitCountRZero16(sHiColorState.available_vram_palettes);
@@ -495,8 +508,13 @@ DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", sHiColorState.
          #endif
          
          u8 vram_index = 0xFF;
+         u8 y          = state->screen_bounds.top;
+         if (y < LOST_CAUSE_SCANLINES)
+            y = 0;
+         else if (y >= PALETTES_EARLY_BY_SCANLINES)
+            y -= PALETTES_EARLY_BY_SCANLINES;
          {
-            const u8* scanline = scanline_list[state->screen_bounds.top];
+            u8* scanline = scanline_list[y];
             
             u8  j   = first_permitted_palette_index;
             u16 bit = 1 << j;
@@ -506,24 +524,24 @@ DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", sHiColorState.
                if ((sHiColorState.available_vram_palettes & bit) == 0)
                   continue;
                vram_index = j;
+               scanline[j] = hicolor_index;
                break;
             }
          }
          if (vram_index != 0xFF) {
             state->sprite->oam.paletteNum = vram_index;
-            u8 y = state->screen_bounds.top;
-            if (y < LOST_CAUSE_SCANLINES)
-               y = 0;
-            else if (y >= PALETTES_EARLY_BY_SCANLINES)
-               y -= PALETTES_EARLY_BY_SCANLINES;
-            for(; y < state->screen_bounds.bottom; ++y) {
+            for(++y; y < state->screen_bounds.bottom; ++y) {
                scanline_list[y][vram_index] = hicolor_index;
             }
          }
       }
-      sHiColorState.hblank_state.last_updated_buffer = sHiColorState.hblank_state.which_is_staging;
+      #if SKIP_UPDATES_IF_ONLY_BARELY_STALE
+         sHiColorState.hblank_state.last_updated_buffer = which_is_staging;
+      #endif
       sHiColorState.hblank_state.staging_in_progress = FALSE;
-      sHiColorState.hblank_state.frames_presented_since_last_staging = 0;
+      #if SKIP_UPDATES_IF_ONLY_BARELY_STALE
+         sHiColorState.hblank_state.frames_presented_since_last_staging = 0;
+      #endif
 DebugPrintf("[UpdateHiColorSpriteStates] Done.");
       #if GUARD_AGAINST_ZOMBIE_SPRITES && EAGER_DETECT_ZOMBIE_SPRITES == 0
          for(u8 i = 0; i < HICOLOR_MAX_SPRITES; ++i) {
@@ -545,52 +563,63 @@ extern void HiColor_CB2(void) {
 
 extern void HiColor_VBlank(void) {
    if (sHiColorState.hblank_state.staging_in_progress) {
-      ++sHiColorState.hblank_state.frames_presented_since_last_staging;
+      #if SKIP_UPDATES_IF_ONLY_BARELY_STALE
+         ++sHiColorState.hblank_state.frames_presented_since_last_staging;
+      #endif
       return;
    }
-   sHiColorState.hblank_state.which_is_staging ^= 1;
-DebugPrintf("[HiColor_VBlank] Switched staging buffer to #%d.", sHiColorState.hblank_state.which_is_staging);
+   sHiColorState.hblank_state.live_buffer_index ^= 1;
+   DebugPrintf("[HiColor_VBlank] Switched live buffer to #%d.", sHiColorState.hblank_state.live_buffer_index);
 }
-extern void HiColor_HBlank(void) {
-   u8 live_buffer = sHiColorState.hblank_state.which_is_staging ^ 1;
-   u8 vcount      = REG_VCOUNT;
+
+#if USE_ASM_FOR_HICOLOR_HBLANK
+   extern void HiColor_HBlank_Asm(const void*, void*) GNU_ATTR(naked);
+#endif
+extern void HiColor_HBlank(void) GNU_ATTR(optimize(3)) {
+   uint_fast8_t vcount = REG_VCOUNT;
    if (vcount >= DISPLAY_HEIGHT)
       return;
-   const u8* scanline = sHiColorState.hblank_state.hicolor_palettes_per_scanline[live_buffer][vcount];
    
-   u8 pal;
-   #if USE_DMA_FOR_HICOLOR_HBLANK
-      #define LOOP_BODY(n)     \
-         do {                  \
-            pal = scanline[n]; \
-            if (pal != 0xFF)   \
-               DmaCopy16(0, sHiColorState.palettes.blending[pal], (void*)(OBJ_PLTT + PLTT_OFFSET_4BPP(n)), PLTT_SIZE_4BPP); \
-         } while (0)
+   #if USE_ASM_FOR_HICOLOR_HBLANK
+      const u8* scanline = sHiColorState.hblank_state.hicolor_palettes_per_scanline[sHiColorState.hblank_state.live_buffer_index][vcount];
+      auto      blending = sHiColorState.palettes.blending;
+      HiColor_HBlank_Asm(scanline, blending);
    #else
-      #define LOOP_BODY(n)     \
-         do {                  \
-            pal = scanline[n]; \
-            if (pal != 0xFF)   \
-               CpuFastSet(sHiColorState.palettes.blending[pal], (void*)(OBJ_PLTT + PLTT_OFFSET_4BPP(n)), VRAM_PALETTE_COUNT * sizeof(u16) / sizeof(u32)); \
-         } while (0)
+      const u8* scanline = sHiColorState.hblank_state.hicolor_palettes_per_scanline[sHiColorState.hblank_state.live_buffer_index][vcount];
+      uint_fast8_t pal;
+      #if USE_DMA_FOR_HICOLOR_HBLANK
+         #define LOOP_BODY(n)     \
+            do {                  \
+               pal = scanline[n]; \
+               if (pal != 0xFF)   \
+                  DmaCopy16(0, sHiColorState.palettes.blending[pal], (void*)(OBJ_PLTT + PLTT_OFFSET_4BPP(n)), PLTT_SIZE_4BPP); \
+            } while (0)
+      #else
+         #define LOOP_BODY(n)     \
+            do {                  \
+               pal = scanline[n]; \
+               if (pal != 0xFF)   \
+                  CpuFastSet(sHiColorState.palettes.blending[pal], (void*)(OBJ_PLTT + PLTT_OFFSET_4BPP(n)), VRAM_PALETTE_COUNT * sizeof(u16) / sizeof(u32)); \
+            } while (0)
+      #endif
+      
+      LOOP_BODY(0);
+      LOOP_BODY(1);
+      LOOP_BODY(2);
+      LOOP_BODY(3);
+      LOOP_BODY(4);
+      LOOP_BODY(5);
+      LOOP_BODY(6);
+      LOOP_BODY(7);
+      LOOP_BODY(8);
+      LOOP_BODY(9);
+      LOOP_BODY(10);
+      LOOP_BODY(11);
+      LOOP_BODY(12);
+      LOOP_BODY(13);
+      LOOP_BODY(14);
+      LOOP_BODY(15);
+      
+      #undef LOOP_BODY
    #endif
-   
-   LOOP_BODY(0);
-   LOOP_BODY(1);
-   LOOP_BODY(2);
-   LOOP_BODY(3);
-   LOOP_BODY(4);
-   LOOP_BODY(5);
-   LOOP_BODY(6);
-   LOOP_BODY(7);
-   LOOP_BODY(8);
-   LOOP_BODY(9);
-   LOOP_BODY(10);
-   LOOP_BODY(11);
-   LOOP_BODY(12);
-   LOOP_BODY(13);
-   LOOP_BODY(14);
-   LOOP_BODY(15);
-   
-   #undef LOOP_BODY
 }
