@@ -692,6 +692,10 @@ static void Task_NewGameBirchSpeech_StartNamingScreen(u8 taskId)
         FreeAndDestroyMonPicSprite(gTasks[taskId].tLotadSpriteId);
         NewGameBirchSpeech_SetDefaultPlayerName(Random() % NUM_PRESET_NAMES);
         DestroyTask(taskId);
+        
+        // moved from naming_screen.c:
+        StartTimer1();
+        
         ShortStringEntryMenu_RenamePlayer(CB2_NewGameBirchSpeech_ReturnFromNamingScreen);
     }
 }
@@ -880,6 +884,9 @@ static void CB2_NewGameBirchSpeech_ReturnFromNamingScreen(void)
     u8 taskId;
     u8 spriteId;
     u16 savedIme;
+    
+    // moved from naming_screen.c:
+    SeedRngAndSetTrainerId();
 
     ResetBgsAndClearDma3BusyFlags(0);
     SetGpuReg(REG_OFFSET_DISPCNT, 0);
