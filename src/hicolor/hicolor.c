@@ -21,6 +21,7 @@
 // Game Freak "scanline effect" system.
 #define USE_DMA_FOR_HICOLOR_HBLANK   0
 
+// Control whether we use handwritten assembly for the bulk of the HiColor h-blank code.
 #define USE_ASM_FOR_HICOLOR_HBLANK   1
 
 // Control whether we copy the HiColor h-blank ASM handler into IWRAM when we initialize 
@@ -34,8 +35,13 @@
 // macro somewhere, to be included both here and by the assembly, that actually places 
 // the original assembly function in the COMMON section and avoids the need for the 
 // copy operation.)
-#define RUN_HICOLOR_ASM_FROM_IWRAM   0
+#define RUN_HICOLOR_ASM_FROM_IWRAM   1
+#define RUN_HICOLOR_ASM_ARM_VARIANT  1
 #define HICOLOR_ASM_SUBROUTINE_SIZE_IN_BYTES 0x164
+#if RUN_HICOLOR_ASM_ARM_VARIANT
+   #undef  HICOLOR_ASM_SUBROUTINE_SIZE_IN_BYTES
+   #define HICOLOR_ASM_SUBROUTINE_SIZE_IN_BYTES 0x284
+#endif
 
 // Control whether and how we check for "zombie" sprites during our CB2 handler, i.e. 
 // sprites that were destroyed without being unregistered first. "Eager" detection 
@@ -48,13 +54,15 @@
 // Set up each sprite's palette N scanlines early (i.e. allocate palettes for copying 
 // into VRAM as if the sprite stretched N pixels further up than it really does). Use 
 // this to account for the fact that even with the fastest possible copies during the 
-// h-blank interrupt, we may still be a scanline late.
+// h-blank interrupt, we may still be late.
 //
-// Our h-blank interrupt seems to always be a scanline late, so this has to be at least 
-// 1. The sheer amount of data we're copying means that we don't finish during the 
-// h-blank time window -- pixels are already being set, right-to-left, by the time 
-// we're done -- so this has to be 2+ at least for the right third or so of the screen.
-#define PALETTES_EARLY_BY_SCANLINES  2
+// This was needed when the bulk of HiColor's h-blank logic was implemented in THUMB; 
+// even with handwritten assembly, it just couldn't copy data fast enough. We'd copy 
+// the palettes for a given scanline late enough that the rightmost 60 or so pixels 
+// would still be using palettes from further up the screen. Fortunately, however, 
+// handwritten ARM assembly, whether run from ROM or IWRAM, is fast enough that this 
+// isn't needed anymore.
+#define PALETTES_EARLY_BY_SCANLINES  0
 
 // Any sprites with a Y-coordinate below this value will be treated as if they extend 
 // to the top of the screen, i.e. h-blank will set up their palettes as early as it 
@@ -108,20 +116,38 @@ struct HiColorSpriteState;
    static void UpdateHiColorSpriteStates(void);
 #endif
 #if USE_ASM_FOR_HICOLOR_HBLANK
-   extern void HiColor_HBlank_Asm(const void*, const void*) GNU_ATTR(naked);
-   #if RUN_HICOLOR_ASM_FROM_IWRAM
-      //
-      // THUMB can't jump directly from code that lives in ROM to code 
-      // that lives in IWRAM. There's no equivalent to x86's `CALL EAX` 
-      // or `JMP EAX`. However, ARM has such a capability, so we have a 
-      // small ARM shim that takes a pointer to the target subroutine 
-      // as an additional argument, while forwarding the original args.
-      //
-      GNU_ATTR(target("arm")) extern void HiColor_HBlank_Asm_ViaArm(
-         const void* scanline,
-         void*       palettes,
-         void(*thumb_handler_in_iwram)(const void*, const void*)
-      ) GNU_ATTR(naked);
+   #if RUN_HICOLOR_ASM_ARM_VARIANT
+      GNU_ATTR(target("arm")) extern void HiColor_HBlank_AsmARM(const void*, const void*) GNU_ATTR(naked) GNU_ATTR(long_call);
+      #if RUN_HICOLOR_ASM_FROM_IWRAM
+         //
+         // THUMB can't jump directly from code that lives in ROM to code 
+         // that lives in IWRAM. There's no equivalent to x86's `CALL EAX` 
+         // or `JMP EAX`. However, ARM has such a capability, so we have a 
+         // small ARM shim that takes a pointer to the target subroutine 
+         // as an additional argument, while forwarding the original args.
+         //
+         GNU_ATTR(target("arm")) extern void HiColor_HBlank_AsmARM_ViaArm(
+            const void* scanline,
+            void*       palettes,
+            void(*arm_handler_in_iwram)(const void*, const void*)
+         ) GNU_ATTR(naked);
+      #endif
+   #else
+      extern void HiColor_HBlank_Asm(const void*, const void*) GNU_ATTR(naked);
+      #if RUN_HICOLOR_ASM_FROM_IWRAM
+         //
+         // THUMB can't jump directly from code that lives in ROM to code 
+         // that lives in IWRAM. There's no equivalent to x86's `CALL EAX` 
+         // or `JMP EAX`. However, ARM has such a capability, so we have a 
+         // small ARM shim that takes a pointer to the target subroutine 
+         // as an additional argument, while forwarding the original args.
+         //
+         GNU_ATTR(target("arm")) extern void HiColor_HBlank_Asm_ViaArm(
+            const void* scanline,
+            void*       palettes,
+            void(*thumb_handler_in_iwram)(const void*, const void*)
+         ) GNU_ATTR(naked);
+      #endif
    #endif
 #endif
 
@@ -210,7 +236,11 @@ extern void HiColor_Init(void) {
    HiColor_Reset();
    #if RUN_HICOLOR_ASM_FROM_IWRAM
       CpuFastSet(
-         (const void*)HiColor_HBlank_Asm,
+         #if RUN_HICOLOR_ASM_ARM_VARIANT
+            (const void*)HiColor_HBlank_AsmARM,
+         #else
+            (const void*)HiColor_HBlank_Asm,
+         #endif
          sHiColorIWRAMAssemblyBuffer,
          sizeof(sHiColorIWRAMAssemblyBuffer) / sizeof(u32)
       );
@@ -551,7 +581,9 @@ DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", which_is_stagi
             }
          #endif
          ComputeSpriteBounds(state, FALSE);
-         if (state->screen_bounds.top == state->screen_bounds.bottom)
+         uint_fast8_t y_upper = state->screen_bounds.top;
+         uint_fast8_t y_lower = state->screen_bounds.bottom;
+         if (y_upper == y_lower)
             continue;
          const uint_fast8_t hicolor_index = state->hicolor_palette_index;
          #if HICOLOR_PALETTE_COUNT < HICOLOR_MAX_SPRITES
@@ -560,13 +592,20 @@ DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", which_is_stagi
          #endif
          
          uint_fast8_t vram_index = 0xFF;
-         uint_fast8_t y          = state->screen_bounds.top;
-         if (y < LOST_CAUSE_SCANLINES)
-            y = 0;
-         else if (y >= PALETTES_EARLY_BY_SCANLINES)
-            y -= PALETTES_EARLY_BY_SCANLINES;
+         if (y_upper >= PALETTES_EARLY_BY_SCANLINES) {
+            y_upper -= PALETTES_EARLY_BY_SCANLINES;
+         }
+         //
+         // The h-blank interrupt runs *after* the pixels for its associated 
+         // scanline have been drawn. Therefore, we need to copy palettes for 
+         // each sprite one scanline "early."
+         //
+         uint_fast8_t y_displaced = y_upper;
+         if (y_displaced > 0)
+            --y_displaced;
+         
          {
-            u8* scanline = scanline_list[y];
+            u8* scanline = scanline_list[y_displaced];
             
             uint_fast8_t  j   = first_permitted_palette_index;
             uint_fast16_t bit = 1 << j;
@@ -582,7 +621,19 @@ DebugPrintf("[UpdateHiColorSpriteStates] Staging buffer is #%d.", which_is_stagi
          }
          if (vram_index != 0xFF) {
             state->sprite->oam.paletteNum = vram_index;
-            for(++y; y < state->screen_bounds.bottom; ++y) {
+            if (y_upper == 0) {
+               //
+               // As mentioned, the h-blank interrupt runs *after* the pixels for 
+               // its associated scanline have been drawn. As such, if a sprite 
+               // is in the topmost scanline, then we should set up its palettes 
+               // dead last.
+               //
+               scanline_list[DISPLAY_HEIGHT - 1][vram_index] = hicolor_index;
+            }
+            if (y_lower > 0) {
+               --y_lower; // again: h-blank runs late; ergo we prep early
+            }
+            for(uint_fast8_t y = y_upper; y < y_lower; ++y) {
                scanline_list[y][vram_index] = hicolor_index;
             }
          }
@@ -632,15 +683,28 @@ extern void HiColor_HBlank(void) GNU_ATTR(optimize(3)) {
    #if USE_ASM_FOR_HICOLOR_HBLANK
       const u8*  scanline = sHiColorState.hblank_state.hicolor_palettes_per_scanline[sHiColorState.hblank_state.live_buffer_index][vcount];
       const auto blending = sHiColorState.palettes.blending;
-         typedef void(*HBlankHandler)(const void*, const void*);
-      #if RUN_HICOLOR_ASM_FROM_IWRAM
-         HiColor_HBlank_Asm_ViaArm(
-            scanline,
-            blending,
-            (HBlankHandler)sHiColorIWRAMAssemblyBuffer
-         );
+      #if RUN_HICOLOR_ASM_ARM_VARIANT
+         #if RUN_HICOLOR_ASM_FROM_IWRAM
+            typedef void(*HBlankHandler)(const void*, const void*);
+            HiColor_HBlank_AsmARM_ViaArm(
+               scanline,
+               blending,
+               (HBlankHandler)sHiColorIWRAMAssemblyBuffer
+            );
+         #else
+            HiColor_HBlank_AsmARM(scanline, blending);
+         #endif
       #else
-         HiColor_HBlank_Asm(scanline, blending);
+         #if RUN_HICOLOR_ASM_FROM_IWRAM
+            typedef void(*HBlankHandler)(const void*, const void*);
+            HiColor_HBlank_Asm_ViaArm(
+               scanline,
+               blending,
+               (HBlankHandler)sHiColorIWRAMAssemblyBuffer
+            );
+         #else
+            HiColor_HBlank_Asm(scanline, blending);
+         #endif
       #endif
    #else
       const u8* scanline = sHiColorState.hblank_state.hicolor_palettes_per_scanline[sHiColorState.hblank_state.live_buffer_index][vcount];

@@ -50,7 +50,7 @@
 @
 
 .macro loop_body index_a:req
-.set IS_NOT_LAST_ITERATION, (\index_a - COLORS_PER_PALETTE)
+.set IS_NOT_LAST_ITERATION, (\index_a - COLORS_PER_PALETTE - 1)
    @
    ldrb r0, [r4, #\index_a]
    cmp  r0, #255
