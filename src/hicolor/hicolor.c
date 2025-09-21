@@ -247,6 +247,7 @@ extern void HiColor_Init(void) {
    #endif
 }
 extern void HiColor_Reset(void) {
+   SetSpritePalettesReservedForHiColor(0);
    sHiColorState.available_vram_palettes          = 0;
    sHiColorState.hblank_state.live_buffer_index   = 1;
    #if SKIP_UPDATES_IF_ONLY_BARELY_STALE
@@ -275,6 +276,7 @@ extern void HiColor_Reset(void) {
 
 extern void HiColor_SetAvailableVRAMPalettes(u16 mask) {
    sHiColorState.available_vram_palettes = mask;
+   SetSpritePalettesReservedForHiColor(mask);
 }
 
 static u8 AllocateHiColorPalette(HiColorPaletteTag tag, u8 copy_locolor_palette_id) {

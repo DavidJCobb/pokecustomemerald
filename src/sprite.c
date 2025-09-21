@@ -279,6 +279,13 @@ static u16 sSpriteTileRanges[MAX_SPRITES * 2];
 static struct AffineAnimState sAffineAnimStates[OAM_MATRIX_COUNT];
 static u16 sSpritePaletteTags[16];
 
+// Added for HiColor. If you allow HiColor to modify a given palette, you 
+// want to also not allow the "LoColor" sprite engine to use that palette 
+// for palette-tags.
+//
+// Bitmask.
+static u16 sPaletteIndicesReservedForHiColor;
+
 // iwram common
 COMMON_DATA u32 gOamMatrixAllocBitmap = 0;
 COMMON_DATA u8 gReservedSpritePaletteCount = 0;
@@ -309,6 +316,7 @@ void ResetSpriteData(void)
     AllocSpriteTiles(0);
     gSpriteCoordOffsetX = 0;
     gSpriteCoordOffsetY = 0;
+    sPaletteIndicesReservedForHiColor = 0;
 }
 
 void AnimateSprites(void)
@@ -1694,9 +1702,33 @@ void DoLoadSpritePalette(const u16 *src, u16 paletteOffset)
     LoadPalette(src, OBJ_PLTT_OFFSET + paletteOffset, PLTT_SIZE_4BPP);
 }
 
+void SetSpritePalettesReservedForHiColor(u16 mask) { // added
+   if (sPaletteIndicesReservedForHiColor == mask)
+      return;
+   sPaletteIndicesReservedForHiColor = mask;
+   if (mask) {
+      for(u8 i = 0; i < 16; ++i) {
+         if (!(mask & (1 << i)))
+            continue;
+         sSpritePaletteTags[i] = TAG_NONE;
+      }
+   }
+}
+
+static u8 NextAvailableSpritePaletteForNewTag(void) { // added
+   for(u8 i = gReservedSpritePaletteCount; i < 16; ++i) {
+      if (sSpritePaletteTags[i] != TAG_NONE)
+         continue;
+      if (sPaletteIndicesReservedForHiColor & (1 << i))
+         continue;
+      return i;
+   }
+   return 0xFF;
+}
+
 u8 AllocSpritePalette(u16 tag)
 {
-    u8 index = IndexOfSpritePaletteTag(TAG_NONE);
+    u8 index = NextAvailableSpritePaletteForNewTag(TAG_NONE);
     if (index == 0xFF)
     {
         return 0xFF;
